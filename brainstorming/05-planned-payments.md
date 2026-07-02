@@ -84,6 +84,7 @@ $ wallet bill list
 |------|-------------|
 | `--active` | Show only active, non-paused (default) |
 | `--paused` | Show only paused bills |
+| `--active --paused` | Show active AND paused (not archived) |
 | `--all` | Include paused and archived |
 | `--json` | JSON output |
 
