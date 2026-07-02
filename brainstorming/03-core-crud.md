@@ -59,6 +59,7 @@ $ wallet add expense 35000 "Lunch at Warung" -c food -a bca -t lunch -t work
 | `--account` | `-a` | No | config default | Account name or ID |
 | `--tag` | `-t` | No | — | Tag name (repeatable) |
 | `--date` | `-d` | No | today | Transaction date |
+| `--description` | | No | — | Alias for positional desc |
 | `--notes` | | No | — | Additional notes |
 | `--json` | | No | false | JSON output |
 
@@ -66,7 +67,7 @@ $ wallet add expense 35000 "Lunch at Warung" -c food -a bca -t lunch -t work
 - Amount must be > 0
 - Category must exist (error + suggest: "Did you mean 'food'?")
 - Account must exist and not be archived
-- Tags auto-created if not exist (with confirmation prompt)
+- Tags must exist (error if not: `Tag 'xyz' not found. Create it first with: wallet tag add xyz`)
 - Date must be valid YYYY-MM-DD or alias (today, yesterday)
 
 ---
@@ -378,10 +379,10 @@ FROM transactions WHERE account_id = ? OR transfer_to_id = ?;
 
 ---
 
-## Open Questions
+## Resolved Questions
 
-| # | Question | Status |
-|---|----------|--------|
-| OQ1 | Soft delete vs hard delete for transactions? | → TBD |
-| OQ2 | Auto-create tags on `wallet add expense -t newtag`? | → TBD |
-| OQ3 | Transaction ID format: auto-increment int or UUID? | → TBD |
+| # | Question | Resolution |
+|---|----------|------------|
+| OQ1 | Soft delete vs hard delete? | Soft delete — mark archived, keep data |
+| OQ2 | Auto-create tags on add? | No — error if tag not exist |
+| OQ3 | Transaction ID format? | Auto-increment integer |
