@@ -10,7 +10,7 @@
 
 | # | Phase | Focus | Status |
 |---|-------|-------|--------|
-| 01 | Data Model | SQLite schema, entities, relationships, currencies | 🔴 pending |
+| 01 | Data Model | SQLite schema, entities, relationships, currencies | ✅ design approved |
 | 02 | Project Skeleton | CLI framework, project structure, tooling, config | ⬜ blocked |
 | 03 | Core CRUD | Transactions (expense/income/transfer), categories, tags | ⬜ blocked |
 | 04 | Budget Engine | Monthly budgets, alerts, rollover, progress tracking | ⬜ blocked |
@@ -36,10 +36,13 @@
 
 | Decision | Answer |
 |----------|--------|
-| Language | TBD |
-| Interaction model | TBD (CLI-first confirmed, TUI optional) |
-| Category model | TBD (flat vs hierarchical) |
-| Forecasting approach | TBD (heuristic vs ML) |
+| Language | **Go** |
+| Interaction model | **CLI-first** (TUI optional) |
+| Category model | **2-level hierarchy** (parent→child) |
+| Tags | **Both** — categories + freeform tags; budget by category OR tag |
+| Transfer model | **Single row** with transfer_to_id |
+| Budget periods | **Snapshot per period** (clone) |
+| Forecasting approach | TBD |
 | Multi-currency strategy | TBD |
 
 ---
