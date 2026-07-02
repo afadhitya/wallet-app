@@ -1,7 +1,7 @@
 # 02 — Project Skeleton
 
 > Depends on: [01-data-model](./01-data-model.md)
-> Status: 🔴 pending review | Unblocks: 03-core-crud
+> Status: ✅ design approved | Unblocks: 03-core-crud
 
 ---
 
@@ -23,6 +23,7 @@ Initialize the Go project with proper module structure, CLI framework, configura
 | P6 | Build | `Makefile` + `go build` | Simple, no goreleaser needed yet |
 | P7 | Testing | stdlib `testing` + `testify/assert` | Standard Go testing toolkit |
 | P8 | Migrations | Embedded SQL files + version tracking | Simple, no external migration tool |
+| P9 | Code generation | `sqlc` for repository layer | Type-safe SQL queries, no ORM overhead |
 
 ---
 
@@ -38,20 +39,17 @@ wallet-app/
 │   │   ├── db.go               # Connection, migrations
 │   │   └── migrations/
 │   │       └── 001_initial.sql  # Full schema
-│   ├── models/                  # Data structs (generated or hand-written)
-│   │   ├── account.go
-│   │   ├── category.go
-│   │   ├── tag.go
-│   │   ├── transaction.go
-│   │   ├── budget.go
-│   │   └── planned_payment.go
-│   ├── repository/              # Data access layer
-│   │   ├── account_repo.go
-│   │   ├── category_repo.go
-│   │   ├── tag_repo.go
-│   │   ├── transaction_repo.go
-│   │   ├── budget_repo.go
-│   │   └── planned_payment_repo.go
+│   ├── query/                   # sqlc SQL input files
+│   │   ├── accounts.sql
+│   │   ├── categories.sql
+│   │   ├── tags.sql
+│   │   ├── transactions.sql
+│   │   ├── budgets.sql
+│   │   └── planned_payments.sql
+│   ├── gen/                     # sqlc-generated Go code
+│   │   ├── db.go               # Querier interface
+│   │   ├── models.go           # Data structs
+│   │   └── *.sql.go            # Query implementations
 │   ├── service/                 # Business logic
 │   │   ├── account_svc.go
 │   │   ├── transaction_svc.go
@@ -68,9 +66,7 @@ wallet-app/
 │       ├── bill.go             # wallet bill (planned payments)
 │       ├── report.go           # wallet report
 │       └── forecast.go         # wallet forecast
-├── pkg/
-│   └── config/
-│       └── config.go            # Config loading (shared if needed)
+├── sqlc.yaml                    # sqlc configuration
 ├── go.mod
 ├── go.sum
 ├── Makefile
@@ -84,13 +80,13 @@ wallet-app/
 |---------|---------|------------|
 | `cmd/wallet` | Single binary entry point | — |
 | `internal/db` | Connection pool, migration runner, schema queries | Internal only |
-| `internal/models` | Pure data structs, no logic | Internal only |
-| `internal/repository` | CRUD operations, SQL queries, result mapping | Internal only |
+| `internal/query` | Raw SQL files (input to sqlc) | Internal only |
+| `internal/gen` | sqlc-generated models + query functions | Internal only |
 | `internal/service` | Business rules, validation, multi-step operations | Internal only |
 | `internal/cli` | Cobra command tree, arg parsing, output formatting | Internal only |
 | `pkg/config` | Config struct, TOML loading, defaults | Public (minimal) |
 
-**Why `internal/`?** Prevents external imports — this is an app, not a library. Commands stay decoupled from each other.
+**Why sqlc?** Generates type-safe Go code from SQL queries. Write SQL → get Go structs + functions. No ORM magic, no reflection. Single-user app doesn't need the overhead of GORM.
 
 ---
 
@@ -251,6 +247,29 @@ go.mod:
   modernc.org/sqlite           v1.30+     # Pure Go SQLite driver
   github.com/BurntSushi/toml   v1.4+      # TOML config parsing
   github.com/stretchr/testify  v1.9+      # Test assertions (dev only)
+
+sqlc (dev tool):
+  github.com/sqlc-dev/sqlc     v1.27+     # SQL → Go code generator
+```
+
+### sqlc.yaml
+
+```yaml
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "internal/query/"
+    schema: "internal/db/migrations/"
+    gen:
+      go:
+        package: "gen"
+        out: "internal/gen/"
+        sql_package: "database/sql"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_empty_slices: true
+        emit_result_struct_pointers: true
+        emit_interface: true
 ```
 
 **Why `modernc.org/sqlite` over `mattn/go-sqlite3`?**
@@ -276,10 +295,10 @@ wallet forecast --next-month --json
 
 ---
 
-## Open Questions
+## Resolved Questions
 
-| # | Question | Status |
-|---|----------|--------|
-| OQ1 | TUI (bubbletea/textual) — add now or defer? | → TBD |
-| OQ2 | `wallet` or different binary name? | → TBD |
-| OQ3 | Models: hand-written structs or sqlc-generated? | → TBD |
+| # | Question | Resolution |
+|---|----------|------------|
+| OQ1 | TUI (bubbletea/textual)? | ❌ Skip for now |
+| OQ2 | Binary name? | `wallet` |
+| OQ3 | Hand-written structs or sqlc? | sqlc-generated |
