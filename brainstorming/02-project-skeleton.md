@@ -24,6 +24,7 @@ Initialize the Go project with proper module structure, CLI framework, configura
 | P7 | Testing | stdlib `testing` + `testify/assert` | Standard Go testing toolkit |
 | P8 | Migrations | Embedded SQL files + version tracking | Simple, no external migration tool |
 | P9 | Code generation | `sqlc` for repository layer | Type-safe SQL queries, no ORM overhead |
+| P10 | CI | GitHub Actions, 100% test coverage gate | Enforced on PR to main, coverage.html on failure |
 
 ---
 
