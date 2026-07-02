@@ -208,6 +208,71 @@ deps:
 
 ---
 
+## CI/CD — GitHub Actions
+
+### Workflow: `test.yml`
+
+**Triggers:**
+- Push to `main` and `brainstorming`
+- Pull requests to `main`
+
+**Jobs:**
+
+| Step | Command | Notes |
+|------|---------|-------|
+| Checkout | `actions/checkout@v4` | |
+| Go setup | `actions/setup-go@v5` | `go-version-file: go.mod` |
+| Run tests | `go test -coverprofile=coverage.out -covermode=atomic ./...` | atomic mode for accuracy |
+| Check coverage | `go tool cover -func=coverage.out` → extract total | **Fail if < 100%** |
+| Upload report | `actions/upload-artifact@v4` | `coverage.out` always, `coverage.html` on failure |
+
+**Coverage gate:**
+- Extract total percentage from `go tool cover -func` output
+- Fail the workflow if coverage < 100%
+- Upload HTML coverage report as artifact on failure for easy debugging
+
+**YAML structure:**
+```yaml
+name: Test & Coverage
+on:
+  push:
+    branches: [main, brainstorming]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -coverprofile=coverage.out -covermode=atomic ./...
+      - name: Check 100% coverage
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          if [ "$(echo "$COVERAGE < 100" | bc -l)" -eq 1 ]; then
+            echo "::error::Coverage is ${COVERAGE}%, must be 100%"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+          if: always()
+      - run: go tool cover -html=coverage.out -o coverage.html
+        if: failure()
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.html
+          if: failure()
+```
+
+---
+
 ## Database Initialization
 
 ### Migration strategy
