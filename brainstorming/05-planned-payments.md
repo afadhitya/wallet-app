@@ -82,7 +82,8 @@ $ wallet bill list
 
 | Flag | Description |
 |------|-------------|
-| `--active` | Show only active (default) |
+| `--active` | Show only active, non-paused (default) |
+| `--paused` | Show only paused bills |
 | `--all` | Include paused and archived |
 | `--json` | JSON output |
 
@@ -318,9 +319,9 @@ CalcNextDue(currentDue, recurrence, rule):
 
 ---
 
-## Open Questions
+## Resolved Questions
 
-| # | Question | Status |
-|---|----------|--------|
-| OQ1 | Allow re-pay same period? (e.g., correction) | → TBD |
-| OQ2 | Bill tags support? (planned_payments has no tags currently) | → TBD |
+| # | Question | Resolution |
+|---|----------|------------|
+| OQ1 | Allow re-pay same period? | TBD — use `--force` flag for corrections |
+| OQ2 | Bill tags support? | TBD — not in current schema, can add later if needed |
