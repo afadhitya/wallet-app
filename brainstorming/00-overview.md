@@ -11,7 +11,7 @@
 | # | Phase | Focus | Status |
 |---|-------|-------|--------|
 | 01 | Data Model | SQLite schema, entities, relationships, currencies | ✅ design approved |
-| 02 | Project Skeleton | CLI framework, project structure, tooling, config | ⬜ blocked |
+| 02 | Project Skeleton | CLI framework, project structure, tooling, config | 🔴 pending review |
 | 03 | Core CRUD | Transactions (expense/income/transfer), categories, tags | ⬜ blocked |
 | 04 | Budget Engine | Monthly budgets, alerts, rollover, progress tracking | ⬜ blocked |
 | 05 | Planned Payments | Recurring + one-time payments, due dates, cash flow impact | ⬜ blocked |
