@@ -15,7 +15,7 @@ Implement financial forecasting — project future balances based on historical 
 
 | # | Decision | Choice | Rationale |
 |---|----------|--------|-----------|
-| F1 | Forecast approach | Simple heuristic — average N months | MVP sufficient, upgradeable |
+| F1 | Forecast source | Planned payments only | Simpler, more predictable, user-controlled accuracy |
 | F2 | Horizon | Configurable `--months N` (default 1) | Flexible for different planning needs |
 
 ---
@@ -36,11 +36,12 @@ $ wallet forecast
 │ Projected Income:     Rp5.000.000                           │
 │   Salary (planned):   Rp5.000.000                           │
 │                                                             │
-│ Projected Expenses:   Rp4.200.000                           │
-│   Planned Payments:   Rp1.500.000 (Netflix, Gym, Rent)     │
-│   Avg Spending:       Rp2.700.000 (based on 3 months)       │
+│ Projected Expenses:   Rp2.649.000                           │
+│   Netflix:            Rp149.000 (Aug 15)                    │
+│   Gym:                Rp500.000 (Aug 05)                    │
+│   Rent:               Rp2.000.000 (Aug 01)                  │
 │                                                             │
-│ Ending Balance:       Rp15.800.000                          │
+│ Ending Balance:       Rp17.351.000                          │
 │                                                             │
 │ ⚠️  Bills Due: Rp1.500.000 on Aug 1, Aug 15                │
 └─────────────────────────────────────────────────────────────┘
@@ -71,7 +72,7 @@ $ wallet forecast --months 3
 │ Sep 2026  │ Rp5.000.000 │ Rp4.100.000 │ +Rp900.000  │Rp16.7M │
 │ Oct 2026  │ Rp5.000.000 │ Rp4.300.000 │ +Rp700.000  │Rp17.4M │
 └───────────┴─────────────┴─────────────┴─────────────┴────────┘
-  Based on: 3-month average + 5 planned payments
+│ Based on: 5 planned payments |
 ```
 
 ---
@@ -141,9 +142,14 @@ type ForecastResult struct {
     StartingBalance int64
     ProjectedIncome int64
     ProjectedExpense int64
-    PlannedPayments int64
-    AvgSpending     int64
+    PlannedPayments []PlannedPaymentDetail
     EndingBalance   int64
+}
+
+type PlannedPaymentDetail struct {
+    Name   string
+    Amount int64
+    Date   string
 }
 
 type BillForecast struct {
@@ -155,7 +161,6 @@ type BillForecast struct {
 
 func (s *ForecastService) Forecast(ctx, accountID or all, months) ([]ForecastResult, error)
 func (s *ForecastService) BillsForecast(ctx, months) ([]BillForecast, error)
-func (s *ForecastService) CalcAvgSpending(ctx, accountID, categoryID, months) (int64, error)
 ```
 
 ---
@@ -168,25 +173,14 @@ func (s *ForecastService) CalcAvgSpending(ctx, accountID, categoryID, months) (i
 For each month in horizon:
   1. StartingBalance = previous month's EndingBalance (or current balance)
   2. ProjectedIncome = sum of planned income payments for this month
-  3. PlannedExpenses = sum of planned expense payments for this month
-  4. AvgSpending = average of last N months' actual spending (excluding planned)
-  5. EndingBalance = StartingBalance + ProjectedIncome - PlannedExpenses - AvgSpending
+  3. ProjectedExpense = sum of planned expense payments for this month
+  4. EndingBalance = StartingBalance + ProjectedIncome - ProjectedExpense
 ```
 
-### Average Spending Calculation
-
-```
-CalcAvgSpending(accountID, months):
-  1. Query transactions for last N months
-  2. Exclude transactions with is_planned=1 (those are in PlannedExpenses)
-  3. Group by month, calculate total per month
-  4. Return average across months
-```
-
-**Edge cases:**
-- No history: return 0, show "Insufficient data for forecast"
-- Partial months: use available data, note "Based on 1 month of data"
-- Negative balance: show warning
+**Notes:**
+- Forecast accuracy depends on completeness of planned payments
+- Unplanned spending (e.g., impulsive purchases) is NOT projected
+- User should add all recurring bills as planned payments for accurate forecasts
 
 ---
 
@@ -195,18 +189,6 @@ CalcAvgSpending(accountID, months):
 ### forecasting.sql
 
 ```sql
--- name: SumSpendingByMonth :many
-SELECT
-    strftime('%Y-%m', date) as month,
-    SUM(amount) as total
-FROM transactions
-WHERE account_id = ?
-  AND type = 'expense'
-  AND is_planned = 0
-  AND date >= date('now', ? || ' months')
-GROUP BY strftime('%Y-%m', date)
-ORDER BY month;
-
 -- name: SumPlannedByMonth :many
 SELECT
     strftime('%Y-%m', next_due_date) as month,
@@ -230,7 +212,7 @@ SELECT balance FROM accounts WHERE id = ? AND is_archived = 0;
 
 | Error | Message | Exit code |
 |-------|---------|-----------|
-| No data | `Insufficient data for forecast. Need at least 1 month of history.` | 0 (warn) |
+| No planned payments | `No planned payments found. Add bills with: wallet bill add` | 0 (warn) |
 | Account not found | `Account 'foo' not found.` | 1 |
 | Negative projection | `Warning: Projected negative balance in <month>` | 0 (warn) |
 
