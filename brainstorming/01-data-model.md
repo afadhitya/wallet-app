@@ -20,6 +20,10 @@ Define the SQLite schema that serves as the single source of truth. Every future
 | D2 | Budget period model | Snapshot per period (clone) | History preserved; limit changes don't corrupt past periods |
 | D4 | Category hierarchy | 2-level (parent→child) | Grouped reporting without recursive CTE complexity |
 | D5 | Tags + Categories | Both — budget by category OR tag | Categories=structure, Tags=cross-cutting + alternative budget target |
+| D6 | Budget target | Multiple categories OR multiple tags | M2M junctions — budget "Food+Transport" or "#vacation+#family" |
+| D7 | Budget type | Recurring + one-time | Recurring auto-clones per period; one-time is single horizon |
+| D8 | Multi-currency tx | Store original + converted amount | Track both; converted amount in account currency for balance |
+| D9 | next_due_date | Pre-calculated, updated on fulfillment | No runtime computation needed |
 
 ---
 
@@ -113,8 +117,10 @@ CREATE TABLE transactions (
     account_id      INTEGER NOT NULL REFERENCES accounts(id),
     category_id     INTEGER REFERENCES categories(id),
     type            TEXT NOT NULL,                   -- expense | income | transfer
-    amount          INTEGER NOT NULL,                -- always positive, minor units
-    currency        TEXT NOT NULL DEFAULT 'IDR',
+    amount          INTEGER NOT NULL,                -- D8: original amount, minor units
+    currency        TEXT NOT NULL DEFAULT 'IDR',     -- D8: original currency, ISO 4217
+    base_amount     INTEGER,                         -- D8: converted to account currency (NULL if same as currency)
+    base_currency   TEXT,                            -- D8: account currency after conversion
     description     TEXT,                            -- "Lunch at Warung Sederhana"
     notes           TEXT,
     transfer_to_id  INTEGER REFERENCES accounts(id), -- D1: for transfers only
@@ -140,30 +146,56 @@ CREATE TABLE transaction_tags (
 
 ### `budgets`
 
-Per-period spending limit — target is category OR tag (polymorphic). D2: snapshot per period.
+Per-period spending limit. D2: snapshot per period. D6: target is multiple categories OR multiple tags (via M2M). D7: recurring auto-clones; one-time is single horizon.
 
 ```sql
 CREATE TABLE budgets (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id     INTEGER REFERENCES categories(id), -- D5: target = category (nullable if tag_id set)
-    tag_id          INTEGER REFERENCES tags(id),        -- D5: target = tag (nullable if category_id set)
-    name            TEXT,                                -- human-readable label
+    name            TEXT,                                -- "Monthly Essentials", "Japan Trip 2026"
     amount          INTEGER NOT NULL,                    -- limit, minor units
     currency        TEXT NOT NULL DEFAULT 'IDR',
-    period_start    TEXT NOT NULL,                       -- YYYY-MM-DD (first day of period)
-    period_end      TEXT NOT NULL,                       -- YYYY-MM-DD (last day of period)
-    rollover        INTEGER NOT NULL DEFAULT 0,          -- carry over unused amount to next period
-    notify_at_pct   INTEGER DEFAULT 80,                  -- alert at X% (e.g., 80 = 80%)
+    type            TEXT NOT NULL DEFAULT 'recurring',   -- D7: recurring | one_time
+    period_start    TEXT NOT NULL,                       -- YYYY-MM-DD
+    period_end      TEXT NOT NULL,                       -- YYYY-MM-DD
+    notify_at_pct   INTEGER DEFAULT 80,                  -- alert at X%
     is_active       INTEGER NOT NULL DEFAULT 1,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    CONSTRAINT target_check CHECK (
-        (category_id IS NOT NULL AND tag_id IS NULL) OR
-        (category_id IS NULL AND tag_id IS NOT NULL)
-    )
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
 
-**Example:** Monthly "Food" budget is `category_id = <Food & Dining parent id>`. Monthly "Japan Trip" budget is `tag_id = <#japan-2026 tag id>`.
+### `budget_categories`
+
+M2M: budgets ↔ categories (D6).
+
+```sql
+CREATE TABLE budget_categories (
+    budget_id    INTEGER NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+    category_id  INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    PRIMARY KEY (budget_id, category_id)
+);
+```
+
+### `budget_tags`
+
+M2M: budgets ↔ tags (D6).
+
+```sql
+CREATE TABLE budget_tags (
+    budget_id  INTEGER NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+    tag_id     INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (budget_id, tag_id)
+);
+```
+
+**Examples:**
+
+| Budget | Type | Targets | Period |
+|--------|------|---------|--------|
+| "Monthly Essentials" | recurring | Food & Dining + Transportation + Bills | Jul 1–31, auto-clone to Aug |
+| "Japan Trip 2026" | one_time | #japan-2026 tag | Jan 1 – Dec 31 |
+| "Dining & Entertainment" | recurring | Restaurant + Coffee + Entertainment | Jul 1–31 |
+
+**Constraint:** A budget must have at least one target (category or tag). Enforced at application layer.
 
 ### `planned_payments`
 
@@ -177,12 +209,11 @@ CREATE TABLE planned_payments (
     type            TEXT NOT NULL DEFAULT 'expense',     -- expense | income
     amount          INTEGER NOT NULL,
     currency        TEXT NOT NULL DEFAULT 'IDR',
-    description     TEXT NOT NULL,
+    name            TEXT NOT NULL,                       -- "Netflix", "Monthly Rent"
     recurrence      TEXT NOT NULL DEFAULT 'none',        -- none | daily | weekly | monthly | yearly | custom
     recurrence_rule TEXT,                                -- RRULE (RFC 5545) for custom patterns
     start_date      TEXT NOT NULL,
-    end_date        TEXT,
-    next_due_date   TEXT,                                -- computed after each fulfillment
+    next_due_date   TEXT,                                -- D9: pre-calculated, updated on fulfillment
     is_paused       INTEGER NOT NULL DEFAULT 0,
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
@@ -210,39 +241,27 @@ CREATE UNIQUE INDEX idx_exchange_rates_unique
 
 ## Entity Relationships
 
-```
-                    ┌──────────────┐
-                    │   accounts   │
-                    └──────┬───────┘
-                           │ 1:N
-       ┌───────────────────┼───────────────────┐
-       │                   │                   │
-  ┌────▼─────┐      ┌──────▼──────┐     ┌──────▼──────────┐
-  │transactions│     │  budgets   │     │planned_payments │
-  └──┬───┬────┘      └──┬────┬───┘     └──────┬──────────┘
-     │   │               │    │                │
-     │   │          ┌────┘    └────┐           │
-     │   │          │              │           │
-  ┌──▼─┐│    ┌──────▼──┐    ┌─────▼───┐       │
-  │tags││    │categories│   │  tags   │       │
-  └──┬─┘│    └──────────┘   └─────────┘       │
-     │  │                                      │
-  ┌──▼──▼──────┐                               │
-  │trans_tags   │                               │
-  └────────────┘                               │
-                                               │
-  ┌────────────────────────────────────────────┘
-  │ (via planned_payment_id)
-  ▼
-transactions (is_planned=1)
+```mermaid
+erDiagram
+    accounts ||--o{ transactions : "1:N"
+    accounts ||--o{ planned_payments : "1:N"
+    categories ||--o{ transactions : "1:N"
+    categories ||--o{ planned_payments : "1:N"
+    categories ||--o{ budget_categories : "1:N"
+    tags ||--o{ transaction_tags : "1:N"
+    tags ||--o{ budget_tags : "1:N"
+    transactions ||--o{ transaction_tags : "1:N"
+    budgets ||--o{ budget_categories : "1:N"
+    budgets ||--o{ budget_tags : "1:N"
+    planned_payments ||--o{ transactions : "via planned_payment_id"
 ```
 
 ---
 
-## Open Questions
+## Resolved Questions
 
-| # | Question | Status |
-|---|----------|--------|
-| OQ1 | Do we need `exchange_rates` in MVP? Multi-currency mungkin dimulai manual dulu | → Phase 07 |
-| OQ2 | Transactions: store original amount+currency or convert to account currency? | → Phase 07 |
-| OQ3 | `planned_payments.next_due_date` — computed at query time or pre-calculated on fulfill? | → Phase 05 |
+| # | Question | Resolution |
+|---|----------|------------|
+| OQ1 | Exchange rates in MVP? | ✅ Yes — keep `exchange_rates` table |
+| OQ2 | Store original or convert? | ✅ Both: `amount`+`currency` (original) + `base_amount`+`base_currency` (converted) |
+| OQ3 | `next_due_date` computed or pre-calc? | ✅ Pre-calculated, updated on fulfillment |
