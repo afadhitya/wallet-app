@@ -18,6 +18,8 @@ Implement budget management — set spending limits per category/tag, check prog
 | B1 | Budget format | Named — multi-target via flags | Flexible, clear identifier |
 | B2 | Budget checking | On-demand (`wallet budget check`) | MVP simple, no background watcher |
 | B3 | Period auto-creation | Auto-generate on first check in new month | Seamless recurring budgets |
+| B4 | Mix categories + tags | Yes — budget can have both categories AND tags | Maximum flexibility |
+| B5 | Overlap allowed | Transactions can belong to multiple budgets (double-count OK) | Simpler logic, user responsibility |
 
 ---
 
@@ -46,7 +48,7 @@ $ wallet budget set "Monthly Food" 2000000 -c food -c transport --period monthly
 | `--notify` | | No | 80 | Alert at X% spent |
 | `--json` | | No | false | JSON output |
 
-*At least one `-c` or `-t` required. Can mix? No — either categories OR tags, enforced at app layer.
+*At least one `-c` or `-t` required. Can mix? Yes — budget can have both categories AND tags (B4).
 
 **Validation:**
 - At least one target (category or tag) required
@@ -285,9 +287,9 @@ BudgetService.Check(ctx, budgetID):
 
 ---
 
-## Open Questions
+## Resolved Questions
 
-| # | Question | Status |
-|---|----------|--------|
-| OQ1 | Can a budget mix categories AND tags? | → TBD |
-| OQ2 | What happens when a budget period overlaps? | → TBD |
+| # | Question | Resolution |
+|---|----------|------------|
+| OQ1 | Can a budget mix categories AND tags? | Yes — B4 |
+| OQ2 | What happens when a budget period overlaps? | Allow double-count — B5 |
