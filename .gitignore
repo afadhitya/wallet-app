@@ -15,6 +15,11 @@
 coverage.out
 coverage.html
 
+# SQLite runtime files
+*.db
+*.db-journal
+*.db-wal
+
 # Dependency directories
 vendor/
 

@@ -1,0 +1,14 @@
+version: "2"
+sql:
+  - engine: "sqlite"
+    schema: "internal/db/migrations"
+    queries: "internal/query"
+    gen:
+      go:
+        package: "gen"
+        out: "internal/gen"
+        emit_json_tags: true
+        emit_db_tags: true
+        emit_empty_slices: true
+        emit_result_struct_pointers: true
+        emit_interface: true
