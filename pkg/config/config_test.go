@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -194,5 +195,59 @@ func TestLoadInvalidTOML(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "parse config file") {
 		t.Errorf("expected parse error, got: %v", err)
+	}
+}
+
+func TestLoadEmptyPathHomeDirError(t *testing.T) {
+	orig := userHomeDir
+	userHomeDir = func() (string, error) {
+		return "", errors.New("no home directory")
+	}
+	defer func() { userHomeDir = orig }()
+
+	_, err := Load("")
+	if err == nil {
+		t.Fatal("expected error when home directory lookup fails")
+	}
+	if !strings.Contains(err.Error(), "home directory") {
+		t.Errorf("expected 'home directory' error, got: %v", err)
+	}
+}
+
+func TestExpandPathHomeDirError(t *testing.T) {
+	orig := userHomeDir
+	userHomeDir = func() (string, error) {
+		return "", errors.New("no home directory")
+	}
+	defer func() { userHomeDir = orig }()
+
+	result := expandPath("~/test/path")
+	if result != "~/test/path" {
+		t.Errorf("expected unchanged path '~/test/path', got '%s'", result)
+	}
+}
+
+func TestLoadReadFileError(t *testing.T) {
+	dir := t.TempDir()
+
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error when loading a directory as config")
+	}
+	if !strings.Contains(err.Error(), "read config file") {
+		t.Errorf("expected 'read config file' error, got: %v", err)
+	}
+}
+
+func TestLoadHomeDirInExpandPathError(t *testing.T) {
+	orig := userHomeDir
+	userHomeDir = func() (string, error) {
+		return "", errors.New("no home directory")
+	}
+	defer func() { userHomeDir = orig }()
+
+	cfg, _ := Load("~/test/config.toml")
+	if cfg.Database.Path != "~/.local/share/wallet/wallet.db" {
+		t.Errorf("expected default database path, got '%s'", cfg.Database.Path)
 	}
 }

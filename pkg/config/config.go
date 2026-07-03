@@ -34,6 +34,8 @@ type DefaultsConfig struct {
 	Account string `toml:"account"`
 }
 
+var userHomeDir = os.UserHomeDir
+
 func DefaultConfig() Config {
 	return Config{
 		Database: DatabaseConfig{
@@ -57,7 +59,7 @@ func Load(path string) (Config, error) {
 	cfg := DefaultConfig()
 
 	if path == "" {
-		home, err := os.UserHomeDir()
+		home, err := userHomeDir()
 		if err != nil {
 			return cfg, fmt.Errorf("home directory: %w", err)
 		}
@@ -84,7 +86,7 @@ func Load(path string) (Config, error) {
 
 func expandPath(path string) string {
 	if strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
+		home, err := userHomeDir()
 		if err != nil {
 			return path
 		}

@@ -27,10 +27,10 @@
 
 ## 5. CLI Scaffold
 
-- [ ] 5.1 Implement `internal/cli` root command construction for the `wallet` binary.
-- [ ] 5.2 Add initial subcommand scaffolding for `init`, `add`, `list`, `category`, `tag`, `budget`, `bill`, `report`, and `forecast`.
-- [ ] 5.3 Add shared `--json` output option support for machine-readable CLI output.
-- [ ] 5.4 Add CLI tests verifying root command construction and planned subcommand registration.
+- [x] 5.1 Implement `internal/cli` root command construction for the `wallet` binary.
+- [x] 5.2 Add initial subcommand scaffolding for `init`, `add`, `list`, `category`, `tag`, `budget`, `bill`, `report`, and `forecast`.
+- [x] 5.3 Add shared `--json` output option support for machine-readable CLI output.
+- [x] 5.4 Add CLI tests verifying root command construction and planned subcommand registration.
 
 ## 6. CI And Verification
 
