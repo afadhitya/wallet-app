@@ -16,7 +16,7 @@
 | 04 | Budget Engine | Monthly budgets, alerts, rollover, progress tracking | 🔴 pending review |
 | 05 | Planned Payments | Recurring + one-time payments, due dates, cash flow impact | 🔴 pending review |
 | 06 | Forecasting | Projected balances, trend analysis, bill calendar | 🔴 pending review |
-| 07 | Multi-Currency | Exchange rates, conversion, mixed-currency reporting | ⬜ blocked |
+| 07 | Multi-Currency | Exchange rates, conversion, mixed-currency reporting | 🔴 pending review |
 | 08 | AI-Native Layer | Hermes skill, JSON output mode, NLP-friendly CLI | ⬜ blocked |
 | 09 | Reports & TUI | Terminal dashboard, charts, export | ⬜ blocked |
 
