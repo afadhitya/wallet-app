@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -450,4 +451,141 @@ func parseDate(input string) (string, error) {
 	}
 
 	return "", fmt.Errorf("invalid date format: %s (use YYYY-MM-DD)", input)
+}
+
+type EditTransactionParams struct {
+	Amount         *int64
+	CategoryName   string
+	AccountName    string
+	Date           string
+	Description    string
+	Notes          string
+	AddTagNames    []string
+	RemoveTagNames []string
+}
+
+func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*TransactionResult, error) {
+	oldTxn, err := s.queries.GetTransactionByID(s.ctx(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, &NotFoundError{Entity: "transaction", Name: fmt.Sprintf("%d", id)}
+		}
+		return nil, err
+	}
+
+	var amountVal sql.NullInt64
+	if params.Amount != nil {
+		if *params.Amount <= 0 {
+			return nil, ErrInvalidAmount
+		}
+		amountVal = sql.NullInt64{Int64: *params.Amount, Valid: true}
+	}
+
+	var categoryID sql.NullInt64
+	if params.CategoryName != "" {
+		category, err := s.ResolveCategory(params.CategoryName)
+		if err != nil {
+			return nil, fmt.Errorf("category: %w", err)
+		}
+		categoryID = sql.NullInt64{Int64: category.ID, Valid: true}
+	}
+
+	var accountID sql.NullInt64
+	if params.AccountName != "" {
+		account, err := s.ResolveAccount(params.AccountName)
+		if err != nil {
+			return nil, fmt.Errorf("account: %w", err)
+		}
+		accountID = sql.NullInt64{Int64: account.ID, Valid: true}
+	}
+
+	var dateVal sql.NullString
+	if params.Date != "" {
+		parsed, err := parseDate(params.Date)
+		if err != nil {
+			return nil, &ValidationError{Field: "date", Message: err.Error()}
+		}
+		dateVal = sql.NullString{String: parsed, Valid: true}
+	}
+
+	var descVal, notesVal sql.NullString
+	if params.Description != "" {
+		descVal = sql.NullString{String: params.Description, Valid: true}
+	}
+	if params.Notes != "" {
+		notesVal = sql.NullString{String: params.Notes, Valid: true}
+	}
+
+	updated, err := s.queries.UpdateTransaction(s.ctx(), gen.UpdateTransactionParams{
+		ID:          id,
+		Amount:      amountVal,
+		CategoryID:  categoryID,
+		AccountID:   accountID,
+		Date:        dateVal,
+		Description: descVal,
+		Notes:       notesVal,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("update transaction: %w", err)
+	}
+
+	for _, tagName := range params.AddTagNames {
+		tag, err := s.ResolveTag(tagName)
+		if err != nil {
+			return nil, fmt.Errorf("add tag '%s': %w", tagName, err)
+		}
+		if err := s.AddTransactionTag(id, tag.ID); err != nil {
+			return nil, fmt.Errorf("add tag: %w", err)
+		}
+	}
+
+	for _, tagName := range params.RemoveTagNames {
+		tag, err := s.ResolveTag(tagName)
+		if err != nil {
+			return nil, fmt.Errorf("remove tag '%s': %w", tagName, err)
+		}
+		if err := s.RemoveTransactionTag(id, tag.ID); err != nil {
+			return nil, fmt.Errorf("remove tag: %w", err)
+		}
+	}
+
+	affectedAccounts := make(map[int64]bool)
+	affectedAccounts[oldTxn.AccountID] = true
+	if updated.AccountID != oldTxn.AccountID {
+		affectedAccounts[updated.AccountID] = true
+	}
+	if oldTxn.Type == "transfer" {
+		if oldTxn.TransferToID.Valid {
+			affectedAccounts[oldTxn.TransferToID.Int64] = true
+		}
+	}
+	if updated.Type == "transfer" {
+		if updated.TransferToID.Valid {
+			affectedAccounts[updated.TransferToID.Int64] = true
+		}
+	}
+
+	for acctID := range affectedAccounts {
+		if err := s.recalculateBalance(acctID); err != nil {
+			return nil, fmt.Errorf("recalculate balance for account %d: %w", acctID, err)
+		}
+	}
+
+	tags, err := s.ListTransactionTags(id)
+	if err != nil {
+		return nil, fmt.Errorf("list tags: %w", err)
+	}
+
+	return &TransactionResult{Transaction: updated, Tags: tags}, nil
+}
+
+func (s *Service) GetTransactionByID(id int64) (*gen.Transaction, error) {
+	txn, err := s.queries.GetTransactionByID(s.ctx(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, &NotFoundError{Entity: "transaction", Name: fmt.Sprintf("%d", id)}
+		}
+		return nil, err
+	}
+	return txn, nil
 }

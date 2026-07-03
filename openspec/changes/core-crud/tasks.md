@@ -13,7 +13,7 @@
 - [x] 2.4 Implement transaction create methods for expenses and income with validation, date parsing, category/account/tag resolution, persistence, and balance recalculation.
 - [x] 2.5 Implement transfer creation with distinct source/destination validation, insufficient-balance warning reporting, persistence, and source/destination balance recalculation.
 - [x] 2.6 Implement transaction listing filters for month, date range, account, category, tag, type, limit, ordering, and totals.
-- [ ] 2.7 Implement transaction editing for amount, category, account, date, description, notes, and tag add/remove while recalculating all affected accounts.
+- [x] 2.7 Implement transaction editing for amount, category, account, date, description, notes, and tag add/remove while recalculating all affected accounts.
 - [ ] 2.8 Implement transaction removal as archive/soft-delete with confirmation support at the CLI boundary and affected balance recalculation.
 - [ ] 2.9 Implement balance adjustment to set an account to an exact target balance, record an adjustment transaction, and expose adjustments through transaction listing.
 
