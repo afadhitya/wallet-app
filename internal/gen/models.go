@@ -82,6 +82,7 @@ type PlannedPayment struct {
 	IsPaused       int64          `db:"is_paused" json:"is_paused"`
 	CreatedAt      string         `db:"created_at" json:"created_at"`
 	UpdatedAt      string         `db:"updated_at" json:"updated_at"`
+	IsActive       int64          `db:"is_active" json:"is_active"`
 }
 
 type Tag struct {

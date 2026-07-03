@@ -50,6 +50,60 @@ func (q *Queries) CountTransactions(ctx context.Context, arg CountTransactionsPa
 	return count, err
 }
 
+const createPlannedTransaction = `-- name: CreatePlannedTransaction :one
+INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, is_archived)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0) RETURNING id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived
+`
+
+type CreatePlannedTransactionParams struct {
+	AccountID        int64          `db:"account_id" json:"account_id"`
+	CategoryID       sql.NullInt64  `db:"category_id" json:"category_id"`
+	Type             string         `db:"type" json:"type"`
+	Amount           int64          `db:"amount" json:"amount"`
+	Currency         string         `db:"currency" json:"currency"`
+	Description      sql.NullString `db:"description" json:"description"`
+	Notes            sql.NullString `db:"notes" json:"notes"`
+	TransferToID     sql.NullInt64  `db:"transfer_to_id" json:"transfer_to_id"`
+	Date             string         `db:"date" json:"date"`
+	PlannedPaymentID sql.NullInt64  `db:"planned_payment_id" json:"planned_payment_id"`
+}
+
+func (q *Queries) CreatePlannedTransaction(ctx context.Context, arg CreatePlannedTransactionParams) (*Transaction, error) {
+	row := q.db.QueryRowContext(ctx, createPlannedTransaction,
+		arg.AccountID,
+		arg.CategoryID,
+		arg.Type,
+		arg.Amount,
+		arg.Currency,
+		arg.Description,
+		arg.Notes,
+		arg.TransferToID,
+		arg.Date,
+		arg.PlannedPaymentID,
+	)
+	var i Transaction
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.CategoryID,
+		&i.Type,
+		&i.Amount,
+		&i.Currency,
+		&i.BaseAmount,
+		&i.BaseCurrency,
+		&i.Description,
+		&i.Notes,
+		&i.TransferToID,
+		&i.Date,
+		&i.IsPlanned,
+		&i.PlannedPaymentID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsArchived,
+	)
+	return &i, err
+}
+
 const createTransaction = `-- name: CreateTransaction :one
 INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, is_archived)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0) RETURNING id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived
