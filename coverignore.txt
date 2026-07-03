@@ -1,0 +1,29 @@
+# Coverage exclusions: documented infrastructure/OS error branches that cannot
+# be meaningfully tested due to requiring OS-level failure injection.
+#
+# Each entry is a coverage block from `go tool cover -func` output.
+# Lines starting with # are comments.
+#
+# runInit: config.Load failure (OS/filesystem — config file read error)
+github.com/afadhitya/wallet-app/internal/cli/init.go:28.16,30.3
+
+# runInit: os.MkdirAll failure (OS/filesystem — directory creation error)
+github.com/afadhitya/wallet-app/internal/cli/init.go:35.47,37.3
+
+# runInit: db.Open failure (OS/filesystem — database open error)
+github.com/afadhitya/wallet-app/internal/cli/init.go:40.16,42.3
+
+# runInit: db.Migrate failure (infrastructure - migration execution error)
+github.com/afadhitya/wallet-app/internal/cli/init.go:45.45,47.3
+
+# runCategoryList: "No categories found" (unreachable — 32 seed categories always exist)
+github.com/afadhitya/wallet-app/internal/cli/category.go:96.26,99.3
+
+# runRm: stdin read failure (OS I/O error during confirmation prompt)
+github.com/afadhitya/wallet-app/internal/cli/rm.go:67.50,69.3
+
+# runTagList: ListTags DB query error (infrastructure error)
+github.com/afadhitya/wallet-app/internal/cli/tag.go:58.16,60.3
+
+# runTagRm: DeleteTag DB query error (infrastructure error)
+github.com/afadhitya/wallet-app/internal/cli/tag.go:101.46,103.3

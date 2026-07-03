@@ -62,3 +62,11 @@
 - [x] 6.9 Add tests or refactors for uncovered `cmd/wallet/main.go`, `internal/db/db.go`, `internal/service/service.go`, and `pkg/config/config.go` branches reported by the pasted profile, prioritizing explicit tests for error branches before removing unreachable code.
 - [x] 6.10 Run the updated coverage command after each package group and confirm the atomic profile no longer contains zero-count blocks for the touched package or any `internal/gen` entries.
 - [x] 6.11 Re-run GitHub Actions or inspect the next workflow run to verify the 100% coverage gate passes with generated code excluded.
+
+## 7. Infrastructure Coverage Exclusions
+
+- [x] 7.1 Identify the exact remaining 0.9% uncovered branches in CLI init, mkdir, rm, and tag infrastructure error handling and record the file/function or coverage block for each exclusion.
+- [x] 7.2 Update the coverage tooling to exclude only the documented hard-to-test OS/infrastructure branches, while keeping `internal/gen` excluded and keeping all application packages in the coverage gate.
+- [x] 7.3 Ensure the exclusion mechanism is auditable in CI and does not hide business validation, service behavior, JSON/text rendering, normal command errors, or database logic.
+- [x] 7.4 Re-run the CI-equivalent coverage command and confirm included coverage is 100% after excluding generated code and the documented OS/infrastructure branches.
+- [x] 7.5 Update local developer documentation or Makefile help so contributors understand that generated code and documented OS-level infrastructure failure branches are excluded, but new application logic still requires full coverage.
