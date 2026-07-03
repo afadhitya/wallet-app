@@ -165,7 +165,12 @@ Every command with `--json` outputs a consistent structure:
 
 ## Hermes Skill
 
-### Skill file: `~/.hermes/skills/productivity/wallet/SKILL.md`
+### Skill file: `./skill/SKILL.md` (in repo root)
+
+Skill file lives in the wallet-app repo itself, not in ~/.hermes/skills/. This makes it:
+- Version-controlled alongside the code
+- Provider agnostic — usable by any AI agent (Hermes, Claude, Copilot, etc.)
+- Installable via symlink or copy to agent's skill directory
 
 ```yaml
 ---
@@ -287,9 +292,9 @@ func runList(cmd *cobra.Command, args []string) {
 
 ---
 
-## Open Questions
+## Resolved Questions
 
-| # | Question | Status |
-|---|----------|--------|
-| OQ1 | Should Hermes skill auto-create tags if user mentions new ones? | → TBD |
-| OQ2 | Support `--batch` for multiple transactions at once? | → TBD |
+| # | Question | Resolution |
+|---|----------|------------|
+| OQ1 | Auto-create tags? | No — ask user to create first |
+| OQ2 | Support --batch? | Yes — multiple transactions at once |
