@@ -30,10 +30,10 @@
 
 ## 4. Output And Errors
 
-- [ ] 4.1 Implement shared amount/date formatting and parsing helpers for IDR minor-unit display and accepted date aliases.
-- [ ] 4.2 Implement shared JSON rendering for successful command results and errors.
-- [ ] 4.3 Normalize validation errors for missing category, missing account, invalid amount, invalid date, missing tag, insufficient transfer balance warning, and missing transaction.
-- [ ] 4.4 Add category-name suggestion support for category-not-found errors.
+- [x] 4.1 Implement shared amount/date formatting and parsing helpers for IDR minor-unit display and accepted date aliases.
+- [x] 4.2 Implement shared JSON rendering for successful command results and errors.
+- [x] 4.3 Normalize validation errors for missing category, missing account, invalid amount, invalid date, missing tag, insufficient transfer balance warning, and missing transaction.
+- [x] 4.4 Add category-name suggestion support for category-not-found errors.
 
 ## 5. Tests And Verification
 
