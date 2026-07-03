@@ -19,8 +19,8 @@ Define the SQLite schema that serves as the single source of truth. Every future
 | D1 | Transfer representation | Single row with `transfer_to_id` | Transfers aren't income/expense; cleaner reporting |
 | D2 | Budget period model | Snapshot per period (clone) | History preserved; limit changes don't corrupt past periods |
 | D4 | Category hierarchy | 2-level (parent→child) | Grouped reporting without recursive CTE complexity |
-| D5 | Tags + Categories | Both — budget by category OR tag | Categories=structure, Tags=cross-cutting + alternative budget target |
-| D6 | Budget target | Multiple categories OR multiple tags | M2M junctions — budget "Food+Transport" or "#vacation+#family" |
+| D5 | Tags + Categories | Both — budget by category AND/OR tag | Categories=structure, Tags=cross-cutting + alternative budget target |
+| D6 | Budget target | Multiple categories AND/OR multiple tags | M2M junctions — budget "Food+Transport" or "#vacation+#family" or both |
 | D7 | Budget type | Recurring + one-time | Recurring auto-clones per period; one-time is single horizon |
 | D8 | Multi-currency tx | Store original + converted amount | Track both; converted amount in account currency for balance |
 | D9 | next_due_date | Pre-calculated, updated on fulfillment | No runtime computation needed |
@@ -160,7 +160,8 @@ CREATE TABLE budgets (
     period_end      TEXT NOT NULL,                       -- YYYY-MM-DD
     notify_at_pct   INTEGER DEFAULT 80,                  -- alert at X%
     is_active       INTEGER NOT NULL DEFAULT 1,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
 

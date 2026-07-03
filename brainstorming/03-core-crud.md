@@ -132,7 +132,7 @@ $ wallet list --month july --category food
 | `--account` | `-a` | Account name or ID |
 | `--category` | `-c` | Category name or ID |
 | `--tag` | `-t` | Tag name |
-| `--type` | | expense / income / transfer |
+| `--type` | | expense / income / transfer / adjustment |
 | `--from` | | Start date (YYYY-MM-DD) |
 | `--to` | | End date (YYYY-MM-DD) |
 | `--limit` | `-n` | Max results (default: 20) |
@@ -184,7 +184,7 @@ $ wallet rm 42
 | `--json` | JSON output |
 
 **Behavior:**
-- Hard delete from `transactions` and `transaction_tags`
+- Soft delete — set `is_archived = 1` (OQ1: soft delete)
 - Recalculate account balance
 - Prompt for confirmation unless `--force`
 
@@ -371,6 +371,7 @@ FROM transactions t
 LEFT JOIN transaction_tags tt ON t.id = tt.transaction_id
 LEFT JOIN tags tg ON tt.tag_id = tg.id
 WHERE t.date >= ? AND t.date <= ?
+  AND t.is_archived = 0
   AND (? = 0 OR t.account_id = ?)
   AND (? = 0 OR t.category_id = ?)
   AND (? = '' OR t.type = ?)
@@ -386,11 +387,16 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
 UPDATE transactions SET category_id = ?, amount = ?, description = ?, notes = ?, date = ?, updated_at = datetime('now') WHERE id = ?;
 
 -- name: DeleteTransaction :exec
-DELETE FROM transactions WHERE id = ?;
+UPDATE transactions SET is_archived = 1, updated_at = datetime('now') WHERE id = ?;
 
 -- name: SumByAccount :one
-SELECT COALESCE(SUM(CASE WHEN type = 'income' THEN amount WHEN type = 'transfer' AND transfer_to_id = ? THEN amount ELSE -amount END), 0)
-FROM transactions WHERE account_id = ? OR transfer_to_id = ?;
+SELECT COALESCE(SUM(CASE
+    WHEN type = 'income' THEN amount
+    WHEN type = 'adjustment' THEN amount
+    WHEN type = 'transfer' AND transfer_to_id = ? THEN amount
+    ELSE -amount
+END), 0)
+FROM transactions WHERE (account_id = ? OR transfer_to_id = ?) AND is_archived = 0;
 ```
 
 ---

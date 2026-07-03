@@ -7,7 +7,7 @@
 
 ## Objective
 
-Implement financial forecasting — project future balances based on historical spending and planned payments. Help user anticipate cash flow needs.
+Implement financial forecasting — project future balances based on planned payments. Help user anticipate cash flow needs.
 
 ---
 
@@ -40,6 +40,10 @@ $ wallet forecast
 │   Netflix:            Rp149.000 (Aug 15)                    │
 │   Gym:                Rp500.000 (Aug 05)                    │
 │   Rent:               Rp2.000.000 (Aug 01)                  │
+│                                                             │
+│ By Category:                                                │
+│   Bills & Utilities:  Rp2.149.000 (Netflix + Rent)          │
+│   Health:             Rp500.000 (Gym)                       │
 │                                                             │
 │ Ending Balance:       Rp17.351.000                          │
 │                                                             │
@@ -222,5 +226,5 @@ SELECT balance FROM accounts WHERE id = ? AND is_archived = 0;
 
 | # | Question | Status |
 |---|----------|--------|
-| OQ1 | Should forecast include category-level breakdown? | → TBD |
-| OQ2 | Include tags in forecast (e.g., #japan-2026 spending)? | → TBD |
+| ~~OQ1~~ | ~~Should forecast include category-level breakdown?~~ | ✅ Yes — per-category breakdown |
+| ~~OQ2~~ | ~~Include tags in forecast?~~ | ❌ No — per-category only, no tag breakdown |
