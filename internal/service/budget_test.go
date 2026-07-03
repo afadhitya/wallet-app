@@ -942,14 +942,6 @@ func (q *budgetCreateFailQuerier) CreateBudget(ctx context.Context, arg gen.Crea
 	return nil, fmt.Errorf("mock create failure")
 }
 
-type budgetUpdateFailQuerier struct {
-	gen.Querier
-}
-
-func (q *budgetUpdateFailQuerier) UpdateBudget(ctx context.Context, arg gen.UpdateBudgetParams) (*gen.Budget, error) {
-	return nil, fmt.Errorf("mock update failure")
-}
-
 type budgetGetFailQuerier struct {
 	gen.Querier
 }
@@ -1236,9 +1228,12 @@ func TestCalculatePeriodPartialDates(t *testing.T) {
 		t.Error("expected non-empty result with partial dates")
 	}
 
-	start, end, err = calculatePeriod("monthly", "", "2026-01-31")
+	start2, end2, err := calculatePeriod("monthly", "", "2026-01-31")
 	if err != nil {
 		t.Fatalf("calculatePeriod with only to: %v", err)
+	}
+	if start2 == "" || end2 == "" {
+		t.Error("expected non-empty result with only to")
 	}
 }
 
@@ -1480,6 +1475,28 @@ func TestRemoveBudgetGetError(t *testing.T) {
 		t.Fatal("expected error")
 	}
 	if !strings.Contains(err.Error(), "mock get failure") {
+		t.Errorf("expected mock error, got %v", err)
+	}
+}
+
+func TestRemoveBudgetMarkInactiveError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetMarkInactiveFailQuerier{Querier: q})
+
+	err := svc.RemoveBudget(1)
+	if err == nil {
+		t.Fatal("expected mark inactive error")
+	}
+	if !strings.Contains(err.Error(), "mock mark inactive failure") {
 		t.Errorf("expected mock error, got %v", err)
 	}
 }

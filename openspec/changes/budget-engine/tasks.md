@@ -45,3 +45,4 @@
 - [x] 5.2 Run `go test ./...` and fix failures.
 - [x] 5.3 Run the repository coverage command and restore the required coverage gate.
 - [x] 5.4 Run `openspec status --change "budget-engine"` and confirm the change is apply-ready.
+- [x] 5.5 Fix `golangci-lint` unused findings in `internal/service/budget_test.go` by removing unused mock queriers or adding the missing error-path tests, then rerun lint.
