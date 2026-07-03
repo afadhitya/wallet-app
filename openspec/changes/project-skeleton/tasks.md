@@ -1,9 +1,9 @@
 ## 1. Module And Tooling
 
-- [ ] 1.1 Initialize `go.mod` for module `github.com/afadhitya/wallet-app` with required Cobra, modernc SQLite, TOML, and testify dependencies.
-- [ ] 1.2 Add `.gitignore` entries for `/bin/`, coverage outputs, and SQLite runtime files.
-- [ ] 1.3 Add `Makefile` targets for build, run, test, coverage, clean, install, dependency verification, and sqlc generation.
-- [ ] 1.4 Add `sqlc.yaml` configured for SQLite schema files in `internal/db/migrations`, query files in `internal/query`, and generated Go output in `internal/gen`.
+- [x] 1.1 Initialize `go.mod` for module `github.com/afadhitya/wallet-app` with required Cobra, modernc SQLite, TOML, and testify dependencies.
+- [x] 1.2 Add `.gitignore` entries for `/bin/`, coverage outputs, and SQLite runtime files.
+- [x] 1.3 Add `Makefile` targets for build, run, test, coverage, clean, install, dependency verification, and sqlc generation.
+- [x] 1.4 Add `sqlc.yaml` configured for SQLite schema files in `internal/db/migrations`, query files in `internal/query`, and generated Go output in `internal/gen`.
 
 ## 2. Project Structure
 

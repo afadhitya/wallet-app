@@ -1,7 +1,13 @@
-.PHONY: build test test-cover coverage-check lint fmt tidy clean
+.PHONY: build run install test test-cover coverage-check lint fmt tidy verify-deps sqlc-gen clean
 
 build:
-	go build ./cmd/wallet
+	go build -o bin/wallet ./cmd/wallet
+
+run: build
+	./bin/wallet
+
+install:
+	go install ./cmd/wallet
 
 test:
 	go test ./...
@@ -27,5 +33,11 @@ fmt:
 tidy:
 	go mod tidy
 
+verify-deps:
+	go mod verify
+
+sqlc-gen:
+	sqlc generate
+
 clean:
-	rm -f coverage.out coverage.html
+	rm -rf bin/ coverage.out coverage.html
