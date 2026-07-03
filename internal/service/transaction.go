@@ -173,6 +173,98 @@ func (s *Service) recalculateBalance(accountID int64) error {
 	return s.UpdateAccountBalance(accountID, balanceInt)
 }
 
+type CreateTransferParams struct {
+	Amount      int64
+	FromAccount string
+	ToAccount   string
+	Date        string
+	Description string
+	Notes       string
+}
+
+type TransferResult struct {
+	Transaction  *gen.Transaction
+	Warning      string
+}
+
+func (s *Service) AddTransfer(params CreateTransferParams) (*TransferResult, error) {
+	if params.Amount <= 0 {
+		return nil, ErrInvalidAmount
+	}
+
+	if params.FromAccount == params.ToAccount {
+		return nil, &ValidationError{Field: "accounts", Message: "source and destination accounts must be different"}
+	}
+
+	date, err := parseDate(params.Date)
+	if err != nil {
+		return nil, &ValidationError{Field: "date", Message: err.Error()}
+	}
+
+	fromAccount, err := s.ResolveAccount(params.FromAccount)
+	if err != nil {
+		return nil, fmt.Errorf("source account: %w", err)
+	}
+
+	toAccount, err := s.ResolveAccount(params.ToAccount)
+	if err != nil {
+		return nil, fmt.Errorf("destination account: %w", err)
+	}
+
+	fromBalance, err := s.queries.GetAccountBalance(s.ctx(), fromAccount.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get source balance: %w", err)
+	}
+	fromBalanceInt := balanceToInt64(fromBalance)
+
+	var warning string
+	if fromBalanceInt < params.Amount {
+		warning = fmt.Sprintf("Warning: insufficient balance in %s (balance: %d, transfer: %d)",
+			fromAccount.Name, fromBalanceInt, params.Amount)
+	}
+
+	var description, notes sql.NullString
+	if params.Description != "" {
+		description = sql.NullString{String: params.Description, Valid: true}
+	}
+	if params.Notes != "" {
+		notes = sql.NullString{String: params.Notes, Valid: true}
+	}
+
+	transferToID := sql.NullInt64{Int64: toAccount.ID, Valid: true}
+
+	txn, err := s.queries.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
+		AccountID:    fromAccount.ID,
+		CategoryID:   sql.NullInt64{},
+		Type:         "transfer",
+		Amount:       params.Amount,
+		Currency:     "IDR",
+		Description:  description,
+		Notes:        notes,
+		TransferToID: transferToID,
+		Date:         date,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create transfer: %w", err)
+	}
+
+	if err := s.recalculateBalance(fromAccount.ID); err != nil {
+		return nil, fmt.Errorf("recalculate source balance: %w", err)
+	}
+	if err := s.recalculateBalance(toAccount.ID); err != nil {
+		return nil, fmt.Errorf("recalculate destination balance: %w", err)
+	}
+
+	return &TransferResult{Transaction: txn, Warning: warning}, nil
+}
+
+func balanceToInt64(balance interface{}) int64 {
+	if b, ok := balance.(int64); ok {
+		return b
+	}
+	return 0
+}
+
 func parseDate(input string) (string, error) {
 	if input == "" {
 		return time.Now().Format("2006-01-02"), nil
