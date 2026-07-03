@@ -7,7 +7,7 @@
 
 ## 2. Service Layer
 
-- [ ] 2.1 Add budget service parameter/result types for set, list, check, edit, remove, targets, and budget status responses.
+- [x] 2.1 Add budget service parameter/result types for set, list, check, edit, remove, targets, and budget status responses.
 - [ ] 2.2 Implement period validation and boundary calculation for `monthly`, `weekly`, `yearly`, and `one_time` budgets.
 - [ ] 2.3 Implement `SetBudget` with positive amount validation, target validation, category/tag resolution, same-name-and-period upsert behavior, and target replacement.
 - [ ] 2.4 Implement `ListBudgets` with active/all filtering and spent/remaining calculation for each returned budget.
