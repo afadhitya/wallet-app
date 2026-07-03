@@ -22,7 +22,7 @@
 - [x] 3.1 Replace the stubbed `wallet budget` command with `set`, `list`, `check`, `edit`, and `rm` subcommands.
 - [x] 3.2 Add flags for `budget set`: repeatable `--category/-c`, repeatable `--tag/-t`, `--period`, `--from`, `--to`, `--notify`, and inherited `--json`.
 - [x] 3.3 Add flags for `budget list`: `--all` and inherited `--json`.<!-- active is default -->
-- [ ] 3.4 Add flags for `budget check`: `--budget/-b`, `--all`, and inherited `--json`.
+- [x] 3.4 Add flags for `budget check`: `--budget/-b`, `--all`, and inherited `--json`.
 - [ ] 3.5 Add flags for `budget edit`: `--amount`, `--name`, `--notify`, `--add-category`, `--remove-category`, `--add-tag`, and `--remove-tag`.
 - [ ] 3.6 Render stable text output for set, list, check, edit, and remove success/error paths.
 - [ ] 3.7 Render stable JSON output for set, list, check, and edit paths.
