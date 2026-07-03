@@ -1,6 +1,6 @@
 # Wallet App — Brainstorming Index
 
-> Branch: `brainstorming` | Date: 2026-07-02
+> Branch: `brainstorming` | Date: 2026-07-02 | Approved: 2026-07-02
 > Approach: **Bottom-up, phase-by-phase** — each phase builds on the previous one.
 > Scope: Single-user, SQLite, CLI-first, AI-native, open source.
 
@@ -12,12 +12,12 @@
 |---|-------|-------|--------|
 | 01 | Data Model | SQLite schema, entities, relationships, currencies | ✅ design approved |
 | 02 | Project Skeleton | CLI framework, project structure, tooling, config | ✅ design approved |
-| 03 | Core CRUD | Transactions (expense/income/transfer), categories, tags | 🔴 pending review |
-| 04 | Budget Engine | Monthly budgets, alerts, rollover, progress tracking | 🔴 pending review |
-| 05 | Planned Payments | Recurring + one-time payments, due dates, cash flow impact | 🔴 pending review |
-| 06 | Forecasting | Projected balances, trend analysis, bill calendar | 🔴 pending review |
-| 07 | Multi-Currency | Exchange rates, conversion, mixed-currency reporting | 🔴 pending review |
-| 08 | AI-Native Layer | Hermes skill, JSON output mode, NLP-friendly CLI | 🔴 pending review |
+| 03 | Core CRUD | Transactions (expense/income/transfer/adjustment), categories, tags | ✅ design approved |
+| 04 | Budget Engine | Monthly budgets, alerts, progress tracking | ✅ design approved |
+| 05 | Planned Payments | Recurring + one-time payments, due dates, cash flow impact | ✅ design approved |
+| 06 | Forecasting | Projected balances (planned payments only), per-category breakdown | ✅ design approved |
+| 07 | Multi-Currency | Exchange rates, conversion, mixed-currency reporting | ✅ design approved |
+| 08 | AI-Native Layer | Hermes skill, JSON output mode, all commands wrapped | ✅ design approved |
 | 09 | Reports & Export | Reports by category/account/tag, CSV export | ✅ design approved |
 
 ---
@@ -39,11 +39,13 @@
 | Language | **Go** |
 | Interaction model | **CLI-first** (TUI optional) |
 | Category model | **2-level hierarchy** (parent→child) |
-| Tags | **Both** — categories + freeform tags; budget by category OR tag |
+| Tags | **Both** — categories + freeform tags; budget by category AND/OR tag |
 | Transfer model | **Single row** with transfer_to_id |
 | Budget periods | **Snapshot per period** (clone) |
-| Forecasting approach | TBD |
-| Multi-currency strategy | TBD |
+| Forecasting approach | **Planned payments only** — per-category breakdown, no tag breakdown |
+| Multi-currency strategy | **Manual rate source** (config file), convert at transaction time |
+| Balance adjustment | **New tx type `adjustment`** — not income/expense, tracked, excluded from reports |
+| Delete behavior | **Soft delete** (is_archived) — preserve history |
 
 ---
 
