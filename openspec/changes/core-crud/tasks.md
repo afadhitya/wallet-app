@@ -7,7 +7,7 @@
 
 ## 2. Service Layer
 
-- [ ] 2.1 Implement account lookup, listing, creation/update/archive helpers, and exact ID-or-name resolution.
+- [x] 2.1 Implement account lookup, listing, creation/update/archive helpers, and exact ID-or-name resolution.
 - [ ] 2.2 Implement category listing, creation, editing, active-only lookup, and removal behavior that preserves historical transaction references.
 - [ ] 2.3 Implement tag listing, creation, deletion, and transaction-tag association helpers without auto-creating tags during transaction entry.
 - [ ] 2.4 Implement transaction create methods for expenses and income with validation, date parsing, category/account/tag resolution, persistence, and balance recalculation.
