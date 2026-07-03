@@ -13,8 +13,8 @@
 
 ## 3. Verification
 
-- [ ] 3.1 Add tests that initialize an empty SQLite database and verify all expected tables exist.
-- [ ] 3.2 Add tests that verify foreign key constraints are enforced.
-- [ ] 3.3 Add tests that verify default categories are seeded once when initialization is rerun.
-- [ ] 3.4 Add tests for representative relationship inserts: transfer transaction, transaction tags, budget categories, and budget tags.
-- [ ] 3.5 Run formatting, tests, and linting using the repository's documented quality commands.
+- [x] 3.1 Add tests that initialize an empty SQLite database and verify all expected tables exist.
+- [x] 3.2 Add tests that verify foreign key constraints are enforced.
+- [x] 3.3 Add tests that verify default categories are seeded once when initialization is rerun.
+- [x] 3.4 Add tests for representative relationship inserts: transfer transaction, transaction tags, budget categories, and budget tags.
+- [x] 3.5 Run formatting, tests, and linting using the repository's documented quality commands.
