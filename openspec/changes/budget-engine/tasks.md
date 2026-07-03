@@ -29,15 +29,15 @@
 
 ## 4. Tests
 
-- [ ] 4.1 Add service tests for budget set validation, category targets, tag targets, mixed targets, and same-name-and-period upsert behavior.
-- [ ] 4.2 Add service tests for period calculation across monthly, weekly, yearly, one-time, and explicit date inputs.
-- [ ] 4.3 Add service tests for list and check spent/remaining/status calculations.
-- [ ] 4.4 Add service tests proving non-expense and archived transactions are excluded from spending.
-- [ ] 4.5 Add service tests proving mixed category/tag overlap can be double-counted.
-- [ ] 4.6 Add service tests for recurring period auto-generation, one-time exclusion, and duplicate current-period prevention.
-- [ ] 4.7 Add service tests for budget edit and remove behavior, including missing-budget errors.
-- [ ] 4.8 Add CLI integration tests for budget set/list/check/edit/rm text output and database side effects.
-- [ ] 4.9 Add CLI integration tests for JSON output and validation failures.
+- [x] 4.1 Add service tests for budget set validation, category targets, tag targets, mixed targets, and same-name-and-period upsert behavior.
+- [x] 4.2 Add service tests for period calculation across monthly, weekly, yearly, one-time, and explicit date inputs.
+- [x] 4.3 Add service tests for list and check spent/remaining/status calculations.
+- [x] 4.4 Add service tests proving non-expense and archived transactions are excluded from spending.
+- [x] 4.5 Add service tests proving mixed category/tag overlap can be double-counted.
+- [x] 4.6 Add service tests for recurring period auto-generation, one-time exclusion, and duplicate current-period prevention.
+- [x] 4.7 Add service tests for budget edit and remove behavior, including missing-budget errors.
+- [x] 4.8 Add CLI integration tests for budget set/list/check/edit/rm text output and database side effects.
+- [x] 4.9 Add CLI integration tests for JSON output and validation failures.
 
 ## 5. Verification
 
