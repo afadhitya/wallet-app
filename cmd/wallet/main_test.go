@@ -1,13 +1,21 @@
 package main
 
-import "testing"
+import (
+	"bytes"
+	"testing"
 
-func TestMainFunc(t *testing.T) {
-	main()
-}
+	"github.com/afadhitya/wallet-app/internal/cli"
+)
 
-func TestRun(t *testing.T) {
-	if Run() != 0 {
-		t.Error("Run() should return 0")
+func TestRootCmd(t *testing.T) {
+	cmd := cli.NewRootCmd()
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(buf)
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("root command should not error on empty args: %v", err)
 	}
 }

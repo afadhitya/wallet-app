@@ -1,9 +1,14 @@
 package main
 
-func main() {
-	Run()
-}
+import (
+	"os"
 
-func Run() int {
-	return 0
+	"github.com/afadhitya/wallet-app/internal/cli"
+)
+
+func main() {
+	cmd := cli.NewRootCmd()
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }
