@@ -175,7 +175,7 @@ The system SHALL implement service-layer operations and sqlc-backed queries for 
 - **AND** excludes archived transactions
 
 ### Requirement: Core CRUD Testing
-The system SHALL include unit and integration tests for core CRUD service and CLI behavior with deterministic local databases.
+The system SHALL include unit and integration tests for core CRUD service and CLI behavior with deterministic local databases and SHALL satisfy the repository's 100% Go coverage gate.
 
 #### Scenario: Service tests run against isolated SQLite databases
 - **WHEN** service unit tests run
@@ -185,3 +185,26 @@ The system SHALL include unit and integration tests for core CRUD service and CL
 #### Scenario: CLI integration tests verify command behavior
 - **WHEN** CLI integration tests execute core CRUD commands
 - **THEN** they verify exit codes, stable output content, JSON output where supported, and database side effects
+
+#### Scenario: Coverage gate passes in CI
+- **WHEN** GitHub Actions runs the repository coverage check for the core CRUD implementation
+- **THEN** total Go test coverage is exactly `100%`
+- **AND** every uncovered function, branch, error path, command path, and helper reported by the coverage profile has either targeted test coverage or has been removed as unreachable code
+
+#### Scenario: Coverage gap is found after implementation
+- **WHEN** local or CI coverage reports less than `100%`
+- **THEN** the implementation is not considered complete
+- **AND** the coverage profile is used to add focused tests for the missing service, CLI, database, output, validation, or error-handling paths
+
+#### Scenario: Generated query package is included in coverage
+- **WHEN** the CI coverage profile includes `internal/gen` sqlc-generated files
+- **THEN** query methods for accounts, categories, tags, transaction tags, transactions, and `New`/`WithTx` database helpers are exercised by tests
+- **AND** those tests verify representative successful scans, empty results, and database error paths where feasible
+
+#### Scenario: Test database helper package is included in coverage
+- **WHEN** the CI coverage profile includes `internal/testdb/testdb.go`
+- **THEN** package-local tests exercise migrated database setup, cleanup registration, query construction, and failure handling paths that are reachable without corrupting global test state
+
+#### Scenario: CLI branch coverage gaps are reported
+- **WHEN** the coverage profile reports zero-count branches in CLI command handlers or CLI helper functions
+- **THEN** CLI tests cover JSON and text output, argument parsing failures, invalid ID parsing, service-construction failures, confirmation accept/decline paths, stdin scanner errors where feasible, and command execution errors

@@ -65,7 +65,7 @@ func (s *Service) AddExpense(params CreateExpenseParams) (*TransactionResult, er
 
 	categoryID := sql.NullInt64{Int64: category.ID, Valid: true}
 
-	txn, err := s.queries.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
+	txn, err := s.q.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
 		AccountID:   account.ID,
 		CategoryID:  categoryID,
 		Type:        "expense",
@@ -129,7 +129,7 @@ func (s *Service) AddIncome(params CreateIncomeParams) (*TransactionResult, erro
 
 	categoryID := sql.NullInt64{Int64: category.ID, Valid: true}
 
-	txn, err := s.queries.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
+	txn, err := s.q.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
 		AccountID:   account.ID,
 		CategoryID:  categoryID,
 		Type:        "income",
@@ -163,7 +163,7 @@ func (s *Service) AddIncome(params CreateIncomeParams) (*TransactionResult, erro
 }
 
 func (s *Service) recalculateBalance(accountID int64) error {
-	balance, err := s.queries.GetAccountBalance(s.ctx(), accountID)
+	balance, err := s.q.GetAccountBalance(s.ctx(), accountID)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func (s *Service) AddTransfer(params CreateTransferParams) (*TransferResult, err
 		return nil, fmt.Errorf("destination account: %w", err)
 	}
 
-	fromBalance, err := s.queries.GetAccountBalance(s.ctx(), fromAccount.ID)
+	fromBalance, err := s.q.GetAccountBalance(s.ctx(), fromAccount.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get source balance: %w", err)
 	}
@@ -234,7 +234,7 @@ func (s *Service) AddTransfer(params CreateTransferParams) (*TransferResult, err
 
 	transferToID := sql.NullInt64{Int64: toAccount.ID, Valid: true}
 
-	txn, err := s.queries.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
+	txn, err := s.q.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
 		AccountID:    fromAccount.ID,
 		CategoryID:   sql.NullInt64{},
 		Type:         "transfer",
@@ -338,7 +338,7 @@ func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransact
 	}
 
 	if tagName != "" {
-		transactions, err := s.queries.ListTransactionsByTag(s.ctx(), gen.ListTransactionsByTagParams{
+		transactions, err := s.q.ListTransactionsByTag(s.ctx(), gen.ListTransactionsByTagParams{
 			TagName:    tagName,
 			AccountID:  accountID,
 			CategoryID: categoryID,
@@ -356,7 +356,7 @@ func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransact
 		return result, nil
 	}
 
-	transactions, err := s.queries.ListTransactions(s.ctx(), gen.ListTransactionsParams{
+	transactions, err := s.q.ListTransactions(s.ctx(), gen.ListTransactionsParams{
 		AccountID:  accountID,
 		CategoryID: categoryID,
 		Type:       stringToInterface(params.Type),
@@ -465,7 +465,7 @@ type EditTransactionParams struct {
 }
 
 func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*TransactionResult, error) {
-	oldTxn, err := s.queries.GetTransactionByID(s.ctx(), id)
+	oldTxn, err := s.q.GetTransactionByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, &NotFoundError{Entity: "transaction", Name: fmt.Sprintf("%d", id)}
@@ -516,7 +516,7 @@ func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*Tran
 		notesVal = sql.NullString{String: params.Notes, Valid: true}
 	}
 
-	updated, err := s.queries.UpdateTransaction(s.ctx(), gen.UpdateTransactionParams{
+	updated, err := s.q.UpdateTransaction(s.ctx(), gen.UpdateTransactionParams{
 		ID:          id,
 		Amount:      amountVal,
 		CategoryID:  categoryID,
@@ -580,7 +580,7 @@ func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*Tran
 }
 
 func (s *Service) RemoveTransaction(id int64) error {
-	txn, err := s.queries.GetTransactionByID(s.ctx(), id)
+	txn, err := s.q.GetTransactionByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &NotFoundError{Entity: "transaction", Name: fmt.Sprintf("%d", id)}
@@ -588,7 +588,7 @@ func (s *Service) RemoveTransaction(id int64) error {
 		return err
 	}
 
-	if err := s.queries.ArchiveTransaction(s.ctx(), id); err != nil {
+	if err := s.q.ArchiveTransaction(s.ctx(), id); err != nil {
 		return fmt.Errorf("archive transaction: %w", err)
 	}
 
@@ -628,7 +628,7 @@ func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResul
 		return nil, fmt.Errorf("account: %w", err)
 	}
 
-	oldBalanceRaw, err := s.queries.GetAccountBalance(s.ctx(), account.ID)
+	oldBalanceRaw, err := s.q.GetAccountBalance(s.ctx(), account.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get current balance: %w", err)
 	}
@@ -652,7 +652,7 @@ func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResul
 		notes = sql.NullString{String: params.Notes, Valid: true}
 	}
 
-	txn, err := s.queries.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
+	txn, err := s.q.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
 		AccountID:   account.ID,
 		CategoryID:  sql.NullInt64{},
 		Type:        "adjustment",
@@ -670,7 +670,7 @@ func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResul
 		return nil, fmt.Errorf("recalculate balance: %w", err)
 	}
 
-	newBalanceRaw, err := s.queries.GetAccountBalance(s.ctx(), account.ID)
+	newBalanceRaw, err := s.q.GetAccountBalance(s.ctx(), account.ID)
 	if err != nil {
 		return nil, fmt.Errorf("get new balance: %w", err)
 	}
@@ -686,7 +686,7 @@ func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResul
 }
 
 func (s *Service) GetTransactionByID(id int64) (*gen.Transaction, error) {
-	txn, err := s.queries.GetTransactionByID(s.ctx(), id)
+	txn, err := s.q.GetTransactionByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, &NotFoundError{Entity: "transaction", Name: fmt.Sprintf("%d", id)}

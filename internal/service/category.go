@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Service) GetCategoryByID(id int64) (*gen.Category, error) {
-	category, err := s.queries.GetCategoryByID(s.ctx(), id)
+	category, err := s.q.GetCategoryByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, &NotFoundError{Entity: "category", Name: strconv.FormatInt(id, 10)}
@@ -22,7 +22,7 @@ func (s *Service) GetCategoryByID(id int64) (*gen.Category, error) {
 
 func (s *Service) ResolveCategory(identifier string) (*gen.Category, error) {
 	if id, err := strconv.ParseInt(identifier, 10, 64); err == nil {
-		category, err := s.queries.GetCategoryByID(s.ctx(), id)
+		category, err := s.q.GetCategoryByID(s.ctx(), id)
 		if err == nil {
 			return category, nil
 		}
@@ -31,10 +31,10 @@ func (s *Service) ResolveCategory(identifier string) (*gen.Category, error) {
 		}
 	}
 
-	category, err := s.queries.GetCategoryByName(s.ctx(), identifier)
+	category, err := s.q.GetCategoryByName(s.ctx(), identifier)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			suggestions, _ := s.queries.GetCategorySuggestions(s.ctx(), fmt.Sprintf("%%%s%%", identifier))
+			suggestions, _ := s.q.GetCategorySuggestions(s.ctx(), fmt.Sprintf("%%%s%%", identifier))
 			if len(suggestions) > 0 {
 				var names []string
 				for _, sug := range suggestions {
@@ -50,11 +50,11 @@ func (s *Service) ResolveCategory(identifier string) (*gen.Category, error) {
 }
 
 func (s *Service) ListCategories() ([]*gen.Category, error) {
-	return s.queries.ListCategories(s.ctx())
+	return s.q.ListCategories(s.ctx())
 }
 
 func (s *Service) ListAllCategories() ([]*gen.Category, error) {
-	return s.queries.ListAllCategories(s.ctx())
+	return s.q.ListAllCategories(s.ctx())
 }
 
 func (s *Service) CreateCategory(name, parentIDStr, icon string) (*gen.Category, error) {
@@ -70,7 +70,7 @@ func (s *Service) CreateCategory(name, parentIDStr, icon string) (*gen.Category,
 		}
 		parentID = sql.NullInt64{Int64: id, Valid: true}
 
-		_, err = s.queries.GetCategoryByID(s.ctx(), id)
+		_, err = s.q.GetCategoryByID(s.ctx(), id)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, &NotFoundError{Entity: "parent category", Name: parentIDStr}
@@ -79,7 +79,7 @@ func (s *Service) CreateCategory(name, parentIDStr, icon string) (*gen.Category,
 		}
 	}
 
-	existing, err := s.queries.GetCategoryByName(s.ctx(), name)
+	existing, err := s.q.GetCategoryByName(s.ctx(), name)
 	if err == nil && existing != nil {
 		return nil, ErrDuplicateName
 	}
@@ -89,7 +89,7 @@ func (s *Service) CreateCategory(name, parentIDStr, icon string) (*gen.Category,
 		iconVal = sql.NullString{String: icon, Valid: true}
 	}
 
-	return s.queries.CreateCategory(s.ctx(), gen.CreateCategoryParams{
+	return s.q.CreateCategory(s.ctx(), gen.CreateCategoryParams{
 		Name:     name,
 		ParentID: parentID,
 		Type:     "expense",
@@ -98,7 +98,7 @@ func (s *Service) CreateCategory(name, parentIDStr, icon string) (*gen.Category,
 }
 
 func (s *Service) UpdateCategory(id int64, name, icon string) (*gen.Category, error) {
-	_, err := s.queries.GetCategoryByID(s.ctx(), id)
+	_, err := s.q.GetCategoryByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, &NotFoundError{Entity: "category", Name: strconv.FormatInt(id, 10)}
@@ -115,7 +115,7 @@ func (s *Service) UpdateCategory(id int64, name, icon string) (*gen.Category, er
 		iconVal = sql.NullString{String: icon, Valid: true}
 	}
 
-	return s.queries.UpdateCategory(s.ctx(), gen.UpdateCategoryParams{
+	return s.q.UpdateCategory(s.ctx(), gen.UpdateCategoryParams{
 		ID:   id,
 		Name: name,
 		Icon: iconVal,
@@ -123,12 +123,12 @@ func (s *Service) UpdateCategory(id int64, name, icon string) (*gen.Category, er
 }
 
 func (s *Service) ArchiveCategory(id int64) error {
-	_, err := s.queries.GetCategoryByID(s.ctx(), id)
+	_, err := s.q.GetCategoryByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &NotFoundError{Entity: "category", Name: strconv.FormatInt(id, 10)}
 		}
 		return err
 	}
-	return s.queries.ArchiveCategory(s.ctx(), id)
+	return s.q.ArchiveCategory(s.ctx(), id)
 }

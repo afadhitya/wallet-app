@@ -8,47 +8,60 @@ import (
 	"github.com/afadhitya/wallet-app/internal/db"
 )
 
-func Open(t *testing.T) *sql.DB {
+type TB interface {
+	Helper()
+	Fatalf(format string, args ...interface{})
+	Cleanup(func())
+}
+
+var (
+	openDB     = db.Open
+	migrateDB  = db.Migrate
+	createTemp = os.CreateTemp
+	removeFile = os.Remove
+)
+
+func Open(t testing.TB) *sql.DB {
 	t.Helper()
 
-	database, err := db.Open(":memory:")
+	database, err := openDB(":memory:")
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
 	}
 	t.Cleanup(func() { _ = database.Close() })
 
-	if err := db.Migrate(database); err != nil {
+	if err := migrateDB(database); err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)
 	}
 
 	return database
 }
 
-func OpenFile(t *testing.T) (*sql.DB, func()) {
+func OpenFile(t testing.TB) (*sql.DB, func()) {
 	t.Helper()
 
-	f, err := os.CreateTemp("", "wallet-test-*.db")
+	f, err := createTemp("", "wallet-test-*.db")
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}
 	path := f.Name()
 	_ = f.Close()
 
-	database, err := db.Open(path)
+	database, err := openDB(path)
 	if err != nil {
-		_ = os.Remove(path)
+		_ = removeFile(path)
 		t.Fatalf("failed to open file database: %v", err)
 	}
 
-	if err := db.Migrate(database); err != nil {
+	if err := migrateDB(database); err != nil {
 		_ = database.Close()
-		_ = os.Remove(path)
+		_ = removeFile(path)
 		t.Fatalf("failed to migrate file database: %v", err)
 	}
 
 	cleanup := func() {
 		_ = database.Close()
-		_ = os.Remove(path)
+		_ = removeFile(path)
 	}
 
 	return database, cleanup

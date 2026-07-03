@@ -13,7 +13,7 @@ test:
 	go test ./...
 
 test-cover:
-	go test -coverprofile=coverage.out -covermode=atomic ./...
+	go test -coverprofile=coverage.out -covermode=atomic $$(go list ./... | grep -v '/internal/gen$$')
 	go tool cover -html=coverage.out -o coverage.html
 
 coverage-check: test-cover

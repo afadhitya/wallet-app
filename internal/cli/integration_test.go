@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -309,5 +310,287 @@ func TestCLISameAccountTransfer(t *testing.T) {
 	_, stderr, _ := cli.run("add", "transfer", "100000", "--from", "BCA", "--to", "BCA")
 	if !strings.Contains(stderr, "different") {
 		t.Errorf("expected 'different' error, got: %s", stderr)
+	}
+}
+
+func TestExpandHomePath(t *testing.T) {
+	if result := expandHomePath("/absolute/path"); result != "/absolute/path" {
+		t.Errorf("expected '/absolute/path', got '%s'", result)
+	}
+	if result := expandHomePath("simple/path"); result != "simple/path" {
+		t.Errorf("expected 'simple/path', got '%s'", result)
+	}
+}
+
+func TestFormatAmount(t *testing.T) {
+	if result := formatAmount(0); result != "Rp 0" {
+		t.Errorf("expected 'Rp 0', got '%s'", result)
+	}
+	if result := formatAmount(-1000); result != "-Rp 1.000" {
+		t.Errorf("expected '-Rp 1.000', got '%s'", result)
+	}
+	if result := formatAmount(1000000); result != "Rp 1.000.000" {
+		t.Errorf("expected 'Rp 1.000.000', got '%s'", result)
+	}
+}
+
+func TestCLIRmJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	stdout, _, err := cli.run("--json", "rm", "1", "--force")
+	if err != nil {
+		t.Fatalf("rm --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if result["status"] != "removed" {
+		t.Errorf("expected status 'removed', got %v", result["status"])
+	}
+}
+
+func TestCLITagListJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("tag", "add", "test-tag")
+
+	stdout, _, err := cli.run("--json", "tag", "list")
+	if err != nil {
+		t.Fatalf("tag list --json: %v", err)
+	}
+
+	var tags []map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &tags); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if len(tags) != 1 {
+		t.Errorf("expected 1 tag, got %d", len(tags))
+	}
+}
+
+func TestCLITagRmJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("tag", "add", "temp")
+
+	stdout, _, err := cli.run("--json", "tag", "rm", "temp")
+	if err != nil {
+		t.Fatalf("tag rm --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+}
+
+func TestCLITagRmNameNotFound(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("tag", "rm", "nonexistent")
+	if !strings.Contains(stderr, "not found") {
+		t.Errorf("expected 'not found' error, got: %s", stderr)
+	}
+}
+
+func TestCLIAdjustJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "income", "1000000", "Initial", "-c", "Salary", "-a", "BCA")
+
+	stdout, _, err := cli.run("--json", "adjust", "BCA", "1500000", "Correction")
+	if err != nil {
+		t.Fatalf("adjust --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if result["difference"].(float64) != 500000 {
+		t.Errorf("expected difference 500000, got %v", result["difference"])
+	}
+}
+
+func TestCLIAddExpenseJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	stdout, _, err := cli.run("--json", "add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+	if err != nil {
+		t.Fatalf("add expense --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if result["type"] != "expense" {
+		t.Errorf("expected type 'expense', got %v", result["type"])
+	}
+}
+
+func TestCLIAddTransferJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	stdout, _, err := cli.run("--json", "add", "transfer", "200000", "--from", "BCA", "--to", "GoPay")
+	if err != nil {
+		t.Fatalf("add transfer --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if result["type"] != "transfer" {
+		t.Errorf("expected type 'transfer', got %v", result["type"])
+	}
+}
+
+func TestCLIEditJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	stdout, _, err := cli.run("--json", "edit", "1", "--amount", "40000")
+	if err != nil {
+		t.Fatalf("edit --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+}
+
+func TestCLIEditInvalidID(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("edit", "not-a-number")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIEditInvalidAmount(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	_, stderr, _ := cli.run("edit", "1", "--amount", "not-a-number")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIRmInvalidID(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("rm", "not-a-number")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIAdjustInvalidAmount(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "income", "1000000", "Initial", "-c", "Salary", "-a", "BCA")
+
+	_, stderr, _ := cli.run("adjust", "BCA", "not-a-number", "Test")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLICategoryEditInvalidID(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("category", "edit", "not-a-number", "--name", "Test")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLICategoryRmInvalidID(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("category", "rm", "not-a-number")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIAddExpenseInvalidAmount(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("add", "expense", "not-a-number", "Lunch", "-c", "Restaurant", "-a", "BCA")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIAddIncomeInvalidAmount(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("add", "income", "not-a-number", "Salary", "-c", "Salary", "-a", "BCA")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIAddTransferInvalidAmount(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("add", "transfer", "not-a-number", "--from", "BCA", "--to", "GoPay")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIListTypeFilter(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+	_, _, _ = cli.run("add", "income", "1000000", "Salary", "-c", "Salary", "-a", "BCA")
+
+	stdout, _, err := cli.run("list", "--type", "income")
+	if err != nil {
+		t.Fatalf("list --type: %v", err)
+	}
+	if strings.Contains(stdout, "Lunch") {
+		t.Error("expected only income, but found Lunch")
+	}
+}
+
+func TestCLIListDateRange(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "expense", "35000", "First", "-c", "Restaurant", "-a", "BCA", "-d", "2026-07-01")
+	_, _, _ = cli.run("add", "expense", "15000", "Second", "-c", "Restaurant", "-a", "BCA", "-d", "2026-07-10")
+	_, _, _ = cli.run("add", "expense", "25000", "Third", "-c", "Restaurant", "-a", "BCA", "-d", "2026-07-20")
+
+	stdout, _, err := cli.run("list", "--from", "2026-07-01", "--to", "2026-07-10")
+	if err != nil {
+		t.Fatalf("list date range: %v", err)
+	}
+	if !strings.Contains(stdout, "First") {
+		t.Error("expected 'First' in output")
+	}
+	if strings.Contains(stdout, "Third") {
+		t.Error("expected no 'Third' in output")
+	}
+}
+
+func TestCLIListAccountFilter(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "expense", "35000", "BCA Expense", "-c", "Restaurant", "-a", "BCA")
+	_, _, _ = cli.run("add", "expense", "15000", "GoPay Expense", "-c", "Restaurant", "-a", "GoPay")
+
+	stdout, _, err := cli.run("list", "--account", "BCA")
+	if err != nil {
+		t.Fatalf("list --account: %v", err)
+	}
+	if strings.Contains(stdout, "GoPay Expense") {
+		t.Error("expected only BCA, but found GoPay")
+	}
+}
+
+func TestCLIListLimit(t *testing.T) {
+	cli := newTestCLI(t)
+	for i := 0; i < 5; i++ {
+		_, _, _ = cli.run("add", "expense", fmt.Sprintf("%d", 10000+i), fmt.Sprintf("Expense %d", i), "-c", "Restaurant", "-a", "BCA", "-d", "2026-07-01")
+	}
+
+	stdout, _, err := cli.run("list", "--limit", "3")
+	if err != nil {
+		t.Fatalf("list --limit: %v", err)
+	}
+	if strings.Count(stdout, "Expense") != 3 {
+		t.Errorf("expected 3 entries, got %d", strings.Count(stdout, "Expense"))
 	}
 }

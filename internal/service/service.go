@@ -39,14 +39,21 @@ func (e *ValidationError) Error() string {
 }
 
 type Service struct {
-	queries *gen.Queries
-	db      *sql.DB
+	q  gen.Querier
+	db *sql.DB
 }
 
 func New(database *sql.DB) *Service {
 	return &Service{
-		queries: gen.New(database),
-		db:      database,
+		q:  gen.New(database),
+		db: database,
+	}
+}
+
+func NewWithQuerier(database *sql.DB, querier gen.Querier) *Service {
+	return &Service{
+		q:  querier,
+		db: database,
 	}
 }
 
@@ -54,8 +61,8 @@ func (s *Service) DB() *sql.DB {
 	return s.db
 }
 
-func (s *Service) Queries() *gen.Queries {
-	return s.queries
+func (s *Service) Queries() gen.Querier {
+	return s.q
 }
 
 func (s *Service) ctx() context.Context {

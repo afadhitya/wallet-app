@@ -93,6 +93,8 @@ type svcFunc func(cmd *cobra.Command, args []string, svc *service.Service, db *s
 
 var getServiceOverride func(*cobra.Command) (*service.Service, *sql.DB, error)
 
+var osStdin io.Reader = os.Stdin
+
 func withService(f svcFunc) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		svc, database, err := func() (*service.Service, *sql.DB, error) {

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -51,7 +50,7 @@ func runRm(cmd *cobra.Command, idStr string, svc *service.Service, force bool) e
 			txn.ID, txn.Type, desc, txn.Amount, txn.Date)
 		_, _ = fmt.Fprintf(stdout, "Type 'yes' to confirm: ")
 
-		reader := bufio.NewReader(os.Stdin)
+		reader := bufio.NewReader(osStdin)
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			return formatError(cmd, fmt.Errorf("failed to read confirmation: %w", err))

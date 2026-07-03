@@ -47,6 +47,14 @@ This change turns the skeleton into the first usable CLI by wiring command handl
 
    Text output should be human-friendly and stable enough for integration tests. JSON output should return structured entities or error payloads without table formatting. The alternative was adding a richer table rendering dependency immediately, but minimal formatting is enough for the first usable CLI and reduces dependency risk.
 
+7. Treat CI coverage failures as implementation gaps, not optional cleanup.
+
+   The project quality gate requires 100% Go unit test coverage. After implementation, any package, branch, helper, error path, or command path reported as uncovered by `go tool cover -func=coverage.out` must be covered by targeted tests or intentionally refactored so unreachable code is removed. The alternative was to accept lower coverage for integration-heavy CLI paths, but that conflicts with the existing project quality requirement and GitHub Actions gate.
+
+8. Cover generated query and test-helper packages explicitly when the coverage profile includes them.
+
+   The pasted coverage profile shows zero-count blocks in `internal/gen/*`, `internal/testdb/testdb.go`, and several branch gaps in CLI and service packages. Because Go package coverage can remain at 0% for generated or helper packages unless tests execute those packages directly under coverage, remediation must include package-local or coverage-instrumented tests for sqlc-generated query methods, test database helpers, CLI helper branches, and service error paths. The alternative was to ignore generated code, but the current CI coverage gate counts it, so the artifacts must plan for it.
+
 ## Risks / Trade-offs
 
 - Balance recalculation logic can mishandle transfer direction -> Mitigation: add focused tests for income, expense, transfer source/destination, edit, delete, and adjustment cases.
@@ -54,6 +62,8 @@ This change turns the skeleton into the first usable CLI by wiring command handl
 - ID-or-name lookup can be ambiguous when names overlap -> Mitigation: exact ID matches win for numeric input, otherwise exact case-insensitive name match is required before any suggestion is shown.
 - CLI integration tests may be brittle if they assert decorative table borders -> Mitigation: assert stable content, exit codes, and JSON payloads rather than every formatting character.
 - `wallet init` touches user paths by default -> Mitigation: expose injectable paths or environment/config overrides in tests so integration tests use temporary directories.
+- Coverage can remain below 100% even when core behavior works -> Mitigation: inspect the CI coverage profile, add focused tests for every uncovered function/branch, and rerun the exact coverage command before considering the change complete.
+- Generated sqlc packages and test helpers can appear as uncovered even when indirectly used -> Mitigation: add direct tests for `internal/gen` query methods and `internal/testdb` helpers, or adjust implementation structure only if the repository quality gate intentionally stops counting those packages.
 
 ## Migration Plan
 
@@ -61,6 +71,7 @@ This change turns the skeleton into the first usable CLI by wiring command handl
 2. Add minimal migration changes only if required for category soft delete or timestamp updates.
 3. Implement services and command handlers incrementally, keeping each command covered by tests.
 4. Run `go fmt`, sqlc generation, `go test ./...`, lint, and coverage checks.
+5. If GitHub Actions or local coverage reports less than 100%, use the coverage profile to identify uncovered code, add targeted tests, and repeat until the quality gate passes.
 
 Rollback is local: remove the new command/service/query changes and any new migration from a development database before release. Once a migration is shipped, rollback requires a follow-up migration instead of editing history.
 

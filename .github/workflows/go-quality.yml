@@ -27,7 +27,9 @@ jobs:
           version: v2.12
 
       - name: Test
-        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+        run: |
+          PACKAGES=$(go list ./... | grep -v '/internal/gen$')
+          go test -coverprofile=coverage.out -covermode=atomic $PACKAGES
 
       - name: Check coverage
         id: coverage

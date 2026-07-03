@@ -43,3 +43,22 @@
 - [x] 5.4 Run `go fmt` on changed Go files.
 - [x] 5.5 Run sqlc generation and confirm no generated files are stale.
 - [x] 5.6 Run `go test ./...` and the repository lint/coverage commands required by project quality gates.
+- [x] 5.7 Pull the GitHub Actions coverage output or reproduce it locally and identify every file/function/branch keeping total coverage below 100%.
+- [x] 5.8 Add focused tests for uncovered service, CLI, database, output formatting, JSON rendering, validation, and error-handling paths reported by the coverage profile.
+- [x] 5.9 Remove or simplify unreachable implementation code that cannot be meaningfully exercised instead of excluding it from coverage.
+- [ ] 5.10 Rerun the exact repository coverage command used by CI and confirm `go tool cover -func=coverage.out` reports total coverage of 100%.
+- [ ] 5.11 Re-run GitHub Actions or inspect the next workflow run to verify the coverage gate passes for the core CRUD change.
+
+## 6. Coverage Profile Remediation
+
+- [x] 6.1 Convert the pasted atomic coverage profile into an actionable uncovered-block checklist grouped by package after excluding generated `internal/gen` code: `cmd/wallet`, `internal/db`, `internal/cli`, `internal/testdb`, `internal/service`, and `pkg/config`.
+- [x] 6.2 Update the Makefile coverage target and GitHub Actions coverage command to build the package list with `go list ./... | grep -v '/internal/gen$'` so sqlc-generated code is excluded from coverage while still being compiled by normal `go test ./...`.
+- [x] 6.3 Verify `internal/gen` remains generated, checked for staleness, and compiled by tests, but no longer appears in `coverage.out` or `go tool cover -func=coverage.out`.
+- [x] 6.4 Add package-local tests for `internal/testdb/testdb.go` covering successful migrated database setup, returned query helper usability, cleanup behavior, and reachable setup failure paths.
+- [x] 6.5 Add CLI tests for uncovered command error branches in `add.go`, `adjust.go`, `category.go`, `edit.go`, `list.go`, `rm.go`, `tag.go`, and `helpers.go`, including invalid IDs, missing args, service errors, JSON rendering, text rendering, and confirmation accept/decline paths.
+- [x] 6.6 Add tests for uncovered formatting branches in `internal/cli/format.go`, including zero/negative amounts, thousands grouping, valid aliases, explicit dates, and invalid date input.
+- [x] 6.7 Add service tests for uncovered account/category/tag CRUD error paths, including duplicate names, missing rows, archived rows, invalid parent category, empty names, and query failure propagation.
+- [x] 6.8 Add service tests for uncovered transaction branches, including missing accounts/categories/tags, invalid amounts/dates, transfer same-account validation, insufficient-balance warning path, edit tag add/remove failures, archive failures, adjustment increase/decrease/no-op, and balance recalculation query errors.
+- [x] 6.9 Add tests or refactors for uncovered `cmd/wallet/main.go`, `internal/db/db.go`, `internal/service/service.go`, and `pkg/config/config.go` branches reported by the pasted profile, prioritizing explicit tests for error branches before removing unreachable code.
+- [ ] 6.10 Run the updated coverage command after each package group and confirm the atomic profile no longer contains zero-count blocks for the touched package or any `internal/gen` entries.
+- [ ] 6.11 Re-run GitHub Actions or inspect the next workflow run to verify the 100% coverage gate passes with generated code excluded.
