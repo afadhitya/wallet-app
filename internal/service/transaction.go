@@ -579,6 +579,34 @@ func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*Tran
 	return &TransactionResult{Transaction: updated, Tags: tags}, nil
 }
 
+func (s *Service) RemoveTransaction(id int64) error {
+	txn, err := s.queries.GetTransactionByID(s.ctx(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &NotFoundError{Entity: "transaction", Name: fmt.Sprintf("%d", id)}
+		}
+		return err
+	}
+
+	if err := s.queries.ArchiveTransaction(s.ctx(), id); err != nil {
+		return fmt.Errorf("archive transaction: %w", err)
+	}
+
+	affectedAccounts := make(map[int64]bool)
+	affectedAccounts[txn.AccountID] = true
+	if txn.Type == "transfer" && txn.TransferToID.Valid {
+		affectedAccounts[txn.TransferToID.Int64] = true
+	}
+
+	for acctID := range affectedAccounts {
+		if err := s.recalculateBalance(acctID); err != nil {
+			return fmt.Errorf("recalculate balance for account %d: %w", acctID, err)
+		}
+	}
+
+	return nil
+}
+
 func (s *Service) GetTransactionByID(id int64) (*gen.Transaction, error) {
 	txn, err := s.queries.GetTransactionByID(s.ctx(), id)
 	if err != nil {
