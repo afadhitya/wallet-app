@@ -9,7 +9,7 @@
 
 - [x] 2.1 Add budget service parameter/result types for set, list, check, edit, remove, targets, and budget status responses.
 - [x] 2.2 Implement period validation and boundary calculation for `monthly`, `weekly`, `yearly`, and `one_time` budgets.
-- [ ] 2.3 Implement `SetBudget` with positive amount validation, target validation, category/tag resolution, same-name-and-period upsert behavior, and target replacement.
+- [x] 2.3 Implement `SetBudget` with positive amount validation, target validation, category/tag resolution, same-name-and-period upsert behavior, and target replacement.
 - [ ] 2.4 Implement `ListBudgets` with active/all filtering and spent/remaining calculation for each returned budget.
 - [ ] 2.5 Implement `CheckBudgets` and single-budget check with spent, remaining, percent used, and `ok`/`warning`/`over` status calculation.
 - [ ] 2.6 Implement recurring period auto-generation for monthly, weekly, and yearly budgets by copying the most recent prior period's amount, notification threshold, active state, and targets.
