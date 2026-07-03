@@ -2,12 +2,17 @@ package cli
 
 import (
 	"bytes"
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/afadhitya/wallet-app/internal/db"
+	"github.com/afadhitya/wallet-app/internal/gen"
 	"github.com/afadhitya/wallet-app/internal/service"
+	"github.com/spf13/cobra"
 )
 
 type testCLI struct {
@@ -592,5 +597,397 @@ func TestCLIListLimit(t *testing.T) {
 	}
 	if strings.Count(stdout, "Expense") != 3 {
 		t.Errorf("expected 3 entries, got %d", strings.Count(stdout, "Expense"))
+	}
+}
+
+func TestCLIBudgetSet(t *testing.T) {
+	cli := newTestCLI(t)
+	stdout, _, err := cli.run("budget", "set", "Monthly Food", "2000000", "-c", "Restaurant", "--period", "monthly")
+	if err != nil {
+		t.Fatalf("budget set: %v", err)
+	}
+	if !strings.Contains(stdout, "Monthly Food") {
+		t.Errorf("expected 'Monthly Food' in output: %s", stdout)
+	}
+	if !strings.Contains(stdout, "set") {
+		t.Errorf("expected 'set' in output: %s", stdout)
+	}
+}
+
+func TestCLIBudgetSetJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	stdout, _, err := cli.run("--json", "budget", "set", "Monthly Food", "2000000", "-c", "Restaurant", "--period", "monthly")
+	if err != nil {
+		t.Fatalf("budget set --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if result["name"] != "Monthly Food" {
+		t.Errorf("expected name 'Monthly Food', got %v", result["name"])
+	}
+	if result["period"] != "monthly" {
+		t.Errorf("expected period 'monthly', got %v", result["period"])
+	}
+}
+
+func TestCLIBudgetSetInvalidAmount(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("budget", "set", "Food", "not-a-number", "-c", "Restaurant")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIBudgetSetNoTargets(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("budget", "set", "Food", "1000000", "--period", "monthly")
+	if !strings.Contains(stderr, "target") {
+		t.Errorf("expected 'target' error, got: %s", stderr)
+	}
+}
+
+func TestCLIBudgetList(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Monthly Food", "2000000", "-c", "Restaurant", "--period", "monthly")
+
+	stdout, _, err := cli.run("budget", "list")
+	if err != nil {
+		t.Fatalf("budget list: %v", err)
+	}
+	if !strings.Contains(stdout, "Monthly Food") {
+		t.Errorf("expected 'Monthly Food' in list: %s", stdout)
+	}
+}
+
+func TestCLIBudgetListJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Monthly Food", "2000000", "-c", "Restaurant", "--period", "monthly")
+
+	stdout, _, err := cli.run("--json", "budget", "list")
+	if err != nil {
+		t.Fatalf("budget list --json: %v", err)
+	}
+
+	var results []map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &results); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if len(results) != 1 {
+		t.Errorf("expected 1 budget, got %d", len(results))
+	}
+}
+
+func TestCLIBudgetListEmpty(t *testing.T) {
+	cli := newTestCLI(t)
+	stdout, _, err := cli.run("budget", "list")
+	if err != nil {
+		t.Fatalf("budget list: %v", err)
+	}
+	if !strings.Contains(stdout, "No budgets") {
+		t.Errorf("expected 'No budgets' in output: %s", stdout)
+	}
+}
+
+func TestCLIBudgetCheck(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Restaurant", "--period", "monthly")
+
+	stdout, _, err := cli.run("budget", "check", "--all")
+	if err != nil {
+		t.Fatalf("budget check --all: %v", err)
+	}
+	if !strings.Contains(stdout, "Food") {
+		t.Errorf("expected 'Food' in check output: %s", stdout)
+	}
+	if !strings.Contains(stdout, "ok") {
+		t.Errorf("expected 'ok' in check output: %s", stdout)
+	}
+}
+
+func TestCLIBudgetCheckJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Restaurant", "--period", "monthly")
+
+	stdout, _, err := cli.run("--json", "budget", "check", "--all")
+	if err != nil {
+		t.Fatalf("budget check --json: %v", err)
+	}
+
+	var results []map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &results); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if len(results) != 1 {
+		t.Errorf("expected 1 result, got %d", len(results))
+	}
+	if results[0]["status"] != "ok" {
+		t.Errorf("expected status 'ok', got %v", results[0]["status"])
+	}
+}
+
+func TestCLIBudgetCheckNoFlags(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("budget", "check")
+	if !strings.Contains(stderr, "specify") {
+		t.Errorf("expected 'specify' error, got: %s", stderr)
+	}
+}
+
+func TestCLIBudgetEdit(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Restaurant", "--period", "monthly")
+
+	stdout, _, err := cli.run("budget", "edit", "1", "--amount", "2500000", "--notify", "75")
+	if err != nil {
+		t.Fatalf("budget edit: %v", err)
+	}
+	if !strings.Contains(stdout, "updated") {
+		t.Errorf("expected 'updated' in output: %s", stdout)
+	}
+}
+
+func TestCLIBudgetEditJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Restaurant", "--period", "monthly")
+
+	stdout, _, err := cli.run("--json", "budget", "edit", "1", "--amount", "2500000")
+	if err != nil {
+		t.Fatalf("budget edit --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+}
+
+func TestCLIBudgetRm(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Restaurant", "--period", "monthly")
+
+	stdout, _, err := cli.run("budget", "rm", "1")
+	if err != nil {
+		t.Fatalf("budget rm: %v", err)
+	}
+	if !strings.Contains(stdout, "removed") {
+		t.Errorf("expected 'removed' in output: %s", stdout)
+	}
+}
+
+func TestCLIBudgetRmJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Restaurant", "--period", "monthly")
+
+	stdout, _, err := cli.run("--json", "budget", "rm", "1")
+	if err != nil {
+		t.Fatalf("budget rm --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+	if result["status"] != "removed" {
+		t.Errorf("expected status 'removed', got %v", result["status"])
+	}
+}
+
+func TestCLIBudgetRmInvalidID(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("budget", "rm", "not-a-number")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIBudgetEditInvalidID(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("budget", "edit", "not-a-number")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' error, got: %s", stderr)
+	}
+}
+
+func TestCLIBudgetRmNotFound(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("budget", "rm", "99")
+	if !strings.Contains(stderr, "not found") {
+		t.Errorf("expected 'not found' error, got: %s", stderr)
+	}
+}
+
+func TestCLIBudgetListAll(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Active", "1000000", "-c", "Restaurant", "--period", "monthly")
+	_ = cli.svc.RemoveBudget(1)
+
+	stdout, _, err := cli.run("budget", "list", "--all")
+	if err != nil {
+		t.Fatalf("budget list --all: %v", err)
+	}
+	if !strings.Contains(stdout, "Active") {
+		t.Errorf("expected 'Active' in --all list: %s", stdout)
+	}
+	if !strings.Contains(stdout, "inactive") {
+		t.Errorf("expected 'inactive' in --all list: %s", stdout)
+	}
+}
+
+func TestCLIBudgetCheckNoResults(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Restaurant", "--period", "one_time", "--from", "2025-01-01", "--to", "2025-06-30")
+	_ = cli.svc.RemoveBudget(1)
+
+	stdout, _, err := cli.run("budget", "check", "--all")
+	if err != nil {
+		t.Fatalf("budget check --all: %v", err)
+	}
+	if !strings.Contains(stdout, "No budgets to check") {
+		t.Errorf("expected 'No budgets to check': %s", stdout)
+	}
+}
+
+func TestCLIBudgetEditMissing(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("budget", "edit", "99", "--amount", "2500000")
+	if !strings.Contains(stderr, "not found") {
+		t.Errorf("expected 'not found', got: %s", stderr)
+	}
+}
+
+func TestBudgetDisplayNameNull(t *testing.T) {
+	nullBudget := &gen.Budget{Name: sql.NullString{Valid: false}}
+	name := budgetDisplayName(nullBudget)
+	if !strings.Contains(name, "id:") {
+		t.Errorf("expected id-based name for null, got: %s", name)
+	}
+
+	validBudget := &gen.Budget{Name: sql.NullString{String: "Valid", Valid: true}}
+	name = budgetDisplayName(validBudget)
+	if name != "Valid" {
+		t.Errorf("expected 'Valid', got: %s", name)
+	}
+}
+
+func TestBudgetNotifyPctNull(t *testing.T) {
+	nullBudget := &gen.Budget{NotifyAtPct: sql.NullInt64{Valid: false}}
+	pct := budgetNotifyPct(nullBudget)
+	if pct != 80 {
+		t.Errorf("expected 80 for null notify, got %d", pct)
+	}
+
+	validBudget := &gen.Budget{NotifyAtPct: sql.NullInt64{Int64: 90, Valid: true}}
+	pct = budgetNotifyPct(validBudget)
+	if pct != 90 {
+		t.Errorf("expected 90, got %d", pct)
+	}
+}
+
+func TestCLIBudgetEditInvalidAmount(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Restaurant", "--period", "monthly")
+
+	_, stderr, _ := cli.run("budget", "edit", "1", "--amount", "not-a-number")
+	if !strings.Contains(stderr, "invalid") {
+		t.Errorf("expected 'invalid' for bad amount, got: %s", stderr)
+	}
+}
+
+type budgetListErrorQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetListErrorQuerier) ListActiveBudgets(ctx context.Context) ([]*gen.Budget, error) {
+	return nil, fmt.Errorf("mock budget list error")
+}
+
+type budgetCheckErrorQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetCheckErrorQuerier) ListActiveBudgets(ctx context.Context) ([]*gen.Budget, error) {
+	return nil, fmt.Errorf("mock budget check error")
+}
+
+type budgetEditErrorQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetEditErrorQuerier) GetBudgetByID(ctx context.Context, id int64) (*gen.Budget, error) {
+	return nil, fmt.Errorf("mock budget edit error")
+}
+
+func TestCLIBudgetListError(t *testing.T) {
+	dbase, _ := db.Open(":memory:")
+	_ = db.Migrate(dbase)
+	t.Cleanup(func() { _ = dbase.Close() })
+	svc := service.NewWithQuerier(dbase, &budgetListErrorQuerier{Querier: gen.New(dbase)})
+	origOverride := getServiceOverride
+	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
+		return svc, dbase, nil
+	}
+	t.Cleanup(func() { getServiceOverride = origOverride })
+
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+	cmd := NewRootCmd()
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{"budget", "list"})
+	_ = cmd.Execute()
+
+	if !strings.Contains(stderr.String(), "mock budget list error") || !strings.Contains(stderr.String(), "Error") {
+		t.Errorf("expected error output, got stderr: %s", stderr.String())
+	}
+}
+
+func TestCLIBudgetCheckError(t *testing.T) {
+	dbase, _ := db.Open(":memory:")
+	_ = db.Migrate(dbase)
+	t.Cleanup(func() { _ = dbase.Close() })
+	svc := service.NewWithQuerier(dbase, &budgetCheckErrorQuerier{Querier: gen.New(dbase)})
+	origOverride := getServiceOverride
+	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
+		return svc, dbase, nil
+	}
+	t.Cleanup(func() { getServiceOverride = origOverride })
+
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+	cmd := NewRootCmd()
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{"budget", "check", "--all"})
+	_ = cmd.Execute()
+
+	if !strings.Contains(stderr.String(), "mock budget check error") {
+		t.Errorf("expected error output, got stderr: %s", stderr.String())
+	}
+}
+
+func TestCLIBudgetEditError(t *testing.T) {
+	dbase, _ := db.Open(":memory:")
+	_ = db.Migrate(dbase)
+	t.Cleanup(func() { _ = dbase.Close() })
+	svc := service.NewWithQuerier(dbase, &budgetEditErrorQuerier{Querier: gen.New(dbase)})
+	origOverride := getServiceOverride
+	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
+		return svc, dbase, nil
+	}
+	t.Cleanup(func() { getServiceOverride = origOverride })
+
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+	cmd := NewRootCmd()
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{"budget", "edit", "1", "--name", "New"})
+	_ = cmd.Execute()
+
+	if !strings.Contains(stderr.String(), "mock budget edit error") {
+		t.Errorf("expected error output, got stderr: %s", stderr.String())
 	}
 }
