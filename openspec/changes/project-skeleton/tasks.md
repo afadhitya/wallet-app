@@ -38,3 +38,8 @@
 - [x] 6.2 Configure the workflow to set up Go from `go.mod`, run linting, run tests with atomic coverage, and fail below 100% coverage.
 - [x] 6.3 Configure workflow artifacts for `coverage.out` on every run and `coverage.html` on coverage failure.
 - [x] 6.4 Run local verification with `go test ./...`, `go build ./cmd/wallet`, and the relevant Makefile targets.
+
+## 7. Review Fixes
+
+- [x] 7.1 Update `README.md` to document the full local quality command sequence, including `make verify-deps` and `make sqlc-gen`, and document the required sqlc installation prerequisite or repository-managed invocation.
+- [x] 7.2 Update `make test-cover` so it generates both `coverage.out` and `coverage.html`, then verify the target produces both files.

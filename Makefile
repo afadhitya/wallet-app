@@ -14,6 +14,7 @@ test:
 
 test-cover:
 	go test -coverprofile=coverage.out -covermode=atomic ./...
+	go tool cover -html=coverage.out -o coverage.html
 
 coverage-check: test-cover
 	@total=$$(go tool cover -func=coverage.out | grep total | awk '{print $$3}' | sed 's/%//'); \
