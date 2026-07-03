@@ -13,7 +13,7 @@
 - [x] 2.4 Implement `ListBudgets` with active/all filtering and spent/remaining calculation for each returned budget.
 - [x] 2.5 Implement `CheckBudgets` and single-budget check with spent, remaining, percent used, and `ok`/`warning`/`over` status calculation.
 - [x] 2.6 Implement recurring period auto-generation for monthly, weekly, and yearly budgets by copying the most recent prior period's amount, notification threshold, active state, and targets.
-- [ ] 2.7 Implement `EditBudget` for amount, name, notification threshold, added/removed categories, and added/removed tags while preserving unspecified fields.
+- [x] 2.7 Implement `EditBudget` for amount, name, notification threshold, added/removed categories, and added/removed tags while preserving unspecified fields.
 - [ ] 2.8 Implement `RemoveBudget` so removed budgets are excluded from default list and check workflows.
 - [ ] 2.9 Return consistent validation and not-found errors for CLI rendering.
 
