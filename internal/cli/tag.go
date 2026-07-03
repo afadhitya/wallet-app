@@ -66,12 +66,12 @@ func runTagList(cmd *cobra.Command, svc *service.Service) error {
 	}
 
 	if len(tags) == 0 {
-		fmt.Fprintln(stdout, "No tags found.")
+		_, _ = fmt.Fprintln(stdout, "No tags found.")
 		return nil
 	}
 
 	for _, t := range tags {
-		fmt.Fprintf(stdout, "%-4d %s\n", t.ID, t.Name)
+		_, _ = fmt.Fprintf(stdout, "%-4d %s\n", t.ID, t.Name)
 	}
 	return nil
 }
@@ -88,7 +88,7 @@ func runTagAdd(cmd *cobra.Command, name string, svc *service.Service) error {
 		return printJSON(stdout, result)
 	}
 
-	fmt.Fprintf(stdout, "Tag '%s' created (ID: %d).\n", result.Name, result.ID)
+	_, _ = fmt.Fprintf(stdout, "Tag '%s' created (ID: %d).\n", result.Name, result.ID)
 	return nil
 }
 
@@ -108,6 +108,6 @@ func runTagRm(cmd *cobra.Command, name string, svc *service.Service) error {
 		return printJSON(stdout, map[string]interface{}{"status": "removed", "name": name})
 	}
 
-	fmt.Fprintf(stdout, "Tag '%s' removed.\n", name)
+	_, _ = fmt.Fprintf(stdout, "Tag '%s' removed.\n", name)
 	return nil
 }

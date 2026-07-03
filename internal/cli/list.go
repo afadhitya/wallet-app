@@ -58,12 +58,12 @@ func runList(cmd *cobra.Command, svc *service.Service, account, category, tag, t
 	}
 
 	if len(result.Transactions) == 0 {
-		fmt.Fprintln(stdout, "No transactions found.")
+		_, _ = fmt.Fprintln(stdout, "No transactions found.")
 		return nil
 	}
 
-	fmt.Fprintf(stdout, "%-6s %-10s %-12s %-20s %-8s %s\n", "ID", "Date", "Type", "Description", "Amount", "Category")
-	fmt.Fprintf(stdout, "%-6s %-10s %-12s %-20s %-8s %s\n", "------", "----------", "------------", "--------------------", "--------", "--------")
+	_, _ = fmt.Fprintf(stdout, "%-6s %-10s %-12s %-20s %-8s %s\n", "ID", "Date", "Type", "Description", "Amount", "Category")
+	_, _ = fmt.Fprintf(stdout, "%-6s %-10s %-12s %-20s %-8s %s\n", "------", "----------", "------------", "--------------------", "--------", "--------")
 
 	for _, t := range result.Transactions {
 		desc := ""
@@ -76,12 +76,10 @@ func runList(cmd *cobra.Command, svc *service.Service, account, category, tag, t
 			cat = categoryName.Name
 		}
 
-		fmt.Fprintf(stdout, "%-6d %-10s %-12s %-20s %-8s %s\n",
+		_, _ = fmt.Fprintf(stdout, "%-6d %-10s %-12s %-20s %-8s %s\n",
 			t.ID, t.Date, t.Type, truncate(desc, 20), formatAmount(t.Amount), cat)
 	}
 
-	fmt.Fprintf(stdout, "\nTotal: %s (%d transactions)\n", formatAmount(result.Total), len(result.Transactions))
+	_, _ = fmt.Fprintf(stdout, "\nTotal: %s (%d transactions)\n", formatAmount(result.Total), len(result.Transactions))
 	return nil
 }
-
-

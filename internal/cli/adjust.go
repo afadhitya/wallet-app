@@ -56,15 +56,15 @@ func runAdjust(cmd *cobra.Command, args []string, svc *service.Service, notes st
 		})
 	}
 
-	fmt.Fprintf(stdout, "Balance adjusted for %s:\n", result.Account.Name)
-	fmt.Fprintf(stdout, "  Old balance: %s\n", formatAmount(result.OldBalance))
-	fmt.Fprintf(stdout, "  New balance: %s\n", formatAmount(result.NewBalance))
+	_, _ = fmt.Fprintf(stdout, "Balance adjusted for %s:\n", result.Account.Name)
+	_, _ = fmt.Fprintf(stdout, "  Old balance: %s\n", formatAmount(result.OldBalance))
+	_, _ = fmt.Fprintf(stdout, "  New balance: %s\n", formatAmount(result.NewBalance))
 
 	diffStr := formatAmount(result.Difference)
 	if result.Difference > 0 {
 		diffStr = "+" + diffStr
 	}
-	fmt.Fprintf(stdout, "  Difference:  %s\n", diffStr)
+	_, _ = fmt.Fprintf(stdout, "  Difference:  %s\n", diffStr)
 
 	return nil
 }

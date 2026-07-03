@@ -94,12 +94,12 @@ func runCategoryList(cmd *cobra.Command, svc *service.Service) error {
 	}
 
 	if len(categories) == 0 {
-		fmt.Fprintln(stdout, "No categories found.")
+		_, _ = fmt.Fprintln(stdout, "No categories found.")
 		return nil
 	}
 
-	fmt.Fprintf(stdout, "%-4s %-25s %-8s %s\n", "ID", "Name", "Type", "Parent")
-	fmt.Fprintf(stdout, "%-4s %-25s %-8s %s\n", "----", "-------------------------", "--------", "------")
+	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-8s %s\n", "ID", "Name", "Type", "Parent")
+	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-8s %s\n", "----", "-------------------------", "--------", "------")
 
 	for _, cat := range categories {
 		icon := ""
@@ -112,7 +112,7 @@ func runCategoryList(cmd *cobra.Command, svc *service.Service) error {
 			parentName = fmt.Sprintf("%d", cat.ParentID.Int64)
 		}
 
-		fmt.Fprintf(stdout, "%-4d %s%-25s %-8s %s\n", cat.ID, icon, cat.Name, cat.Type, parentName)
+		_, _ = fmt.Fprintf(stdout, "%-4d %s%-25s %-8s %s\n", cat.ID, icon, cat.Name, cat.Type, parentName)
 	}
 	return nil
 }
@@ -129,7 +129,7 @@ func runCategoryAdd(cmd *cobra.Command, name string, svc *service.Service, paren
 		return printJSON(stdout, result)
 	}
 
-	fmt.Fprintf(stdout, "Category '%s' created (ID: %d).\n", result.Name, result.ID)
+	_, _ = fmt.Fprintf(stdout, "Category '%s' created (ID: %d).\n", result.Name, result.ID)
 	return nil
 }
 
@@ -150,7 +150,7 @@ func runCategoryEdit(cmd *cobra.Command, idStr string, svc *service.Service, nam
 		return printJSON(stdout, result)
 	}
 
-	fmt.Fprintf(stdout, "Category %d updated.\n", result.ID)
+	_, _ = fmt.Fprintf(stdout, "Category %d updated.\n", result.ID)
 	return nil
 }
 
@@ -170,6 +170,6 @@ func runCategoryRm(cmd *cobra.Command, idStr string, svc *service.Service) error
 		return printJSON(stdout, map[string]interface{}{"status": "removed", "id": id})
 	}
 
-	fmt.Fprintf(stdout, "Category %d removed.\n", id)
+	_, _ = fmt.Fprintf(stdout, "Category %d removed.\n", id)
 	return nil
 }

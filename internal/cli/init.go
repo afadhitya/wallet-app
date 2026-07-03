@@ -40,7 +40,7 @@ func runInit(cmd *cobra.Command) error {
 	if err != nil {
 		return formatError(cmd, fmt.Errorf("open database: %w", err))
 	}
-	defer database.Close()
+	defer func() { _ = database.Close() }()
 
 	if err := db.Migrate(database); err != nil {
 		return formatError(cmd, fmt.Errorf("migrate database: %w", err))
@@ -66,10 +66,10 @@ func runInit(cmd *cobra.Command) error {
 		return nil
 	}
 
-	fmt.Fprintf(stdout, "Wallet initialized successfully.\n")
-	fmt.Fprintf(stdout, "Database: %s\n", dbPath)
-	fmt.Fprintf(stdout, "Accounts: %d\n", len(accounts))
-	fmt.Fprintf(stdout, "Categories: %d\n", len(categories))
+	_, _ = fmt.Fprintf(stdout, "Wallet initialized successfully.\n")
+	_, _ = fmt.Fprintf(stdout, "Database: %s\n", dbPath)
+	_, _ = fmt.Fprintf(stdout, "Accounts: %d\n", len(accounts))
+	_, _ = fmt.Fprintf(stdout, "Categories: %d\n", len(categories))
 
 	return nil
 }

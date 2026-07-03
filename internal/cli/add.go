@@ -177,10 +177,10 @@ func runAddTransfer(cmd *cobra.Command, args []string, svc *service.Service, fro
 		return printJSON(stdout, output)
 	}
 
-	fmt.Fprintf(stdout, "Transfer recorded: %d from %s to %s on %s\n",
+	_, _ = fmt.Fprintf(stdout, "Transfer recorded: %d from %s to %s on %s\n",
 		result.Transaction.Amount, fromAccount, toAccount, result.Transaction.Date)
 	if result.Warning != "" {
-		fmt.Fprintf(stderr, "%s\n", result.Warning)
+		_, _ = fmt.Fprintf(stderr, "%s\n", result.Warning)
 	}
 	return nil
 }
@@ -207,10 +207,10 @@ func printTransactionResult(cmd *cobra.Command, result *service.TransactionResul
 	if result.Transaction.Description.Valid {
 		desc = result.Transaction.Description.String
 	}
-	fmt.Fprintf(stdout, "%s recorded: %d [%s] on %s\n",
+	_, _ = fmt.Fprintf(stdout, "%s recorded: %d [%s] on %s\n",
 		txnType, result.Transaction.Amount, desc, result.Transaction.Date)
 	if len(result.Tags) > 0 {
-		fmt.Fprintf(stdout, "Tags: %v\n", tagNames(result.Tags))
+		_, _ = fmt.Fprintf(stdout, "Tags: %v\n", tagNames(result.Tags))
 	}
 	return nil
 }

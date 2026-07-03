@@ -80,6 +80,6 @@ func runEdit(cmd *cobra.Command, idStr string, svc *service.Service, amountStr, 
 		})
 	}
 
-	fmt.Fprintf(stdout, "Transaction %d updated successfully.\n", result.Transaction.ID)
+	_, _ = fmt.Fprintf(stdout, "Transaction %d updated successfully.\n", result.Transaction.ID)
 	return nil
 }

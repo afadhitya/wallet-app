@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 func formatAmount(amount int64) string {
@@ -25,23 +24,9 @@ func formatNum(n int64) string {
 	return string(parts)
 }
 
-func formatDate(date string) string {
-	if date == "" {
-		return "-"
-	}
-	return date
-}
-
 func truncate(s string, n int) string {
 	if len(s) <= n {
 		return s
 	}
 	return s[:n-3] + "..."
-}
-
-func joinTagNames(names []string) string {
-	if len(names) == 0 {
-		return ""
-	}
-	return strings.Join(names, ", ")
 }

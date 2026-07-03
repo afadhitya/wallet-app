@@ -47,9 +47,9 @@ func runRm(cmd *cobra.Command, idStr string, svc *service.Service, force bool) e
 		if txn.Description.Valid {
 			desc = txn.Description.String
 		}
-		fmt.Fprintf(stdout, "Remove transaction #%d: %s %s - %d on %s?\n",
+		_, _ = fmt.Fprintf(stdout, "Remove transaction #%d: %s %s - %d on %s?\n",
 			txn.ID, txn.Type, desc, txn.Amount, txn.Date)
-		fmt.Fprintf(stdout, "Type 'yes' to confirm: ")
+		_, _ = fmt.Fprintf(stdout, "Type 'yes' to confirm: ")
 
 		reader := bufio.NewReader(os.Stdin)
 		input, err := reader.ReadString('\n')
@@ -60,7 +60,7 @@ func runRm(cmd *cobra.Command, idStr string, svc *service.Service, force bool) e
 		input = strings.TrimSpace(strings.ToLower(input))
 		if input != "yes" && input != "y" {
 			stdout, _ := resolveOut(cmd)
-			fmt.Fprintln(stdout, "Cancelled.")
+			_, _ = fmt.Fprintln(stdout, "Cancelled.")
 			return nil
 		}
 	}
@@ -78,6 +78,6 @@ func runRm(cmd *cobra.Command, idStr string, svc *service.Service, force bool) e
 		})
 	}
 
-	fmt.Fprintf(stdout, "Transaction %d removed.\n", id)
+	_, _ = fmt.Fprintf(stdout, "Transaction %d removed.\n", id)
 	return nil
 }

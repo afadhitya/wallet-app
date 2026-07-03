@@ -17,7 +17,7 @@ func setupTestService() func() {
 		panic(err)
 	}
 	if err := db.Migrate(dbase); err != nil {
-		dbase.Close()
+		_ = dbase.Close()
 		panic(err)
 	}
 	svc := service.New(dbase)
@@ -26,7 +26,7 @@ func setupTestService() func() {
 	}
 	return func() {
 		getServiceOverride = nil
-		dbase.Close()
+		_ = dbase.Close()
 	}
 }
 

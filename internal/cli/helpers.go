@@ -43,7 +43,7 @@ func formatError(cmd *cobra.Command, err error) error {
 	if isJSON(cmd) {
 		printErrJSON(stderr, err.Error())
 	} else {
-		fmt.Fprintf(stderr, "Error: %s\n", err.Error())
+		_, _ = fmt.Fprintf(stderr, "Error: %s\n", err.Error())
 	}
 	return err
 }
@@ -105,7 +105,7 @@ func withService(f svcFunc) func(cmd *cobra.Command, args []string) error {
 			return formatError(cmd, err)
 		}
 		if getServiceOverride == nil {
-			defer database.Close()
+			defer func() { _ = database.Close() }()
 		}
 		return f(cmd, args, svc, database)
 	}

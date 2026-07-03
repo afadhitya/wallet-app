@@ -184,8 +184,8 @@ type CreateTransferParams struct {
 }
 
 type TransferResult struct {
-	Transaction  *gen.Transaction
-	Warning      string
+	Transaction *gen.Transaction
+	Warning     string
 }
 
 func (s *Service) AddTransfer(params CreateTransferParams) (*TransferResult, error) {
@@ -615,11 +615,11 @@ type AdjustBalanceParams struct {
 }
 
 type AdjustBalanceResult struct {
-	Account      *gen.Account
-	OldBalance   int64
-	NewBalance   int64
-	Difference   int64
-	Transaction  *gen.Transaction
+	Account     *gen.Account
+	OldBalance  int64
+	NewBalance  int64
+	Difference  int64
+	Transaction *gen.Transaction
 }
 
 func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResult, error) {
@@ -653,14 +653,14 @@ func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResul
 	}
 
 	txn, err := s.queries.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
-		AccountID:  account.ID,
-		CategoryID: sql.NullInt64{},
-		Type:       "adjustment",
-		Amount:     diff,
-		Currency:   "IDR",
+		AccountID:   account.ID,
+		CategoryID:  sql.NullInt64{},
+		Type:        "adjustment",
+		Amount:      diff,
+		Currency:    "IDR",
 		Description: description,
-		Notes:      notes,
-		Date:       time.Now().Format("2006-01-02"),
+		Notes:       notes,
+		Date:        time.Now().Format("2006-01-02"),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create adjustment: %w", err)

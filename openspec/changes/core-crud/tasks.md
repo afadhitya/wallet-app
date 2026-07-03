@@ -37,9 +37,9 @@
 
 ## 5. Tests And Verification
 
-- [ ] 5.1 Add service unit tests for expense, income, transfer, edit, removal, adjustment, and balance recalculation behavior.
-- [ ] 5.2 Add service unit tests for category CRUD and tag CRUD behavior, including duplicate and missing-reference failures.
-- [ ] 5.3 Add CLI integration tests for `wallet init`, transaction add/list/edit/rm, category commands, tag commands, adjustment, JSON output, and representative validation failures.
-- [ ] 5.4 Run `go fmt` on changed Go files.
-- [ ] 5.5 Run sqlc generation and confirm no generated files are stale.
-- [ ] 5.6 Run `go test ./...` and the repository lint/coverage commands required by project quality gates.
+- [x] 5.1 Add service unit tests for expense, income, transfer, edit, removal, adjustment, and balance recalculation behavior.
+- [x] 5.2 Add service unit tests for category CRUD and tag CRUD behavior, including duplicate and missing-reference failures.
+- [x] 5.3 Add CLI integration tests for `wallet init`, transaction add/list/edit/rm, category commands, tag commands, adjustment, JSON output, and representative validation failures.
+- [x] 5.4 Run `go fmt` on changed Go files.
+- [x] 5.5 Run sqlc generation and confirm no generated files are stale.
+- [x] 5.6 Run `go test ./...` and the repository lint/coverage commands required by project quality gates.
