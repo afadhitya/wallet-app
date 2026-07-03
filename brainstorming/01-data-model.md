@@ -24,6 +24,7 @@ Define the SQLite schema that serves as the single source of truth. Every future
 | D7 | Budget type | Recurring + one-time | Recurring auto-clones per period; one-time is single horizon |
 | D8 | Multi-currency tx | Store original + converted amount | Track both; converted amount in account currency for balance |
 | D9 | next_due_date | Pre-calculated, updated on fulfillment | No runtime computation needed |
+| D10 | Balance adjustment | New tx type `adjustment` | Not income/expense, excluded from reports, tracked in transactions |
 
 ---
 
@@ -116,7 +117,7 @@ CREATE TABLE transactions (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id      INTEGER NOT NULL REFERENCES accounts(id),
     category_id     INTEGER REFERENCES categories(id),
-    type            TEXT NOT NULL,                   -- expense | income | transfer
+    type            TEXT NOT NULL,                   -- expense | income | transfer | adjustment
     amount          INTEGER NOT NULL,                -- D8: original amount, minor units
     currency        TEXT NOT NULL DEFAULT 'IDR',     -- D8: original currency, ISO 4217
     base_amount     INTEGER,                         -- D8: converted to account currency (NULL if same as currency)

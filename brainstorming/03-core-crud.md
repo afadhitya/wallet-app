@@ -258,6 +258,45 @@ $ wallet tag rm "japan-2026"
 
 ---
 
+### `wallet adjust`
+
+Adjust account balance — not income/expense, just a correction.
+
+```
+$ wallet adjust bca 15000000 "Reconcile with bank statement"
+✓ Balance adjusted: BCA = Rp15.000.000 (was Rp14.850.000, diff +Rp150.000)
+  Adjustment recorded (tx #99)
+```
+
+**Flags:**
+
+| Flag | Short | Required | Default | Description |
+|------|-------|----------|---------|-------------|
+| `--notes` | | No | — | Reason for adjustment |
+| `--json` | | No | false | JSON output |
+
+**Behavior:**
+- Set account balance to exact amount
+- Create transaction with `type='adjustment'`, `amount=|diff|`
+- Positive diff: adjustment increases balance
+- Negative diff: adjustment decreases balance
+- Excluded from income/expense reports
+- Visible in `wallet list --type adjustment`
+
+**Examples:**
+
+```
+# Balance too high, need to decrease
+$ wallet adjust gopay 50000 "Cash out not recorded"
+✓ Balance adjusted: GoPay = Rp50.000 (was Rp120.000, diff -Rp70.000)
+
+# Balance too low, need to increase
+$ wallet adjust bca 15000000 "Found missing deposit"
+✓ Balance adjusted: BCA = Rp15.000.000 (was Rp14.500.000, diff +Rp500.000)
+```
+
+---
+
 ## Service Layer
 
 ### TransactionService

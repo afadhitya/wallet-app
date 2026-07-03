@@ -177,7 +177,7 @@ $ wallet report --month july
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Note:** All amounts in report are in base currency (IDR). Original currency shown in parentheses.
+**Note:** All amounts in report are in base currency (IDR). Original currency shown in parentheses. Adjustments (`type='adjustment'`) are excluded from income/expense totals.
 
 ---
 

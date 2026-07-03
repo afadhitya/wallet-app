@@ -1,7 +1,7 @@
 # 09 — Reports & Export
 
 > Depends on: [01-data-model](./01-data-model.md), [03-core-crud](./03-core-crud.md), [07-multi-currency](./07-multi-currency.md)
-> Status: 🔴 pending review | Unblocks: none (final phase)
+> Status: ✅ design approved | Unblocks: none (final phase)
 
 ---
 

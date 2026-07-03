@@ -18,7 +18,7 @@
 | 06 | Forecasting | Projected balances, trend analysis, bill calendar | 🔴 pending review |
 | 07 | Multi-Currency | Exchange rates, conversion, mixed-currency reporting | 🔴 pending review |
 | 08 | AI-Native Layer | Hermes skill, JSON output mode, NLP-friendly CLI | 🔴 pending review |
-| 09 | Reports & Export | Reports by category/account/tag, CSV export | 🔴 pending review |
+| 09 | Reports & Export | Reports by category/account/tag, CSV export | ✅ design approved |
 
 ---
 
