@@ -54,7 +54,7 @@ type Category struct {
 	IsSystem   int64          `db:"is_system" json:"is_system"`
 	SortOrder  int64          `db:"sort_order" json:"sort_order"`
 	CreatedAt  string         `db:"created_at" json:"created_at"`
-	UpdatedAt  string         `db:"updated_at" json:"updated_at"`
+	UpdatedAt  sql.NullString `db:"updated_at" json:"updated_at"`
 	IsArchived int64          `db:"is_archived" json:"is_archived"`
 }
 

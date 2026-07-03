@@ -1,3 +1,3 @@
-ALTER TABLE categories ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'));
+ALTER TABLE categories ADD COLUMN updated_at TEXT;
 ALTER TABLE categories ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE transactions ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0;

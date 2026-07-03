@@ -14,7 +14,7 @@ AND (sqlc.narg('type') IS NULL OR type = sqlc.narg('type'))
 AND (sqlc.narg('date_from') IS NULL OR date >= sqlc.narg('date_from'))
 AND (sqlc.narg('date_to') IS NULL OR date <= sqlc.narg('date_to'))
 ORDER BY date DESC, id DESC
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: ListTransactionsByTag :many
 SELECT t.* FROM transactions t
@@ -28,7 +28,7 @@ AND (sqlc.narg('type') IS NULL OR t.type = sqlc.narg('type'))
 AND (sqlc.narg('date_from') IS NULL OR t.date >= sqlc.narg('date_from'))
 AND (sqlc.narg('date_to') IS NULL OR t.date <= sqlc.narg('date_to'))
 ORDER BY t.date DESC, t.id DESC
-LIMIT ? OFFSET ?;
+LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 
 -- name: CountTransactions :one
 SELECT COUNT(*) FROM transactions

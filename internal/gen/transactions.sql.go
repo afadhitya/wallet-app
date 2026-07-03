@@ -179,13 +179,13 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id int64) (*Transactio
 const listTransactions = `-- name: ListTransactions :many
 SELECT id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived FROM transactions
 WHERE is_archived = 0
-AND (?3 IS NULL OR account_id = ?3)
-AND (?4 IS NULL OR category_id = ?4)
-AND (?5 IS NULL OR type = ?5)
-AND (?6 IS NULL OR date >= ?6)
-AND (?7 IS NULL OR date <= ?7)
+AND (?1 IS NULL OR account_id = ?1)
+AND (?2 IS NULL OR category_id = ?2)
+AND (?3 IS NULL OR type = ?3)
+AND (?4 IS NULL OR date >= ?4)
+AND (?5 IS NULL OR date <= ?5)
 ORDER BY date DESC, id DESC
-LIMIT ? OFFSET ?
+LIMIT ?7 OFFSET ?6
 `
 
 type ListTransactionsParams struct {
@@ -194,8 +194,8 @@ type ListTransactionsParams struct {
 	Type       interface{} `db:"type" json:"type"`
 	DateFrom   interface{} `db:"date_from" json:"date_from"`
 	DateTo     interface{} `db:"date_to" json:"date_to"`
-	Limit      int64       `db:"limit" json:"limit"`
 	Offset     int64       `db:"offset" json:"offset"`
+	Limit      int64       `db:"limit" json:"limit"`
 }
 
 func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsParams) ([]*Transaction, error) {
@@ -205,8 +205,8 @@ func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsPara
 		arg.Type,
 		arg.DateFrom,
 		arg.DateTo,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -252,14 +252,14 @@ SELECT t.id, t.account_id, t.category_id, t.type, t.amount, t.currency, t.base_a
 JOIN transaction_tags tt ON tt.transaction_id = t.id
 JOIN tags ON tags.id = tt.tag_id
 WHERE t.is_archived = 0
-AND tags.name = ?3 COLLATE NOCASE
-AND (?4 IS NULL OR t.account_id = ?4)
-AND (?5 IS NULL OR t.category_id = ?5)
-AND (?6 IS NULL OR t.type = ?6)
-AND (?7 IS NULL OR t.date >= ?7)
-AND (?8 IS NULL OR t.date <= ?8)
+AND tags.name = ?1 COLLATE NOCASE
+AND (?2 IS NULL OR t.account_id = ?2)
+AND (?3 IS NULL OR t.category_id = ?3)
+AND (?4 IS NULL OR t.type = ?4)
+AND (?5 IS NULL OR t.date >= ?5)
+AND (?6 IS NULL OR t.date <= ?6)
 ORDER BY t.date DESC, t.id DESC
-LIMIT ? OFFSET ?
+LIMIT ?8 OFFSET ?7
 `
 
 type ListTransactionsByTagParams struct {
@@ -269,8 +269,8 @@ type ListTransactionsByTagParams struct {
 	Type       interface{} `db:"type" json:"type"`
 	DateFrom   interface{} `db:"date_from" json:"date_from"`
 	DateTo     interface{} `db:"date_to" json:"date_to"`
-	Limit      int64       `db:"limit" json:"limit"`
 	Offset     int64       `db:"offset" json:"offset"`
+	Limit      int64       `db:"limit" json:"limit"`
 }
 
 func (q *Queries) ListTransactionsByTag(ctx context.Context, arg ListTransactionsByTagParams) ([]*Transaction, error) {
@@ -281,8 +281,8 @@ func (q *Queries) ListTransactionsByTag(ctx context.Context, arg ListTransaction
 		arg.Type,
 		arg.DateFrom,
 		arg.DateTo,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err

@@ -19,14 +19,14 @@
 
 ## 3. CLI Commands
 
-- [ ] 3.1 Wire `wallet init` to create config directories/files, open the configured database, run migrations, and report idempotent initialization results.
-- [ ] 3.2 Replace the placeholder `wallet add` command with `expense`, `income`, and `transfer` subcommands and their flags.
-- [ ] 3.3 Implement `wallet list` flags, default current-month behavior, text output, JSON output, and stable validation errors.
-- [ ] 3.4 Add `wallet edit <id>` flags for editable transaction fields and tag changes.
-- [ ] 3.5 Add `wallet rm <id>` with confirmation prompt, `--force`, and JSON output support.
-- [ ] 3.6 Add `wallet category list`, `wallet category add`, `wallet category edit <id>`, and category removal command behavior.
-- [ ] 3.7 Add `wallet tag list`, `wallet tag add`, and `wallet tag rm <name>` command behavior.
-- [ ] 3.8 Add `wallet adjust <account> <amount> <description>` with notes and JSON output support.
+- [x] 3.1 Wire `wallet init` to create config directories/files, open the configured database, run migrations, and report idempotent initialization results.
+- [x] 3.2 Replace the placeholder `wallet add` command with `expense`, `income`, and `transfer` subcommands and their flags.
+- [x] 3.3 Implement `wallet list` flags, default current-month behavior, text output, JSON output, and stable validation errors.
+- [x] 3.4 Add `wallet edit <id>` flags for editable transaction fields and tag changes.
+- [x] 3.5 Add `wallet rm <id>` with confirmation prompt, `--force`, and JSON output support.
+- [x] 3.6 Add `wallet category list`, `wallet category add`, `wallet category edit <id>`, and category removal command behavior.
+- [x] 3.7 Add `wallet tag list`, `wallet tag add`, and `wallet tag rm <name>` command behavior.
+- [x] 3.8 Add `wallet adjust <account> <amount> <description>` with notes and JSON output support.
 
 ## 4. Output And Errors
 
