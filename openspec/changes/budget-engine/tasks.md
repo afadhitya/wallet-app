@@ -25,7 +25,7 @@
 - [x] 3.4 Add flags for `budget check`: `--budget/-b`, `--all`, and inherited `--json`.
 - [x] 3.5 Add flags for `budget edit`: `--amount`, `--name`, `--notify`, `--add-category`, `--remove-category`, `--add-tag`, and `--remove-tag`.
 - [x] 3.6 Render stable text output for set, list, check, edit, and remove success/error paths.
-- [ ] 3.7 Render stable JSON output for set, list, check, and edit paths.
+- [x] 3.7 Render stable JSON output for set, list, check, and edit paths.
 
 ## 4. Tests
 
