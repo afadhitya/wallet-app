@@ -13,10 +13,10 @@
 
 ## 3. Configuration
 
-- [ ] 3.1 Implement `pkg/config` types for database, display, AI, and defaults settings.
-- [ ] 3.2 Implement default configuration values for wallet database path, currency, date format, first day of week, JSON output behavior, and default account.
-- [ ] 3.3 Implement TOML config loading with path expansion for the wallet config file.
-- [ ] 3.4 Add unit tests for default configuration and TOML override parsing.
+- [x] 3.1 Implement `pkg/config` types for database, display, AI, and defaults settings.
+- [x] 3.2 Implement default configuration values for wallet database path, currency, date format, first day of week, JSON output behavior, and default account.
+- [x] 3.3 Implement TOML config loading with path expansion for the wallet config file.
+- [x] 3.4 Add unit tests for default configuration and TOML override parsing.
 
 ## 4. Database And Migrations
 
