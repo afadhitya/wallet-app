@@ -607,6 +607,84 @@ func (s *Service) RemoveTransaction(id int64) error {
 	return nil
 }
 
+type AdjustBalanceParams struct {
+	Account     string
+	Target      int64
+	Description string
+	Notes       string
+}
+
+type AdjustBalanceResult struct {
+	Account      *gen.Account
+	OldBalance   int64
+	NewBalance   int64
+	Difference   int64
+	Transaction  *gen.Transaction
+}
+
+func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResult, error) {
+	account, err := s.ResolveAccount(params.Account)
+	if err != nil {
+		return nil, fmt.Errorf("account: %w", err)
+	}
+
+	oldBalanceRaw, err := s.queries.GetAccountBalance(s.ctx(), account.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get current balance: %w", err)
+	}
+	oldBalance := balanceToInt64(oldBalanceRaw)
+	diff := params.Target - oldBalance
+
+	if diff == 0 {
+		return &AdjustBalanceResult{
+			Account:    account,
+			OldBalance: oldBalance,
+			NewBalance: oldBalance,
+			Difference: 0,
+		}, nil
+	}
+
+	var description, notes sql.NullString
+	if params.Description != "" {
+		description = sql.NullString{String: params.Description, Valid: true}
+	}
+	if params.Notes != "" {
+		notes = sql.NullString{String: params.Notes, Valid: true}
+	}
+
+	txn, err := s.queries.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
+		AccountID:  account.ID,
+		CategoryID: sql.NullInt64{},
+		Type:       "adjustment",
+		Amount:     diff,
+		Currency:   "IDR",
+		Description: description,
+		Notes:      notes,
+		Date:       time.Now().Format("2006-01-02"),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create adjustment: %w", err)
+	}
+
+	if err := s.recalculateBalance(account.ID); err != nil {
+		return nil, fmt.Errorf("recalculate balance: %w", err)
+	}
+
+	newBalanceRaw, err := s.queries.GetAccountBalance(s.ctx(), account.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get new balance: %w", err)
+	}
+	newBalance := balanceToInt64(newBalanceRaw)
+
+	return &AdjustBalanceResult{
+		Account:     account,
+		OldBalance:  oldBalance,
+		NewBalance:  newBalance,
+		Difference:  diff,
+		Transaction: txn,
+	}, nil
+}
+
 func (s *Service) GetTransactionByID(id int64) (*gen.Transaction, error) {
 	txn, err := s.queries.GetTransactionByID(s.ctx(), id)
 	if err != nil {

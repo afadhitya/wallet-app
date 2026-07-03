@@ -15,7 +15,7 @@
 - [x] 2.6 Implement transaction listing filters for month, date range, account, category, tag, type, limit, ordering, and totals.
 - [x] 2.7 Implement transaction editing for amount, category, account, date, description, notes, and tag add/remove while recalculating all affected accounts.
 - [x] 2.8 Implement transaction removal as archive/soft-delete with confirmation support at the CLI boundary and affected balance recalculation.
-- [ ] 2.9 Implement balance adjustment to set an account to an exact target balance, record an adjustment transaction, and expose adjustments through transaction listing.
+- [x] 2.9 Implement balance adjustment to set an account to an exact target balance, record an adjustment transaction, and expose adjustments through transaction listing.
 
 ## 3. CLI Commands
 
