@@ -265,6 +265,160 @@ func balanceToInt64(balance interface{}) int64 {
 	return 0
 }
 
+type ListTransactionsParams struct {
+	AccountName  string
+	CategoryName string
+	TagName      string
+	Type         string
+	Month        string
+	DateFrom     string
+	DateTo       string
+	Limit        int
+	Offset       int
+}
+
+type ListTransactionsResult struct {
+	Transactions []*gen.Transaction
+	Total        int64
+}
+
+func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransactionsResult, error) {
+	if params.Limit <= 0 {
+		params.Limit = 20
+	}
+
+	var accountID, categoryID interface{}
+	var tagName string
+	var dateFrom, dateTo interface{}
+
+	if params.AccountName != "" {
+		account, err := s.ResolveAccount(params.AccountName)
+		if err != nil {
+			return nil, fmt.Errorf("account: %w", err)
+		}
+		accountID = account.ID
+	}
+
+	if params.CategoryName != "" {
+		category, err := s.ResolveCategory(params.CategoryName)
+		if err != nil {
+			return nil, fmt.Errorf("category: %w", err)
+		}
+		categoryID = category.ID
+	}
+
+	if params.TagName != "" {
+		tagName = params.TagName
+	}
+
+	if params.DateFrom != "" {
+		dateFrom = params.DateFrom
+	}
+
+	if params.DateTo != "" {
+		dateTo = params.DateTo
+	}
+
+	if params.Month != "" {
+		from, to, err := parseMonth(params.Month)
+		if err != nil {
+			return nil, fmt.Errorf("month: %w", err)
+		}
+		dateFrom = from
+		dateTo = to
+	}
+
+	if dateFrom == nil && dateTo == nil && params.Month == "" && params.DateFrom == "" && params.DateTo == "" {
+		now := time.Now()
+		firstDay := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+		lastDay := firstDay.AddDate(0, 1, -1)
+		dateFrom = firstDay.Format("2006-01-02")
+		dateTo = lastDay.Format("2006-01-02")
+	}
+
+	if tagName != "" {
+		transactions, err := s.queries.ListTransactionsByTag(s.ctx(), gen.ListTransactionsByTagParams{
+			TagName:    tagName,
+			AccountID:  accountID,
+			CategoryID: categoryID,
+			Type:       stringToInterface(params.Type),
+			DateFrom:   dateFrom,
+			DateTo:     dateTo,
+			Limit:      int64(params.Limit),
+			Offset:     int64(params.Offset),
+		})
+		if err != nil {
+			return nil, err
+		}
+		result := &ListTransactionsResult{Transactions: transactions}
+		result.Total = s.sumTransactionAmounts(transactions)
+		return result, nil
+	}
+
+	transactions, err := s.queries.ListTransactions(s.ctx(), gen.ListTransactionsParams{
+		AccountID:  accountID,
+		CategoryID: categoryID,
+		Type:       stringToInterface(params.Type),
+		DateFrom:   dateFrom,
+		DateTo:     dateTo,
+		Limit:      int64(params.Limit),
+		Offset:     int64(params.Offset),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ListTransactionsResult{Transactions: transactions}
+	result.Total = s.sumTransactionAmounts(transactions)
+	return result, nil
+}
+
+func (s *Service) sumTransactionAmounts(transactions []*gen.Transaction) int64 {
+	var total int64
+	for _, t := range transactions {
+		total += t.Amount
+	}
+	return total
+}
+
+func stringToInterface(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func parseMonth(input string) (string, string, error) {
+	now := time.Now()
+
+	months := map[string]time.Month{
+		"january": 1, "february": 2, "march": 3, "april": 4,
+		"may": 5, "june": 6, "july": 7, "august": 8,
+		"september": 9, "october": 10, "november": 11, "december": 12,
+		"jan": 1, "feb": 2, "mar": 3, "apr": 4,
+		"jun": 6, "jul": 7, "aug": 8,
+		"sep": 9, "oct": 10, "nov": 11, "dec": 12,
+	}
+
+	month, ok := months[input]
+	if !ok {
+		if t, err := time.Parse("2006-01", input); err == nil {
+			month = t.Month()
+			now = time.Date(t.Year(), month, 1, 0, 0, 0, 0, time.UTC)
+		} else if t, err := time.Parse("01/2006", input); err == nil {
+			month = t.Month()
+			now = time.Date(t.Year(), month, 1, 0, 0, 0, 0, time.UTC)
+		} else {
+			return "", "", fmt.Errorf("invalid month: %s", input)
+		}
+	}
+
+	firstDay := time.Date(now.Year(), month, 1, 0, 0, 0, 0, time.UTC)
+	lastDay := firstDay.AddDate(0, 1, -1)
+
+	return firstDay.Format("2006-01-02"), lastDay.Format("2006-01-02"), nil
+}
+
 func parseDate(input string) (string, error) {
 	if input == "" {
 		return time.Now().Format("2006-01-02"), nil
