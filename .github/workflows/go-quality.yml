@@ -1,0 +1,59 @@
+name: Go Quality
+
+on:
+  push:
+    branches:
+      - main
+      - brainstorming
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.12
+
+      - name: Test
+        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Check coverage
+        id: coverage
+        run: |
+          total=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "total=${total}" >> "$GITHUB_OUTPUT"
+          if [ "$total" != "100.0" ]; then
+            echo "ERROR: coverage is ${total}%, expected 100.0%"
+            exit 1
+          fi
+          echo "Coverage: ${total}%"
+
+      - name: Upload coverage profile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-profile
+          path: coverage.out
+
+      - name: Generate coverage report
+        if: failure() && steps.coverage.outcome == 'failure'
+        run: go tool cover -html=coverage.out -o coverage.html
+
+      - name: Upload coverage report
+        if: failure() && steps.coverage.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.html
