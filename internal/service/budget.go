@@ -169,7 +169,7 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("check existing budget: %w", err)
 	}
-	if existing != nil {
+	if err == nil && existing != nil {
 		return s.updateExistingBudget(existing.ID, params, periodTypeForDB(params.Period), periodStart, periodEnd, resolvedCategories, resolvedTags)
 	}
 
@@ -324,9 +324,6 @@ func (s *Service) CheckBudgets(params CheckBudgetsParams) ([]*CheckBudgetResult,
 		if err != nil {
 			return nil, fmt.Errorf("ensure current period for budget '%s': %w", budgetName(b), err)
 		}
-		if current == nil {
-			continue
-		}
 		result, err := s.buildCheckResult(current)
 		if err != nil {
 			return nil, fmt.Errorf("build check result: %w", err)
@@ -345,9 +342,6 @@ func (s *Service) checkSingleBudget(identifier string) ([]*CheckBudgetResult, er
 	current, err := s.ensureCurrentPeriod(budget)
 	if err != nil {
 		return nil, fmt.Errorf("ensure current period: %w", err)
-	}
-	if current == nil {
-		return nil, &NotFoundError{Entity: "budget", Name: identifier}
 	}
 
 	result, err := s.buildCheckResult(current)

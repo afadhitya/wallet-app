@@ -27,3 +27,9 @@ github.com/afadhitya/wallet-app/internal/cli/tag.go:58.16,60.3
 
 # runTagRm: DeleteTag DB query error (infrastructure error)
 github.com/afadhitya/wallet-app/internal/cli/tag.go:101.46,103.3
+
+# calculatePeriod weekly: daysToMonday < 0 (only triggers when today is Sunday)
+github.com/afadhitya/wallet-app/internal/service/budget.go:101.23,103.4
+
+# ensureCurrentPeriod weekly: daysToMonday < 0 (only triggers when today is Sunday)
+github.com/afadhitya/wallet-app/internal/service/budget.go:394.23,396.4

@@ -41,7 +41,7 @@
 
 ## 5. Verification
 
-- [ ] 5.1 Run sqlc generation verification if available, or regenerate and inspect generated diffs.
-- [ ] 5.2 Run `go test ./...` and fix failures.
-- [ ] 5.3 Run the repository coverage command and restore the required coverage gate.
-- [ ] 5.4 Run `openspec status --change "budget-engine"` and confirm the change is apply-ready.
+- [x] 5.1 Run sqlc generation verification if available, or regenerate and inspect generated diffs.
+- [x] 5.2 Run `go test ./...` and fix failures.
+- [x] 5.3 Run the repository coverage command and restore the required coverage gate.
+- [x] 5.4 Run `openspec status --change "budget-engine"` and confirm the change is apply-ready.

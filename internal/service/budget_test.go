@@ -968,7 +968,8 @@ func (q *budgetListFailQuerier) ListActiveBudgets(ctx context.Context) ([]*gen.B
 
 type budgetSpendingFailQuerier struct {
 	gen.Querier
-	catFail bool
+	catFail   bool
+	tagOnly   bool
 }
 
 func (q *budgetSpendingFailQuerier) SumCategoryExpenses(ctx context.Context, arg gen.SumCategoryExpensesParams) (interface{}, error) {
@@ -979,7 +980,13 @@ func (q *budgetSpendingFailQuerier) SumCategoryExpenses(ctx context.Context, arg
 }
 
 func (q *budgetSpendingFailQuerier) SumTagExpenses(ctx context.Context, arg gen.SumTagExpensesParams) (interface{}, error) {
-	return nil, fmt.Errorf("mock tag spending failure")
+	if q.tagOnly {
+		return nil, fmt.Errorf("mock tag spending failure")
+	}
+	if q.catFail {
+		return nil, fmt.Errorf("mock tag spending failure")
+	}
+	return int64(0), nil
 }
 
 func TestSetBudgetCreateError(t *testing.T) {
@@ -1029,5 +1036,1174 @@ func TestListBudgetsSpendingError(t *testing.T) {
 	_, err := svc.ListBudgets(ListBudgetsParams{All: false})
 	if err == nil {
 		t.Fatal("expected spending error")
+	}
+}
+
+func TestListBudgetsAll(t *testing.T) {
+	svc := setupService(t)
+
+	_, err := svc.SetBudget(SetBudgetParams{
+		Name:       "Food",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+	if err != nil {
+		t.Fatalf("SetBudget: %v", err)
+	}
+
+	items, err := svc.ListBudgets(ListBudgetsParams{All: true})
+	if err != nil {
+		t.Fatalf("ListBudgets all: %v", err)
+	}
+	if len(items) != 1 {
+		t.Errorf("expected 1 budget, got %d", len(items))
+	}
+}
+
+func TestListBudgetsActiveError(t *testing.T) {
+	dbase := testdb.Open(t)
+	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)})
+
+	_, err := svc.ListBudgets(ListBudgetsParams{All: false})
+	if err == nil {
+		t.Fatal("expected list error")
+	}
+}
+
+func TestListBudgetsAllError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	svc := NewWithQuerier(dbase, &budgetAllListFailQuerier{Querier: q})
+
+	_, err := svc.ListBudgets(ListBudgetsParams{All: true})
+	if err == nil {
+		t.Fatal("expected list error")
+	}
+}
+
+func TestCheckBudgetsListError(t *testing.T) {
+	dbase := testdb.Open(t)
+	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)})
+
+	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	if err == nil {
+		t.Fatal("expected list error")
+	}
+	if !strings.Contains(err.Error(), "mock list failure") {
+		t.Errorf("expected mock error, got %v", err)
+	}
+}
+
+func TestResolveBudgetByID(t *testing.T) {
+	svc := setupService(t)
+
+	result, _ := svc.SetBudget(SetBudgetParams{
+		Name:       "Food",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+
+	idStr := fmt.Sprintf("%d", result.Budget.ID)
+	b, err := svc.resolveBudget(idStr)
+	if err != nil {
+		t.Fatalf("resolveBudget: %v", err)
+	}
+	if b.ID != result.Budget.ID {
+		t.Errorf("expected budget ID %d, got %d", result.Budget.ID, b.ID)
+	}
+}
+
+func TestResolveBudgetByIDInactive(t *testing.T) {
+	svc := setupService(t)
+
+	result, _ := svc.SetBudget(SetBudgetParams{
+		Name:       "Food",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+	_ = svc.RemoveBudget(result.Budget.ID)
+
+	_, err := svc.resolveBudget(fmt.Sprintf("%d", result.Budget.ID))
+	if err == nil {
+		t.Fatal("expected not found for inactive budget by ID")
+	}
+}
+
+func TestResolveBudgetListError(t *testing.T) {
+	dbase := testdb.Open(t)
+	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)})
+
+	_, err := svc.resolveBudget("ByName")
+	if err == nil {
+		t.Fatal("expected list error")
+	}
+}
+
+func TestEnsureCurrentPeriodWeekly(t *testing.T) {
+	svc := setupService(t)
+
+	_, err := svc.SetBudget(SetBudgetParams{
+		Name:       "Weekly",
+		Amount:     500000,
+		Period:     "weekly",
+		Categories: []string{"Restaurant"},
+	})
+	if err != nil {
+		t.Fatalf("SetBudget weekly: %v", err)
+	}
+
+	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	if err != nil {
+		t.Fatalf("CheckBudgets weekly: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected results for weekly budget")
+	}
+}
+
+func TestEnsureCurrentPeriodYearly(t *testing.T) {
+	svc := setupService(t)
+
+	_, err := svc.SetBudget(SetBudgetParams{
+		Name:       "Yearly",
+		Amount:     50000000,
+		Period:     "yearly",
+		Categories: []string{"Restaurant"},
+	})
+	if err != nil {
+		t.Fatalf("SetBudget yearly: %v", err)
+	}
+
+	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	if err != nil {
+		t.Fatalf("CheckBudgets yearly: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected results for yearly budget")
+	}
+}
+
+func TestBuildCheckResultZeroAmount(t *testing.T) {
+	svc := setupService(t)
+
+	_, err := svc.SetBudget(SetBudgetParams{
+		Name:       "Zero Test",
+		Amount:     1,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+	if err != nil {
+		t.Fatalf("SetBudget: %v", err)
+	}
+
+	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	if err != nil {
+		t.Fatalf("CheckBudgets: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected results")
+	}
+	if results[0].PercentUsed != 0 {
+		t.Errorf("expected PercentUsed 0, got %f", results[0].PercentUsed)
+	}
+}
+
+func TestBudgetNameWithNull(t *testing.T) {
+	b := &gen.Budget{}
+	name := budgetName(b)
+	if !strings.Contains(name, "0") {
+		t.Errorf("expected ID-based name for null, got %s", name)
+	}
+}
+
+func TestBudgetNameWithName(t *testing.T) {
+	b := &gen.Budget{Name: sql.NullString{String: "Test Name", Valid: true}}
+	name := budgetName(b)
+	if name != "Test Name" {
+		t.Errorf("expected 'Test Name', got %s", name)
+	}
+}
+
+func TestCalculatePeriodPartialDates(t *testing.T) {
+	start, end, err := calculatePeriod("monthly", "2026-01-01", "")
+	if err != nil {
+		t.Fatalf("calculatePeriod with only from: %v", err)
+	}
+	if start == "" || end == "" {
+		t.Error("expected non-empty result with partial dates")
+	}
+
+	start, end, err = calculatePeriod("monthly", "", "2026-01-31")
+	if err != nil {
+		t.Fatalf("calculatePeriod with only to: %v", err)
+	}
+}
+
+func TestCalculatePeriodOneTimeExplicit(t *testing.T) {
+	start, end, err := calculatePeriod("one_time", "2026-01-01", "2026-12-31")
+	if err != nil {
+		t.Fatalf("calculatePeriod one_time: %v", err)
+	}
+	if start != "2026-01-01" || end != "2026-12-31" {
+		t.Errorf("expected 2026-01-01/2026-12-31, got %s/%s", start, end)
+	}
+}
+
+func TestSetBudgetNotifyPctDefault(t *testing.T) {
+	svc := setupService(t)
+
+	result, err := svc.SetBudget(SetBudgetParams{
+		Name:       "Default Notify",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+	if err != nil {
+		t.Fatalf("SetBudget: %v", err)
+	}
+	if result.Budget.NotifyAtPct.Valid && result.Budget.NotifyAtPct.Int64 == 80 {
+	} else {
+		t.Errorf("expected default notify 80")
+	}
+}
+
+func TestToInt64NonInt64(t *testing.T) {
+	v := toInt64("not an int64")
+	if v != 0 {
+		t.Errorf("expected 0, got %d", v)
+	}
+}
+
+func TestToInt64Int64(t *testing.T) {
+	v := toInt64(int64(42))
+	if v != 42 {
+		t.Errorf("expected 42, got %d", v)
+	}
+}
+
+// Additional mock queriers for error path coverage
+type budgetAllListFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetAllListFailQuerier) ListAllBudgets(ctx context.Context) ([]*gen.Budget, error) {
+	return nil, fmt.Errorf("mock all list failure")
+}
+
+type budgetGetByNameAndPeriodFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetGetByNameAndPeriodFailQuerier) GetBudgetByNameAndPeriod(ctx context.Context, arg gen.GetBudgetByNameAndPeriodParams) (*gen.Budget, error) {
+	return nil, fmt.Errorf("mock get by name and period failure")
+}
+
+type budgetAddCatFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetAddCatFailQuerier) AddBudgetCategory(ctx context.Context, arg gen.AddBudgetCategoryParams) error {
+	return fmt.Errorf("mock add category failure")
+}
+
+type budgetAddTagFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetAddTagFailQuerier) AddBudgetTag(ctx context.Context, arg gen.AddBudgetTagParams) error {
+	return fmt.Errorf("mock add tag failure")
+}
+
+type budgetUpdateFailQuerier2 struct {
+	gen.Querier
+}
+
+func (q *budgetUpdateFailQuerier2) UpdateBudget(ctx context.Context, arg gen.UpdateBudgetParams) (*gen.Budget, error) {
+	return nil, fmt.Errorf("mock update failure 2")
+}
+
+type budgetRemoveCatFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetRemoveCatFailQuerier) RemoveAllBudgetCategories(ctx context.Context, budgetID int64) error {
+	return fmt.Errorf("mock remove categories failure")
+}
+
+type budgetRemoveTagFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetRemoveTagFailQuerier) RemoveAllBudgetTags(ctx context.Context, budgetID int64) error {
+	return fmt.Errorf("mock remove tags failure")
+}
+
+type budgetMarkInactiveFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetMarkInactiveFailQuerier) MarkBudgetInactive(ctx context.Context, id int64) error {
+	return fmt.Errorf("mock mark inactive failure")
+}
+
+type budgetPriorFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetPriorFailQuerier) GetMostRecentPriorBudget(ctx context.Context, arg gen.GetMostRecentPriorBudgetParams) (*gen.Budget, error) {
+	return nil, fmt.Errorf("mock prior budget failure")
+}
+
+func TestSetBudgetGetByNameError(t *testing.T) {
+	dbase := testdb.Open(t)
+	svc := NewWithQuerier(dbase, &budgetGetByNameAndPeriodFailQuerier{Querier: gen.New(dbase)})
+
+	_, err := svc.SetBudget(SetBudgetParams{
+		Name:       "Food",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Food & Dining"},
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "mock get by name and period failure") {
+		t.Errorf("expected mock error, got %v", err)
+	}
+}
+
+func TestSetBudgetAddCategoryError(t *testing.T) {
+	dbase := testdb.Open(t)
+	svc := NewWithQuerier(dbase, &budgetAddCatFailQuerier{Querier: gen.New(dbase)})
+
+	_, err := svc.SetBudget(SetBudgetParams{
+		Name:       "Food",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Food & Dining"},
+	})
+	if err == nil {
+		t.Fatal("expected add category error")
+	}
+	if !strings.Contains(err.Error(), "mock add category failure") {
+		t.Errorf("expected mock error, got %v", err)
+	}
+}
+
+func TestSetBudgetAddTagError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateTag(context.Background(), "test-tag")
+	svc := NewWithQuerier(dbase, &budgetAddTagFailQuerier{Querier: q})
+
+	_, err := svc.SetBudget(SetBudgetParams{
+		Name:   "Food",
+		Amount: 1000000,
+		Period: "monthly",
+		Tags:   []string{"test-tag"},
+	})
+	if err == nil {
+		t.Fatal("expected add tag error")
+	}
+	if !strings.Contains(err.Error(), "mock add tag failure") {
+		t.Errorf("expected mock error, got %v", err)
+	}
+}
+
+func TestUpdateExistingBudgetRemoveCatError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetRemoveCatFailQuerier{Querier: q})
+
+	cat, _ := svc.ResolveCategory("Food & Dining")
+	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
+		Categories: []string{},
+	}, "monthly", "2026-07-01", "2026-07-31", []*gen.Category{cat}, nil)
+	if err == nil {
+		t.Fatal("expected remove categories error")
+	}
+}
+
+func TestUpdateExistingBudgetRemoveTagError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetRemoveTagFailQuerier{Querier: q})
+
+	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
+		Categories: []string{},
+	}, "monthly", "2026-07-01", "2026-07-31", nil, nil)
+	if err == nil {
+		t.Fatal("expected remove tags error")
+	}
+}
+
+func TestUpdateExistingBudgetUpdateError(t *testing.T) {
+	dbase := testdb.Open(t)
+	svc := NewWithQuerier(dbase, &budgetUpdateFailQuerier2{Querier: gen.New(dbase)})
+
+	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
+		Categories: []string{},
+	}, "monthly", "2026-07-01", "2026-07-31", nil, nil)
+	if err == nil {
+		t.Fatal("expected update error")
+	}
+}
+
+func TestRemoveBudgetGetError(t *testing.T) {
+	dbase := testdb.Open(t)
+	svc := NewWithQuerier(dbase, &budgetGetFailQuerier{Querier: gen.New(dbase)})
+
+	err := svc.RemoveBudget(1)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "mock get failure") {
+		t.Errorf("expected mock error, got %v", err)
+	}
+}
+
+func TestEditBudgetUpdateError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetUpdateFailQuerier2{Querier: q})
+
+	_, err := svc.EditBudget(1, EditBudgetParams{Name: "New"})
+	if err == nil {
+		t.Fatal("expected update error")
+	}
+}
+
+func TestEnsureCurrentPeriodPriorError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+	})
+	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q})
+
+	budget := &gen.Budget{
+		ID:          2,
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+		Amount:      1000000,
+		Currency:    "IDR",
+		IsActive:    1,
+	}
+	_, err := svc.ensureCurrentPeriod(budget)
+	if err == nil {
+		t.Fatal("expected prior budget error")
+	}
+}
+
+func TestCheckSingleBudgetEnsureError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+	})
+	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q})
+
+	_, err := svc.CheckBudgets(CheckBudgetsParams{Identifier: "Test"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+// Additional mock queriers for remaining coverage gaps
+type budgetResolveGetFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetResolveGetFailQuerier) GetBudgetByID(ctx context.Context, id int64) (*gen.Budget, error) {
+	return nil, fmt.Errorf("mock get by id failure")
+}
+
+type budgetEnsureCreateFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetEnsureCreateFailQuerier) CreateBudget(ctx context.Context, arg gen.CreateBudgetParams) (*gen.Budget, error) {
+	return nil, fmt.Errorf("mock create in ensure failure")
+}
+
+type budgetEnsureCatFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetEnsureCatFailQuerier) ListBudgetCategories(ctx context.Context, budgetID int64) ([]*gen.Category, error) {
+	return nil, fmt.Errorf("mock list categories failure")
+}
+
+type budgetEnsureTagFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetEnsureTagFailQuerier) ListBudgetTags(ctx context.Context, budgetID int64) ([]*gen.Tag, error) {
+	return nil, fmt.Errorf("mock list tags failure")
+}
+
+type budgetEditCatAddFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetEditCatAddFailQuerier) AddBudgetCategory(ctx context.Context, arg gen.AddBudgetCategoryParams) error {
+	return fmt.Errorf("mock add category in edit failure")
+}
+
+type budgetEditTagAddFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetEditTagAddFailQuerier) AddBudgetTag(ctx context.Context, arg gen.AddBudgetTagParams) error {
+	return fmt.Errorf("mock add tag in edit failure")
+}
+
+func TestResolveBudgetGetByIDError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetResolveGetFailQuerier{Querier: q})
+
+	_, err := svc.resolveBudget("1")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "mock get by id failure") {
+		t.Errorf("expected mock error, got %v", err)
+	}
+}
+
+func TestEnsureCurrentPeriodCreateError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+	})
+	svc := NewWithQuerier(dbase, &budgetEnsureCreateFailQuerier{Querier: q})
+
+	b := &gen.Budget{
+		ID:          2,
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+		Amount:      1000000,
+		Currency:    "IDR",
+		IsActive:    1,
+	}
+	_, err := svc.ensureCurrentPeriod(b)
+	if err == nil {
+		t.Fatal("expected create error in ensureCurrentPeriod")
+	}
+}
+
+func TestEnsureCurrentPeriodListCatError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+	})
+	svc := NewWithQuerier(dbase, &budgetEnsureCatFailQuerier{Querier: q})
+
+	b := &gen.Budget{
+		ID:          2,
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+		Amount:      1000000,
+		Currency:    "IDR",
+		IsActive:    1,
+	}
+	_, err := svc.ensureCurrentPeriod(b)
+	if err == nil {
+		t.Fatal("expected list categories error")
+	}
+}
+
+func TestEnsureCurrentPeriodListTagError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+	})
+	_ = q.AddBudgetCategory(context.Background(), gen.AddBudgetCategoryParams{BudgetID: 1, CategoryID: 1})
+
+	svc := NewWithQuerier(dbase, &budgetEnsureTagFailQuerier{Querier: q})
+
+	b := &gen.Budget{
+		ID:          2,
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+		Amount:      1000000,
+		Currency:    "IDR",
+		IsActive:    1,
+	}
+	_, err := svc.ensureCurrentPeriod(b)
+	if err == nil {
+		t.Fatal("expected list tags error")
+	}
+}
+
+func TestEditBudgetAddCategoryError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q})
+
+	_, err := svc.EditBudget(1, EditBudgetParams{
+		AddCategories: []string{"Food & Dining"},
+	})
+	if err == nil {
+		t.Fatal("expected add category error")
+	}
+}
+
+func TestEditBudgetAddTagError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	_, _ = q.CreateTag(context.Background(), "test-tag")
+	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q})
+
+	_, err := svc.EditBudget(1, EditBudgetParams{
+		AddTags: []string{"test-tag"},
+	})
+	if err == nil {
+		t.Fatal("expected add tag error")
+	}
+}
+
+func TestEditBudgetRemoveCategoryMissing(t *testing.T) {
+	svc := setupService(t)
+	result, _ := svc.SetBudget(SetBudgetParams{
+		Name:       "Test",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+
+	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		RemoveCategories: []string{"GhostCategory"},
+	})
+	if err == nil {
+		t.Fatal("expected not found error for missing category")
+	}
+	if !strings.Contains(err.Error(), "GhostCategory") {
+		t.Errorf("expected 'GhostCategory' in error, got %v", err)
+	}
+}
+
+func TestEditBudgetRemoveTag(t *testing.T) {
+	svc := setupService(t)
+	_, _ = svc.CreateTag("test-tag")
+	_, _ = svc.CreateTag("extra-tag")
+	result, _ := svc.SetBudget(SetBudgetParams{
+		Name:   "Test",
+		Amount: 1000000,
+		Period: "monthly",
+		Tags:   []string{"test-tag", "extra-tag"},
+	})
+
+	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		RemoveTags: []string{"test-tag"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestEditBudgetRemoveTagMissing(t *testing.T) {
+	svc := setupService(t)
+	result, _ := svc.SetBudget(SetBudgetParams{
+		Name:       "Test",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+
+	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		RemoveTags: []string{"GhostTag"},
+	})
+	if err == nil {
+		t.Fatal("expected not found error for missing tag")
+	}
+}
+
+func TestEditBudgetInvalidNotify(t *testing.T) {
+	svc := setupService(t)
+	result, _ := svc.SetBudget(SetBudgetParams{
+		Name:       "Test",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+
+	notify := int64(101)
+	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		NotifyPct: &notify,
+	})
+	if err == nil {
+		t.Fatal("expected validation error for notify > 100")
+	}
+
+	notify = int64(0)
+	_, err = svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		NotifyPct: &notify,
+	})
+	if err == nil {
+		t.Fatal("expected validation error for notify < 1")
+	}
+}
+
+func TestCheckBudgetsLoopEnsureError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+	})
+	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q})
+
+	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	if err == nil {
+		t.Fatal("expected ensureCurrentPeriod error in check loop")
+	}
+}
+
+func TestUpdateExistingBudgetAddCatError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q})
+
+	cat, _ := svc.ResolveCategory("Food & Dining")
+	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
+	}, "monthly", "2026-07-01", "2026-07-31", []*gen.Category{cat}, nil)
+	if err == nil {
+		t.Fatal("expected add category error in upsert")
+	}
+}
+
+func TestUpdateExistingBudgetAddTagError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	_, _ = q.CreateTag(context.Background(), "test-tag")
+	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q})
+
+	tag, _ := svc.ResolveTag("test-tag")
+	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
+	}, "monthly", "2026-07-01", "2026-07-31", nil, []*gen.Tag{tag})
+	if err == nil {
+		t.Fatal("expected add tag error in upsert")
+	}
+}
+
+func TestEnsureCurrentPeriodDefaultType(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	svc := NewWithQuerier(dbase, q)
+
+	b := &gen.Budget{
+		ID:          1,
+		Name:        sql.NullString{String: "Custom", Valid: true},
+		Type:        "custom",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+		Amount:      1000000,
+		Currency:    "IDR",
+		IsActive:    1,
+	}
+	result, err := svc.ensureCurrentPeriod(b)
+	if err != nil {
+		t.Fatalf("ensureCurrentPeriod: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result for unknown type")
+	}
+}
+
+func TestCalculateSpendingTagError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, tagOnly: true})
+
+	_, err := svc.calculateSpending(1, "2026-07-01", "2026-07-31")
+	if err == nil {
+		t.Fatal("expected tag spending error")
+	}
+}
+
+func TestBuildCheckResultSpendingError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+
+	b, _ := q.GetBudgetByID(context.Background(), 1)
+	_, err := svc.buildCheckResult(b)
+	if err == nil {
+		t.Fatal("expected spending error in buildCheckResult")
+	}
+}
+
+func TestEditBudgetResolveAddTagError(t *testing.T) {
+	svc := setupService(t)
+	result, _ := svc.SetBudget(SetBudgetParams{
+		Name:       "Test",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+
+	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		AddTags: []string{"GhostTag"},
+	})
+	if err == nil {
+		t.Fatal("expected tag not found error")
+	}
+	if !strings.Contains(err.Error(), "GhostTag") {
+		t.Errorf("expected 'GhostTag' in error, got %v", err)
+	}
+}
+
+func TestEditBudgetResolveAddCategoryError(t *testing.T) {
+	svc := setupService(t)
+	result, _ := svc.SetBudget(SetBudgetParams{
+		Name:       "Test",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+
+	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		AddCategories: []string{"GhostCategory"},
+	})
+	if err == nil {
+		t.Fatal("expected category not found error")
+	}
+}
+
+type budgetEditRemoveCatFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetEditRemoveCatFailQuerier) RemoveBudgetCategory(ctx context.Context, arg gen.RemoveBudgetCategoryParams) error {
+	return fmt.Errorf("mock remove category failure")
+}
+
+type budgetEditRemoveTagFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetEditRemoveTagFailQuerier) RemoveBudgetTag(ctx context.Context, arg gen.RemoveBudgetTagParams) error {
+	return fmt.Errorf("mock remove tag failure")
+}
+
+func TestEditBudgetRemoveCategoryError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetEditRemoveCatFailQuerier{Querier: q})
+
+	_, err := svc.EditBudget(1, EditBudgetParams{
+		RemoveCategories: []string{"Food & Dining"},
+	})
+	if err == nil {
+		t.Fatal("expected remove category error")
+	}
+}
+
+func TestEditBudgetRemoveTagError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	_, _ = q.CreateTag(context.Background(), "test-tag")
+	svc := NewWithQuerier(dbase, &budgetEditRemoveTagFailQuerier{Querier: q})
+
+	_, err := svc.EditBudget(1, EditBudgetParams{
+		RemoveTags: []string{"test-tag"},
+	})
+	if err == nil {
+		t.Fatal("expected remove tag error")
+	}
+}
+
+func TestRecurringAutoGenerationWithPrior(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Monthly", Valid: true},
+		Amount:      500000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+	})
+	svc := NewWithQuerier(dbase, q)
+
+	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	if err != nil {
+		t.Fatalf("CheckBudgets: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected auto-generated budget in results")
+	}
+
+	all, _ := svc.ListBudgets(ListBudgetsParams{All: true})
+	if len(all) < 2 {
+		t.Errorf("expected at least 2 budgets (original + auto-generated), got %d", len(all))
+	}
+}
+
+func TestCheckBudgetsSpendingError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+
+	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	if err == nil {
+		t.Fatal("expected spending error in check all")
+	}
+}
+
+func TestCheckSingleBudgetSpendingError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+
+	_, err := svc.CheckBudgets(CheckBudgetsParams{Identifier: "Test"})
+	if err == nil {
+		t.Fatal("expected spending error in single check")
+	}
+}
+
+func TestEnsureCurrentPeriodNoPrior(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Custom", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-15",
+		PeriodEnd:   "2026-08-14",
+	})
+	svc := NewWithQuerier(dbase, q)
+
+	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	if err != nil {
+		t.Fatalf("CheckBudgets: %v", err)
+	}
+	if len(results) == 0 {
+		t.Fatal("expected check result")
+	}
+}
+
+func TestEnsureCurrentPeriodCopyCatError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+	})
+	_ = q.AddBudgetCategory(context.Background(), gen.AddBudgetCategoryParams{BudgetID: 1, CategoryID: 1})
+	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q})
+
+	b := &gen.Budget{
+		ID:          2,
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+		Amount:      1000000,
+		Currency:    "IDR",
+		IsActive:    1,
+	}
+	_, err := svc.ensureCurrentPeriod(b)
+	if err == nil {
+		t.Fatal("expected add category error")
+	}
+}
+
+func TestEnsureCurrentPeriodCopyTagError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+	})
+	_ = q.AddBudgetCategory(context.Background(), gen.AddBudgetCategoryParams{BudgetID: 1, CategoryID: 1})
+	_, _ = q.CreateTag(context.Background(), "test-tag")
+	_ = q.AddBudgetTag(context.Background(), gen.AddBudgetTagParams{BudgetID: 1, TagID: 1})
+	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q})
+
+	b := &gen.Budget{
+		ID:          2,
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Type:        "monthly",
+		PeriodStart: "2026-06-01",
+		PeriodEnd:   "2026-06-30",
+		Amount:      1000000,
+		Currency:    "IDR",
+		IsActive:    1,
+	}
+	_, err := svc.ensureCurrentPeriod(b)
+	if err == nil {
+		t.Fatal("expected add tag error")
 	}
 }
