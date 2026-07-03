@@ -15,7 +15,7 @@
 - [x] 2.6 Implement recurring period auto-generation for monthly, weekly, and yearly budgets by copying the most recent prior period's amount, notification threshold, active state, and targets.
 - [x] 2.7 Implement `EditBudget` for amount, name, notification threshold, added/removed categories, and added/removed tags while preserving unspecified fields.
 - [x] 2.8 Implement `RemoveBudget` so removed budgets are excluded from default list and check workflows.
-- [ ] 2.9 Return consistent validation and not-found errors for CLI rendering.
+- [x] 2.9 Return consistent validation and not-found errors for CLI rendering.
 
 ## 3. CLI Commands
 
