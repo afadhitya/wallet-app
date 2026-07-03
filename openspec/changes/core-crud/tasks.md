@@ -1,9 +1,9 @@
 ## 1. Database And Query Layer
 
-- [ ] 1.1 Add sqlc queries for accounts, categories, tags, transactions, transaction tags, list filters, and balance recalculation.
-- [ ] 1.2 Add the minimal migration support needed for transaction/category archiving and update timestamps if the current schema cannot support required soft-delete behavior.
-- [ ] 1.3 Regenerate `internal/gen` from `sqlc.yaml` and verify generated code compiles.
-- [ ] 1.4 Add database test helpers that create isolated migrated SQLite databases with seed data for service and CLI tests.
+- [x] 1.1 Add sqlc queries for accounts, categories, tags, transactions, transaction tags, list filters, and balance recalculation.
+- [x] 1.2 Add the minimal migration support needed for transaction/category archiving and update timestamps if the current schema cannot support required soft-delete behavior.
+- [x] 1.3 Regenerate `internal/gen` from `sqlc.yaml` and verify generated code compiles.
+- [x] 1.4 Add database test helpers that create isolated migrated SQLite databases with seed data for service and CLI tests.
 
 ## 2. Service Layer
 
