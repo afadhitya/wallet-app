@@ -3027,3 +3027,123 @@ func TestAdjustBalanceRecalcFailure(t *testing.T) {
 		t.Fatal("expected adjust recalc failure")
 	}
 }
+
+func TestAddTransferDescriptionOnly(t *testing.T) {
+	svc := setupService(t)
+	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = svc.CreateAccount("GoPay", "ewallet", "IDR")
+	_, _ = svc.AddIncome(CreateIncomeParams{
+		Amount: 1000000, Description: "Init", Category: "Salary", Account: "BCA",
+	})
+
+	result, err := svc.AddTransfer(CreateTransferParams{
+		Amount:      200000,
+		FromAccount: "BCA",
+		ToAccount:   "GoPay",
+		Description: "Transfer desc",
+		Date:        "2026-07-01",
+	})
+	if err != nil {
+		t.Fatalf("AddTransfer desc only: %v", err)
+	}
+	if !result.Transaction.Description.Valid || result.Transaction.Description.String != "Transfer desc" {
+		t.Errorf("expected description 'Transfer desc'")
+	}
+}
+
+func TestAddTransferNotesOnly(t *testing.T) {
+	svc := setupService(t)
+	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = svc.CreateAccount("GoPay", "ewallet", "IDR")
+	_, _ = svc.AddIncome(CreateIncomeParams{
+		Amount: 1000000, Description: "Init", Category: "Salary", Account: "BCA",
+	})
+
+	result, err := svc.AddTransfer(CreateTransferParams{
+		Amount:      200000,
+		FromAccount: "BCA",
+		ToAccount:   "GoPay",
+		Notes:       "Transfer notes only",
+		Date:        "2026-07-01",
+	})
+	if err != nil {
+		t.Fatalf("AddTransfer notes only: %v", err)
+	}
+	if !result.Transaction.Notes.Valid || result.Transaction.Notes.String != "Transfer notes only" {
+		t.Errorf("expected notes 'Transfer notes only'")
+	}
+}
+
+func TestAdjustBalanceNotesOnly(t *testing.T) {
+	svc := setupService(t)
+	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = svc.AddIncome(CreateIncomeParams{
+		Amount: 1000000, Description: "Init", Category: "Salary", Account: "BCA",
+	})
+
+	result, err := svc.AdjustBalance(AdjustBalanceParams{
+		Account: "BCA",
+		Target:  2000000,
+		Notes:   "Adjust notes only",
+	})
+	if err != nil {
+		t.Fatalf("AdjustBalance notes only: %v", err)
+	}
+	if !result.Transaction.Notes.Valid || result.Transaction.Notes.String != "Adjust notes only" {
+		t.Errorf("expected notes 'Adjust notes only'")
+	}
+}
+
+type adjustFinalFailQuerier struct {
+	gen.Querier
+	callCount int
+}
+
+func (a *adjustFinalFailQuerier) GetAccountBalance(ctx context.Context, accountID int64) (interface{}, error) {
+	a.callCount++
+	if a.callCount == 3 {
+		return nil, fmt.Errorf("mock final balance failure")
+	}
+	return int64(0), nil
+}
+
+type transferFirstBalanceFailQuerier struct {
+	gen.Querier
+}
+
+func (t transferFirstBalanceFailQuerier) GetAccountBalance(ctx context.Context, accountID int64) (interface{}, error) {
+	return nil, fmt.Errorf("mock balance check failure")
+}
+
+func TestAddTransferGetBalanceError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
+	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "GoPay", Type: "ewallet", Currency: "IDR"})
+	svc := NewWithQuerier(dbase, transferFirstBalanceFailQuerier{q})
+
+	_, err := svc.AddTransfer(CreateTransferParams{
+		Amount:      100000,
+		FromAccount: "BCA",
+		ToAccount:   "GoPay",
+	})
+	if err == nil {
+		t.Fatal("expected get balance error")
+	}
+}
+
+func TestAdjustBalanceGetNewBalanceError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
+	svc := NewWithQuerier(dbase, &adjustFinalFailQuerier{Querier: q})
+
+	_, err := svc.AdjustBalance(AdjustBalanceParams{
+		Account:     "BCA",
+		Target:      1000000,
+		Description: "Adjustment",
+	})
+	if err == nil {
+		t.Fatal("expected final balance read error")
+	}
+}

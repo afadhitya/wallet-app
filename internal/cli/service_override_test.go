@@ -20,9 +20,9 @@ func TestGetService_ConfigIsDirectory(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 	defer func() {
 		if origHome == "" {
-  			_ = os.Unsetenv("HOME")
+			_ = os.Unsetenv("HOME")
 		} else {
-  			_ = os.Setenv("HOME", origHome)
+			_ = os.Setenv("HOME", origHome)
 		}
 	}()
 
@@ -48,9 +48,9 @@ func TestWithService_ErrorPath(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 	defer func() {
 		if origHome == "" {
-  			_ = os.Unsetenv("HOME")
+			_ = os.Unsetenv("HOME")
 		} else {
-  			_ = os.Setenv("HOME", origHome)
+			_ = os.Setenv("HOME", origHome)
 		}
 	}()
 
@@ -81,9 +81,9 @@ func TestInit_WithoutOverride(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 	defer func() {
 		if origHome == "" {
-  			_ = os.Unsetenv("HOME")
+			_ = os.Unsetenv("HOME")
 		} else {
-  			_ = os.Setenv("HOME", origHome)
+			_ = os.Setenv("HOME", origHome)
 		}
 	}()
 

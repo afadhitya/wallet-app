@@ -691,3 +691,111 @@ func TestCLIList_IncludesTransferForCoverage(t *testing.T) {
 		t.Errorf("expected 'transfer' in output: %s", stdout)
 	}
 }
+
+func TestCLIRm_NonExistentForce(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, err := cli.run("rm", "999", "--force")
+	if err == nil {
+		t.Fatal("expected error for non-existent transaction with force")
+	}
+	if !strings.Contains(stderr, "not found") {
+		t.Errorf("expected 'not found' error, got: %s", stderr)
+	}
+}
+
+func TestCLIList_ErrorPath(t *testing.T) {
+	oldOverride := getServiceOverride
+	defer func() { getServiceOverride = oldOverride }()
+
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	svc, _, _ := getServiceOverride(nil)
+	_ = svc.DB().Close()
+
+	_, stderr, _ := cli.run("list")
+	if stderr == "" {
+		t.Error("expected error output for list with closed DB")
+	}
+}
+
+func TestCLIInit_JSONOutput(t *testing.T) {
+	cli := newTestCLI(t)
+	stdout, _, err := cli.run("--json", "init")
+	if err != nil {
+		t.Fatalf("init --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
+		t.Fatalf("unmarshal JSON: %v", jerr)
+	}
+}
+
+func TestCLITagList_EmptyJSON(t *testing.T) {
+	cli := newTestCLI(t)
+	stdout, _, err := cli.run("--json", "tag", "list")
+	if err != nil {
+		t.Fatalf("tag list --json: %v", err)
+	}
+
+	var tags []map[string]interface{}
+	if jerr := json.Unmarshal([]byte(stdout), &tags); jerr != nil {
+		t.Fatalf("unmarshal JSON: %v", jerr)
+	}
+	if len(tags) != 0 {
+		t.Errorf("expected 0 tags, got %d", len(tags))
+	}
+}
+
+func TestCLITagList_NonEmpty(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("tag", "add", "alpha")
+	_, _, _ = cli.run("tag", "add", "beta")
+
+	stdout, _, err := cli.run("tag", "list")
+	if err != nil {
+		t.Fatalf("tag list: %v", err)
+	}
+	if !strings.Contains(stdout, "alpha") || !strings.Contains(stdout, "beta") {
+		t.Errorf("expected both tags in output: %s", stdout)
+	}
+}
+
+func TestCLITagRm_ErrorPath(t *testing.T) {
+	cli := newTestCLI(t)
+	_, stderr, _ := cli.run("tag", "rm", "nonexistent")
+	if !strings.Contains(stderr, "not found") {
+		t.Errorf("expected 'not found' error, got: %s", stderr)
+	}
+}
+
+func TestCLICategoryList_ClosedDB(t *testing.T) {
+	oldOverride := getServiceOverride
+	defer func() { getServiceOverride = oldOverride }()
+
+	cli := newTestCLI(t)
+	svc, _, _ := getServiceOverride(nil)
+	_ = svc.DB().Close()
+
+	_, stderr, _ := cli.run("category", "list")
+	if stderr == "" {
+		t.Error("expected error output for category list with closed DB")
+	}
+}
+
+func TestCLIRm_StdinError(t *testing.T) {
+	cleanup := replaceStdinEmpty(t)
+	defer cleanup()
+
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	_, stderr, err := cli.run("rm", "1")
+	if err == nil {
+		t.Fatal("expected error when stdin is closed during rm")
+	}
+	if !strings.Contains(stderr, "failed to read confirmation") {
+		t.Errorf("expected 'failed to read confirmation', got: %s", stderr)
+	}
+}

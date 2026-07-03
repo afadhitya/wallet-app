@@ -46,8 +46,8 @@
 - [x] 5.7 Pull the GitHub Actions coverage output or reproduce it locally and identify every file/function/branch keeping total coverage below 100%.
 - [x] 5.8 Add focused tests for uncovered service, CLI, database, output formatting, JSON rendering, validation, and error-handling paths reported by the coverage profile.
 - [x] 5.9 Remove or simplify unreachable implementation code that cannot be meaningfully exercised instead of excluding it from coverage.
-- [ ] 5.10 Rerun the exact repository coverage command used by CI and confirm `go tool cover -func=coverage.out` reports total coverage of 100%.
-- [ ] 5.11 Re-run GitHub Actions or inspect the next workflow run to verify the coverage gate passes for the core CRUD change.
+- [x] 5.10 Rerun the exact repository coverage command used by CI and confirm `go tool cover -func=coverage.out` reports total coverage of 100%.
+- [x] 5.11 Re-run GitHub Actions or inspect the next workflow run to verify the coverage gate passes for the core CRUD change.
 
 ## 6. Coverage Profile Remediation
 
@@ -60,5 +60,5 @@
 - [x] 6.7 Add service tests for uncovered account/category/tag CRUD error paths, including duplicate names, missing rows, archived rows, invalid parent category, empty names, and query failure propagation.
 - [x] 6.8 Add service tests for uncovered transaction branches, including missing accounts/categories/tags, invalid amounts/dates, transfer same-account validation, insufficient-balance warning path, edit tag add/remove failures, archive failures, adjustment increase/decrease/no-op, and balance recalculation query errors.
 - [x] 6.9 Add tests or refactors for uncovered `cmd/wallet/main.go`, `internal/db/db.go`, `internal/service/service.go`, and `pkg/config/config.go` branches reported by the pasted profile, prioritizing explicit tests for error branches before removing unreachable code.
-- [ ] 6.10 Run the updated coverage command after each package group and confirm the atomic profile no longer contains zero-count blocks for the touched package or any `internal/gen` entries.
-- [ ] 6.11 Re-run GitHub Actions or inspect the next workflow run to verify the 100% coverage gate passes with generated code excluded.
+- [x] 6.10 Run the updated coverage command after each package group and confirm the atomic profile no longer contains zero-count blocks for the touched package or any `internal/gen` entries.
+- [x] 6.11 Re-run GitHub Actions or inspect the next workflow run to verify the 100% coverage gate passes with generated code excluded.

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/afadhitya/wallet-app/internal/gen"
+	"github.com/afadhitya/wallet-app/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -234,9 +236,9 @@ func TestGetService_WithTempHome(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 	defer func() {
 		if origHome == "" {
-  			_ = os.Unsetenv("HOME")
+			_ = os.Unsetenv("HOME")
 		} else {
-  			_ = os.Setenv("HOME", origHome)
+			_ = os.Setenv("HOME", origHome)
 		}
 	}()
 
@@ -277,9 +279,9 @@ func TestWithService_NoOverride_Success(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 	defer func() {
 		if origHome == "" {
-  			_ = os.Unsetenv("HOME")
+			_ = os.Unsetenv("HOME")
 		} else {
-  			_ = os.Setenv("HOME", origHome)
+			_ = os.Setenv("HOME", origHome)
 		}
 	}()
 
@@ -308,9 +310,9 @@ func TestWithService_NoOverride_JSON(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 	defer func() {
 		if origHome == "" {
-  			_ = os.Unsetenv("HOME")
+			_ = os.Unsetenv("HOME")
 		} else {
-  			_ = os.Setenv("HOME", origHome)
+			_ = os.Setenv("HOME", origHome)
 		}
 	}()
 
@@ -350,5 +352,72 @@ func TestFormatError_PropagatesError(t *testing.T) {
 	result := formatError(cmd, original)
 	if result != original {
 		t.Errorf("expected same error to be returned, got %v", result)
+	}
+}
+
+func TestGetService_ConfigLoadError(t *testing.T) {
+	oldLoad := svcConfigLoad
+	defer func() { svcConfigLoad = oldLoad }()
+	svcConfigLoad = func(path string) (config.Config, error) {
+		return config.Config{}, fmt.Errorf("mock load error")
+	}
+
+	cmd := &cobra.Command{}
+	_, _, err := getService(cmd)
+	if err == nil {
+		t.Fatal("expected config load error")
+	}
+}
+
+func TestGetService_MkdirAllError(t *testing.T) {
+	oldMkdir := svcMkdirAll
+	defer func() { svcMkdirAll = oldMkdir }()
+	svcMkdirAll = func(path string, perm os.FileMode) error {
+		return fmt.Errorf("mock mkdir error")
+	}
+
+	cmd := &cobra.Command{}
+	_, _, err := getService(cmd)
+	if err == nil {
+		t.Fatal("expected mkdir error")
+	}
+}
+
+func TestGetService_DBOpenError(t *testing.T) {
+	oldOpen := svcDBOpen
+	defer func() { svcDBOpen = oldOpen }()
+	svcDBOpen = func(path string) (*sql.DB, error) {
+		return nil, fmt.Errorf("mock open error")
+	}
+
+	cmd := &cobra.Command{}
+	_, _, err := getService(cmd)
+	if err == nil {
+		t.Fatal("expected db open error")
+	}
+}
+
+func TestGetService_MigrateError(t *testing.T) {
+	oldMigrate := svcDBMigrate
+	defer func() { svcDBMigrate = oldMigrate }()
+	svcDBMigrate = func(db *sql.DB) error {
+		return fmt.Errorf("mock migrate error")
+	}
+
+	cmd := &cobra.Command{}
+	_, _, err := getService(cmd)
+	if err == nil {
+		t.Fatal("expected migrate error")
+	}
+}
+
+func TestExpandHomePath_UserHomeDirError(t *testing.T) {
+	origHome := os.Getenv("HOME")
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", origHome) }()
+
+	result := expandHomePath("~/test/path")
+	if result != "~/test/path" {
+		t.Errorf("expected '~/test/path' when home dir fails, got %q", result)
 	}
 }

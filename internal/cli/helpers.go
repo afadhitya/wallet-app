@@ -48,8 +48,15 @@ func formatError(cmd *cobra.Command, err error) error {
 	return err
 }
 
+var (
+	svcConfigLoad = config.Load
+	svcMkdirAll   = os.MkdirAll
+	svcDBOpen     = db.Open
+	svcDBMigrate  = db.Migrate
+)
+
 func getService(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
-	cfg, err := config.Load("")
+	cfg, err := svcConfigLoad("")
 	if err != nil {
 		return nil, nil, fmt.Errorf("load config: %w", err)
 	}
@@ -57,16 +64,16 @@ func getService(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
 	dbPath := expandHomePath(cfg.Database.Path)
 
 	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := svcMkdirAll(dir, 0755); err != nil {
 		return nil, nil, fmt.Errorf("create data directory: %w", err)
 	}
 
-	database, err := db.Open(dbPath)
+	database, err := svcDBOpen(dbPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 
-	if err := db.Migrate(database); err != nil {
+	if err := svcDBMigrate(database); err != nil {
 		_ = database.Close()
 		return nil, nil, fmt.Errorf("migrate database: %w", err)
 	}
