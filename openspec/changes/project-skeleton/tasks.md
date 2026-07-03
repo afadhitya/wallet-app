@@ -37,4 +37,4 @@
 - [x] 6.1 Add GitHub Actions workflow for pushes to `main` and `brainstorming` and pull requests to `main`.
 - [x] 6.2 Configure the workflow to set up Go from `go.mod`, run linting, run tests with atomic coverage, and fail below 100% coverage.
 - [x] 6.3 Configure workflow artifacts for `coverage.out` on every run and `coverage.html` on coverage failure.
-- [ ] 6.4 Run local verification with `go test ./...`, `go build ./cmd/wallet`, and the relevant Makefile targets.
+- [x] 6.4 Run local verification with `go test ./...`, `go build ./cmd/wallet`, and the relevant Makefile targets.
