@@ -27,8 +27,8 @@
 
 ## 4. Tests And Verification
 
-- [ ] 4.1 Add migration/query tests for planned-payment storage, active/paused filters, and transaction planned-payment linkage.
-- [ ] 4.2 Add service tests for create validation, recurrence edge cases, due filters, pay, skip, pause, resume, edit, delete, and one-time archiving.
-- [ ] 4.3 Add CLI integration tests for representative `wallet bill` workflows, JSON output, validation failures, and missing-record errors.
-- [ ] 4.4 Run sqlc generation verification, Go tests, and the repository coverage command until the existing 100% coverage gate passes.
-- [ ] 4.5 Run OpenSpec validation/status checks for `planned-payments` and resolve any artifact or requirement formatting issues.
+- [x] 4.1 Add migration/query tests for planned-payment storage, active/paused filters, and transaction planned-payment linkage.
+- [x] 4.2 Add service tests for create validation, recurrence edge cases, due filters, pay, skip, pause, resume, edit, delete, and one-time archiving.
+- [x] 4.3 Add CLI integration tests for representative `wallet bill` workflows, JSON output, validation failures, and missing-record errors.
+- [x] 4.4 Run sqlc generation verification, Go tests, and the repository coverage command until the existing 100% coverage gate passes.
+- [x] 4.5 Run OpenSpec validation/status checks for `planned-payments` and resolve any artifact or requirement formatting issues.

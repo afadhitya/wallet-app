@@ -423,11 +423,12 @@ func (s *Service) ResumePlannedPayment(id int64) error {
 			}
 			nextStr = newDue.Format("2006-01-02")
 		}
-		_, err = s.q.UpdatePlannedPaymentNextDueDate(s.ctx(), gen.UpdatePlannedPaymentNextDueDateParams{
+		if _, err := s.q.UpdatePlannedPaymentNextDueDate(s.ctx(), gen.UpdatePlannedPaymentNextDueDateParams{
 			ID:          id,
 			NextDueDate: sql.NullString{String: nextStr, Valid: true},
-		})
-		return err
+		}); err != nil {
+			return err
+		}
 	}
 
 	return s.q.ResumePlannedPayment(s.ctx(), id)
@@ -572,13 +573,18 @@ func calcNextDue(currentDue time.Time, recurrence string, recurrenceRule sql.Nul
 	case "weekly":
 		return currentDue.AddDate(0, 0, 7), nil
 	case "monthly":
+		year := currentDue.Year()
+		month := currentDue.Month() + 1
+		if month > 12 {
+			month = 1
+			year++
+		}
 		day := currentDue.Day()
-		nextMonth := currentDue.AddDate(0, 1, 0)
-		lastDay := time.Date(nextMonth.Year(), nextMonth.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+		lastDay := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
 		if day > lastDay {
 			day = lastDay
 		}
-		return time.Date(nextMonth.Year(), nextMonth.Month(), day, 0, 0, 0, 0, time.UTC), nil
+		return time.Date(year, month, day, 0, 0, 0, 0, time.UTC), nil
 	case "yearly":
 		return currentDue.AddDate(1, 0, 0), nil
 	case "custom":
@@ -615,16 +621,21 @@ func calcNextDueFromRRULE(currentDue time.Time, rrule string) (time.Time, error)
 	case "WEEKLY":
 		return currentDue.AddDate(0, 0, 7), nil
 	case "MONTHLY":
+		year := currentDue.Year()
+		month := currentDue.Month() + 1
+		if month > 12 {
+			month = 1
+			year++
+		}
 		day := currentDue.Day()
 		if byMonthDay > 0 {
 			day = byMonthDay
 		}
-		nextMonth := currentDue.AddDate(0, 1, 0)
-		lastDay := time.Date(nextMonth.Year(), nextMonth.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+		lastDay := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
 		if day > lastDay {
 			day = lastDay
 		}
-		return time.Date(nextMonth.Year(), nextMonth.Month(), day, 0, 0, 0, 0, time.UTC), nil
+		return time.Date(year, month, day, 0, 0, 0, 0, time.UTC), nil
 	case "YEARLY":
 		return currentDue.AddDate(1, 0, 0), nil
 	default:
