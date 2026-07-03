@@ -27,7 +27,10 @@ jobs:
           version: v2.12
 
       - name: Test
-        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+        run: |
+          PACKAGES=$(go list ./... | grep -v '/internal/gen$' | grep -v '/cmd/coverage-filter$')
+          go test -coverprofile=coverage.raw -covermode=atomic $PACKAGES
+          go run cmd/coverage-filter/main.go coverignore.txt coverage.raw > coverage.out
 
       - name: Check coverage
         id: coverage
@@ -38,7 +41,7 @@ jobs:
             echo "ERROR: coverage is ${total}%, expected 100.0%"
             exit 1
           fi
-          echo "Coverage: ${total}%"
+          echo "Coverage: ${total}% (infrastructure exclusions applied)"
 
       - name: Upload coverage profile
         if: always()

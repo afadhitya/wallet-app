@@ -2,11 +2,33 @@ package cli
 
 import (
 	"bytes"
+	"database/sql"
 	"strings"
 	"testing"
 
+	"github.com/afadhitya/wallet-app/internal/db"
+	"github.com/afadhitya/wallet-app/internal/service"
 	"github.com/spf13/cobra"
 )
+
+func setupTestService() func() {
+	dbase, err := db.Open(":memory:")
+	if err != nil {
+		panic(err)
+	}
+	if err := db.Migrate(dbase); err != nil {
+		_ = dbase.Close()
+		panic(err)
+	}
+	svc := service.New(dbase)
+	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
+		return svc, dbase, nil
+	}
+	return func() {
+		getServiceOverride = nil
+		_ = dbase.Close()
+	}
+}
 
 func TestNewRootCmd(t *testing.T) {
 	cmd := NewRootCmd()
@@ -33,7 +55,8 @@ func TestRootCmdExecutesWithoutError(t *testing.T) {
 func TestSubcommandRegistration(t *testing.T) {
 	cmd := NewRootCmd()
 	expectedSubcommands := []string{
-		"init", "add", "list", "category", "tag",
+		"init", "add", "list", "edit", "rm",
+		"category", "tag", "adjust",
 		"budget", "bill", "report", "forecast",
 	}
 
@@ -69,6 +92,9 @@ func TestJSONFlag(t *testing.T) {
 }
 
 func TestJSONFlagAvailable(t *testing.T) {
+	cleanup := setupTestService()
+	defer cleanup()
+
 	cmd := NewRootCmd()
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
@@ -89,15 +115,17 @@ func TestJSONFlagAvailable(t *testing.T) {
 }
 
 func TestSubcommandExecution(t *testing.T) {
+	cleanup := setupTestService()
+	defer cleanup()
+
 	testCases := []struct {
 		name string
 		args []string
 	}{
-		{"init", []string{"init"}},
-		{"add", []string{"add"}},
 		{"list", []string{"list"}},
-		{"category", []string{"category"}},
-		{"tag", []string{"tag"}},
+		{"category", []string{"category", "list"}},
+		{"tag", []string{"tag", "list"}},
+
 		{"budget", []string{"budget"}},
 		{"bill", []string{"bill"}},
 		{"report", []string{"report"}},
@@ -132,7 +160,7 @@ func TestRootCmdHelpOutput(t *testing.T) {
 	}
 
 	output := buf.String()
-	for _, sub := range []string{"init", "add", "list", "category", "tag", "budget", "bill", "report", "forecast"} {
+	for _, sub := range []string{"init", "add", "list", "category", "tag", "edit", "rm", "adjust", "budget", "bill", "report", "forecast"} {
 		if !strings.Contains(output, sub) {
 			t.Errorf("expected help output to contain '%s'", sub)
 		}
@@ -156,7 +184,10 @@ func TestRootCmdHelpFlag(t *testing.T) {
 }
 
 func TestSubcommandHelp(t *testing.T) {
-	for _, name := range []string{"init", "add", "list"} {
+	cleanup := setupTestService()
+	defer cleanup()
+
+	for _, name := range []string{"init", "add", "list", "edit", "rm", "category", "tag", "adjust"} {
 		t.Run(name, func(t *testing.T) {
 			cmd := NewRootCmd()
 			buf := new(bytes.Buffer)
@@ -185,10 +216,13 @@ func TestInvalidSubcommand(t *testing.T) {
 }
 
 func TestJSONFlagPersistsToSubcommand(t *testing.T) {
+	cleanup := setupTestService()
+	defer cleanup()
+
 	cmd := NewRootCmd()
 	buf := new(bytes.Buffer)
 	cmd.SetOut(buf)
-	cmd.SetArgs([]string{"--json", "init"})
+	cmd.SetArgs([]string{"--json", "list"})
 
 	err := cmd.Execute()
 	if err != nil {
@@ -200,9 +234,9 @@ func TestJSONFlagPersistsToSubcommand(t *testing.T) {
 		return
 	}
 
-	subCmd, _, err := cmd.Find([]string{"init"})
+	subCmd, _, err := cmd.Find([]string{"list"})
 	if err != nil {
-		t.Fatalf("expected to find init subcommand: %v", err)
+		t.Fatalf("expected to find list subcommand: %v", err)
 	}
 
 	got, err = subCmd.Flags().GetBool("json")

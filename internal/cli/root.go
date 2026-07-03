@@ -13,64 +13,17 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newAddCmd())
 	cmd.AddCommand(newListCmd())
+	cmd.AddCommand(newEditCmd())
+	cmd.AddCommand(newRmCmd())
 	cmd.AddCommand(newCategoryCmd())
 	cmd.AddCommand(newTagCmd())
+	cmd.AddCommand(newAdjustCmd())
 	cmd.AddCommand(newBudgetCmd())
 	cmd.AddCommand(newBillCmd())
 	cmd.AddCommand(newReportCmd())
 	cmd.AddCommand(newForecastCmd())
 
 	return cmd
-}
-
-func newInitCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "init",
-		Short: "Initialize the wallet database",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-}
-
-func newAddCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "add",
-		Short: "Add a transaction",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-}
-
-func newListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list",
-		Short: "List transactions",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-}
-
-func newCategoryCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "category",
-		Short: "Manage categories",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-}
-
-func newTagCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "tag",
-		Short: "Manage tags",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
 }
 
 func newBudgetCmd() *cobra.Command {

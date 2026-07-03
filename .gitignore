@@ -13,7 +13,9 @@
 
 # Coverage
 coverage.out
+coverage.raw
 coverage.html
+coverage-filter
 
 # SQLite runtime files
 *.db
