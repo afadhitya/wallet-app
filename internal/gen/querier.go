@@ -9,12 +9,15 @@ import (
 )
 
 type Querier interface {
+	AddBudgetCategory(ctx context.Context, arg AddBudgetCategoryParams) error
+	AddBudgetTag(ctx context.Context, arg AddBudgetTagParams) error
 	AddTransactionTag(ctx context.Context, arg AddTransactionTagParams) error
 	ArchiveAccount(ctx context.Context, id int64) error
 	ArchiveCategory(ctx context.Context, id int64) error
 	ArchiveTransaction(ctx context.Context, id int64) error
 	CountTransactions(ctx context.Context, arg CountTransactionsParams) (int64, error)
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (*Account, error)
+	CreateBudget(ctx context.Context, arg CreateBudgetParams) (*Budget, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (*Category, error)
 	CreateTag(ctx context.Context, name string) (*Tag, error)
 	CreateTransaction(ctx context.Context, arg CreateTransactionParams) (*Transaction, error)
@@ -23,25 +26,40 @@ type Querier interface {
 	GetAccountBalance(ctx context.Context, accountID int64) (interface{}, error)
 	GetAccountByID(ctx context.Context, id int64) (*Account, error)
 	GetAccountByName(ctx context.Context, name string) (*Account, error)
+	GetBudgetByID(ctx context.Context, id int64) (*Budget, error)
+	GetBudgetByNameAndPeriod(ctx context.Context, arg GetBudgetByNameAndPeriodParams) (*Budget, error)
 	GetCategoryByID(ctx context.Context, id int64) (*Category, error)
 	GetCategoryByName(ctx context.Context, name string) (*Category, error)
 	GetCategorySuggestions(ctx context.Context, name string) ([]*Category, error)
 	GetDefaultAccount(ctx context.Context) (*Account, error)
+	GetMostRecentPriorBudget(ctx context.Context, arg GetMostRecentPriorBudgetParams) (*Budget, error)
 	GetTagByID(ctx context.Context, id int64) (*Tag, error)
 	GetTagByName(ctx context.Context, name string) (*Tag, error)
 	GetTransactionByID(ctx context.Context, id int64) (*Transaction, error)
 	ListAccounts(ctx context.Context) ([]*Account, error)
+	ListActiveBudgets(ctx context.Context) ([]*Budget, error)
 	ListAllAccounts(ctx context.Context) ([]*Account, error)
+	ListAllBudgets(ctx context.Context) ([]*Budget, error)
 	ListAllCategories(ctx context.Context) ([]*Category, error)
+	ListBudgetCategories(ctx context.Context, budgetID int64) ([]*Category, error)
+	ListBudgetTags(ctx context.Context, budgetID int64) ([]*Tag, error)
 	ListCategories(ctx context.Context) ([]*Category, error)
 	ListTags(ctx context.Context) ([]*Tag, error)
 	ListTransactionTags(ctx context.Context, transactionID int64) ([]*Tag, error)
 	ListTransactions(ctx context.Context, arg ListTransactionsParams) ([]*Transaction, error)
 	ListTransactionsByTag(ctx context.Context, arg ListTransactionsByTagParams) ([]*Transaction, error)
+	MarkBudgetInactive(ctx context.Context, id int64) error
+	RemoveAllBudgetCategories(ctx context.Context, budgetID int64) error
+	RemoveAllBudgetTags(ctx context.Context, budgetID int64) error
+	RemoveBudgetCategory(ctx context.Context, arg RemoveBudgetCategoryParams) error
+	RemoveBudgetTag(ctx context.Context, arg RemoveBudgetTagParams) error
 	RemoveTransactionTag(ctx context.Context, arg RemoveTransactionTagParams) error
+	SumCategoryExpenses(ctx context.Context, arg SumCategoryExpensesParams) (interface{}, error)
+	SumTagExpenses(ctx context.Context, arg SumTagExpensesParams) (interface{}, error)
 	SumTransactions(ctx context.Context, arg SumTransactionsParams) (interface{}, error)
 	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (*Account, error)
 	UpdateAccountBalance(ctx context.Context, arg UpdateAccountBalanceParams) error
+	UpdateBudget(ctx context.Context, arg UpdateBudgetParams) (*Budget, error)
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (*Category, error)
 	UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) (*Transaction, error)
 }
