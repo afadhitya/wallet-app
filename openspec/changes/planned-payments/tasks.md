@@ -8,13 +8,13 @@
 
 ## 2. Planned Payment Service
 
-- [ ] 2.1 Add `PlannedPaymentService` types and constructor wiring alongside existing services.
-- [ ] 2.2 Implement create validation for amount, account, category, schedule flags, start date, recurrence type, and custom RRULE values.
-- [ ] 2.3 Implement list and due filtering for default active, paused, all, current week, current month, overdue, and next-N-days views.
-- [ ] 2.4 Implement next-due calculation for daily, weekly, monthly with end-of-month clamping, yearly, custom RRULE, and one-time schedules.
-- [ ] 2.5 Implement pay behavior that creates a linked expense transaction, updates account balance through existing transaction behavior, and advances recurring bills or archives one-time bills.
-- [ ] 2.6 Implement skip behavior that advances one recurring occurrence without creating a transaction and rejects one-time bills.
-- [ ] 2.7 Implement pause, resume, edit, and delete behavior with clear not-found and invalid-state errors.
+- [x] 2.1 Add `PlannedPaymentService` types and constructor wiring alongside existing services.
+- [x] 2.2 Implement create validation for amount, account, category, schedule flags, start date, recurrence type, and custom RRULE values.
+- [x] 2.3 Implement list and due filtering for default active, paused, all, current week, current month, overdue, and next-N-days views.
+- [x] 2.4 Implement next-due calculation for daily, weekly, monthly with end-of-month clamping, yearly, custom RRULE, and one-time schedules.
+- [x] 2.5 Implement pay behavior that creates a linked expense transaction, updates account balance through existing transaction behavior, and advances recurring bills or archives one-time bills.
+- [x] 2.6 Implement skip behavior that advances one recurring occurrence without creating a transaction and rejects one-time bills.
+- [x] 2.7 Implement pause, resume, edit, and delete behavior with clear not-found and invalid-state errors.
 
 ## 3. CLI Commands
 
