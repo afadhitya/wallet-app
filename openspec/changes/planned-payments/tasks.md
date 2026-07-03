@@ -18,12 +18,12 @@
 
 ## 3. CLI Commands
 
-- [ ] 3.1 Add the `wallet bill` command group and register add, list, due, pay, skip, pause, resume, edit, and rm subcommands.
-- [ ] 3.2 Implement `wallet bill add` flags for amount, category, account, recurrence, RRULE, due day, start date, and JSON output.
-- [ ] 3.3 Implement `wallet bill list` filters for active, paused, all, and JSON output with stable text table rendering.
-- [ ] 3.4 Implement `wallet bill due` filters for current week, current month, overdue, next N days, and JSON output with text totals.
-- [ ] 3.5 Implement `wallet bill pay` with date and amount overrides, JSON output, linked transaction reporting, and paused/not-found errors.
-- [ ] 3.6 Implement `wallet bill skip`, `pause`, `resume`, `edit`, and `rm` command behavior and output.
+- [x] 3.1 Add the `wallet bill` command group and register add, list, due, pay, skip, pause, resume, edit, and rm subcommands.
+- [x] 3.2 Implement `wallet bill add` flags for amount, category, account, recurrence, RRULE, due day, start date, and JSON output.
+- [x] 3.3 Implement `wallet bill list` filters for active, paused, all, and JSON output with stable text table rendering.
+- [x] 3.4 Implement `wallet bill due` filters for current week, current month, overdue, next N days, and JSON output with text totals.
+- [x] 3.5 Implement `wallet bill pay` with date and amount overrides, JSON output, linked transaction reporting, and paused/not-found errors.
+- [x] 3.6 Implement `wallet bill skip`, `pause`, `resume`, `edit`, and `rm` command behavior and output.
 
 ## 4. Tests And Verification
 
