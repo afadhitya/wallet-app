@@ -896,23 +896,6 @@ func TestCLIBudgetEditInvalidAmount(t *testing.T) {
 	}
 }
 
-func setupTestServiceWithQuerier(t *testing.T, querier gen.Querier) *service.Service {
-	t.Helper()
-	dbase, err := db.Open(":memory:")
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	t.Cleanup(func() { _ = dbase.Close() })
-	if err := db.Migrate(dbase); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
-	svc := service.NewWithQuerier(dbase, querier)
-	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
-		return svc, dbase, nil
-	}
-	return svc
-}
-
 type budgetListErrorQuerier struct {
 	gen.Querier
 }
