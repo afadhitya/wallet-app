@@ -121,11 +121,11 @@ func classifyError(err error) (code string, suggestion string) {
 			return ErrCodeInvalidDate, validation.Message
 		case "state":
 			msg := validation.Message
-			if strings.Contains(strings.ToLower(msg), "paused") {
-				return ErrCodeBillPaused, "unpause the planned payment first"
-			}
 			if strings.Contains(strings.ToLower(msg), "not paused") {
 				return ErrCodeBillPaused, "planned payment is not paused"
+			}
+			if strings.Contains(strings.ToLower(msg), "paused") {
+				return ErrCodeBillPaused, "unpause the planned payment first"
 			}
 			return ErrCodeValidation, msg
 		default:

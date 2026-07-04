@@ -507,6 +507,8 @@ func TestClassifyErrorValidation(t *testing.T) {
 		{&service.ValidationError{Field: "date", Message: "bad date"}, ErrCodeInvalidDate, "bad date"},
 		{&service.ValidationError{Field: "start_date", Message: "bad"}, ErrCodeInvalidDate, "bad"},
 		{&service.ValidationError{Field: "state", Message: "paused"}, ErrCodeBillPaused, "unpause the planned payment first"},
+		{&service.ValidationError{Field: "state", Message: "not paused"}, ErrCodeBillPaused, "planned payment is not paused"},
+		{&service.ValidationError{Field: "state", Message: "already archived"}, ErrCodeValidation, "already archived"},
 		{&service.ValidationError{Field: "unknown_field", Message: "fail"}, ErrCodeValidation, "fail"},
 	}
 
