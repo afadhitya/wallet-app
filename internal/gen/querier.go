@@ -45,6 +45,7 @@ type Querier interface {
 	ListAccounts(ctx context.Context) ([]*Account, error)
 	ListActiveBudgets(ctx context.Context) ([]*Budget, error)
 	ListActivePlannedPayments(ctx context.Context) ([]*PlannedPayment, error)
+	ListActivePlannedPaymentsForAccount(ctx context.Context, accountID interface{}) ([]*PlannedPayment, error)
 	ListAllAccounts(ctx context.Context) ([]*Account, error)
 	ListAllBudgets(ctx context.Context) ([]*Budget, error)
 	ListAllCategories(ctx context.Context) ([]*Category, error)

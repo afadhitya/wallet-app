@@ -72,5 +72,11 @@ UPDATE planned_payments SET is_paused = 1, updated_at = datetime('now') WHERE id
 -- name: ResumePlannedPayment :exec
 UPDATE planned_payments SET is_paused = 0, updated_at = datetime('now') WHERE id = ?;
 
+-- name: ListActivePlannedPaymentsForAccount :many
+SELECT * FROM planned_payments
+WHERE is_active = 1 AND is_paused = 0
+AND (sqlc.narg('account_id') IS NULL OR account_id = sqlc.narg('account_id'))
+ORDER BY COALESCE(next_due_date, start_date) ASC;
+
 -- name: DeletePlannedPayment :exec
 DELETE FROM planned_payments WHERE id = ?;
