@@ -1224,6 +1224,9 @@ func TestCLIReportBaseCurrency(t *testing.T) {
 	if !strings.Contains(stdout, "Coffee & Snacks") {
 		t.Errorf("expected category in breakdown, got: %s", stdout)
 	}
+	if !strings.Contains(stdout, "Transactions:") {
+		t.Errorf("expected transaction count, got: %s", stdout)
+	}
 }
 
 func TestCLIReportJSON(t *testing.T) {

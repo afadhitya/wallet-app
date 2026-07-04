@@ -193,6 +193,8 @@ func printMonthlySummary(stdout io.Writer, result *service.ReportResult) {
 	if result.TransferTotal > 0 {
 		_, _ = fmt.Fprintf(stdout, "\n%-20s %s (between own accounts)\n", "Transfers:", formatAmount(result.TransferTotal))
 	}
+
+	_, _ = fmt.Fprintf(stdout, "\n%-20s %d\n", "Transactions:", result.TransactionCount)
 }
 
 func printCategoryBreakdown(stdout io.Writer, result *service.ReportResult) {
