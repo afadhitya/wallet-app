@@ -19,7 +19,8 @@
 | 07 | Multi-Currency | Exchange rates, conversion, mixed-currency reporting | ✅ design approved |
 | 08 | AI-Native Layer | Hermes skill, JSON output mode, all commands wrapped | ✅ design approved |
 | 09 | Reports & Export | Reports by category/account/tag, CSV export | ✅ design approved |
-| 10 | Documentation | README, LICENSE (MIT), CONTRIBUTING, AGENTS.md | 🔴 pending review |
+| 10 | Documentation | README, LICENSE (MIT), CONTRIBUTING, AGENTS.md | ✅ design approved |
+| 11 | README Badges | Go Version, CI, Coverage, License, Release badges | 🔴 pending review |
 
 ---
 
@@ -49,6 +50,8 @@
 | Delete behavior | **Soft delete** (is_archived) — preserve history |
 | License | **MIT** |
 | README style | **Standard OSS** |
+| Badge count | **5** — Go Version, CI, Coverage, License, Release |
+| Badge style | **Flat** |
 
 ---
 
