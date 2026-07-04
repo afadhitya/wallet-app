@@ -694,7 +694,7 @@ func TestGenerateExportRowsMultipleTags(t *testing.T) {
 		t.Fatalf("expected 1 row, got %d", len(rows))
 	}
 
-	if !(rows[0].Tags == "work,lunch" || rows[0].Tags == "lunch,work") {
+	if rows[0].Tags != "work,lunch" && rows[0].Tags != "lunch,work" {
 		t.Errorf("expected tags 'work,lunch' or 'lunch,work', got '%s'", rows[0].Tags)
 	}
 }

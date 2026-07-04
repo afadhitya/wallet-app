@@ -113,14 +113,14 @@ func runReportExport(cmd *cobra.Command, svc *service.Service, params service.Re
 
 	file, err := os.Create(outputPath)
 	if err != nil {
-		return formatError(cmd, fmt.Errorf("Failed to export: %w", err))
+		return formatError(cmd, fmt.Errorf("failed to export: %w", err))
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	writer := csv.NewWriter(file)
 	header := []string{"date", "type", "amount", "currency", "base_amount", "category", "account", "description", "tags"}
 	if err := writer.Write(header); err != nil {
-		return formatError(cmd, fmt.Errorf("Failed to export: %w", err))
+		return formatError(cmd, fmt.Errorf("failed to export: %w", err))
 	}
 
 	for _, row := range rows {
@@ -140,13 +140,13 @@ func runReportExport(cmd *cobra.Command, svc *service.Service, params service.Re
 			row.Tags,
 		}
 		if err := writer.Write(record); err != nil {
-			return formatError(cmd, fmt.Errorf("Failed to export: %w", err))
+			return formatError(cmd, fmt.Errorf("failed to export: %w", err))
 		}
 	}
 
 	writer.Flush()
 	if err := writer.Error(); err != nil {
-		return formatError(cmd, fmt.Errorf("Failed to export: %w", err))
+		return formatError(cmd, fmt.Errorf("failed to export: %w", err))
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Exported to: %s\n", outputPath)
