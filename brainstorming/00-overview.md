@@ -21,6 +21,7 @@
 | 09 | Reports & Export | Reports by category/account/tag, CSV export | ✅ design approved |
 | 10 | Documentation | README, LICENSE (MIT), CONTRIBUTING, AGENTS.md | ✅ design approved |
 | 11 | README Badges | Go Version, CI, Coverage, License, Release badges | 🔴 pending review |
+| 12 | Account Management | Account CLI commands (add/list/edit/archive) | 🔴 pending review |
 
 ---
 
@@ -52,6 +53,7 @@
 | README style | **Standard OSS** |
 | Badge count | **5** — Go Version, CI, Coverage, License, Release |
 | Badge style | **Flat** |
+| Account types | checking, savings, cash, credit_card, ewallet |
 
 ---
 
