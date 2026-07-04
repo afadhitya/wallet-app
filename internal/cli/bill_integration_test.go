@@ -52,6 +52,30 @@ func TestCLIBillAddInvalidAmount(t *testing.T) {
 	}
 }
 
+func TestCLIBillAddMissingCategory(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, stderr, err := cli.run("bill", "add", "Netflix", "149000", "--monthly", "-a", "BCA")
+	if err == nil {
+		t.Fatal("expected error for missing category")
+	}
+	if !strings.Contains(stderr, "category") {
+		t.Errorf("expected category error in stderr, got: %s", stderr)
+	}
+}
+
+func TestCLIBillAddMissingSchedule(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, stderr, err := cli.run("bill", "add", "Unscheduled", "1000", "-a", "BCA", "-c", "Subscriptions")
+	if err == nil {
+		t.Fatal("expected error for missing schedule")
+	}
+	if !strings.Contains(stderr, "schedule") && !strings.Contains(stderr, "--from") {
+		t.Errorf("expected schedule error in stderr, got: %s", stderr)
+	}
+}
+
 func TestCLIBillListText(t *testing.T) {
 	cli := newTestCLI(t)
 

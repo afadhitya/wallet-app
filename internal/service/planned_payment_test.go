@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 )
@@ -147,6 +148,45 @@ func TestCreatePlannedPayment_AccountNotFound(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for non-existent account")
+	}
+}
+
+func TestCreatePlannedPayment_MissingCategory(t *testing.T) {
+	svc := setupServiceForPP(t)
+	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+
+	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+		Name:       "Netflix",
+		Amount:     149000,
+		Account:    "BCA",
+		Recurrence: "monthly",
+	})
+	if err == nil {
+		t.Fatal("expected error for missing category")
+	}
+	var ve *ValidationError
+	if !errors.As(err, &ve) || ve.Field != "category" {
+		t.Fatalf("expected category validation error, got %v", err)
+	}
+}
+
+func TestCreatePlannedPayment_MissingSchedule(t *testing.T) {
+	svc := setupServiceForPP(t)
+	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+
+	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+		Name:       "Unscheduled",
+		Amount:     1000,
+		Account:    "BCA",
+		Category:   "Subscriptions",
+		Recurrence: "none",
+	})
+	if err == nil {
+		t.Fatal("expected error for missing schedule")
+	}
+	var ve *ValidationError
+	if !errors.As(err, &ve) || ve.Field != "schedule" {
+		t.Fatalf("expected schedule validation error, got %v", err)
 	}
 }
 

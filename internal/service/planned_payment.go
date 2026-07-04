@@ -75,6 +75,9 @@ func (s *Service) CreatePlannedPayment(params CreatePlannedPaymentParams) (*gen.
 	if params.Type == "" {
 		params.Type = "expense"
 	}
+	if params.Category == "" {
+		return nil, &ValidationError{Field: "category", Message: "category is required"}
+	}
 
 	validRecurrences := map[string]bool{
 		"none": true, "daily": true, "weekly": true,
@@ -82,6 +85,9 @@ func (s *Service) CreatePlannedPayment(params CreatePlannedPaymentParams) (*gen.
 	}
 	if !validRecurrences[params.Recurrence] {
 		return nil, &ValidationError{Field: "recurrence", Message: "recurrence must be one of: none, daily, weekly, monthly, yearly, custom"}
+	}
+	if params.Recurrence == "none" && params.StartDate == "" {
+		return nil, &ValidationError{Field: "schedule", Message: "one-time planned payments require --from"}
 	}
 
 	if params.Recurrence == "custom" {
@@ -98,14 +104,11 @@ func (s *Service) CreatePlannedPayment(params CreatePlannedPaymentParams) (*gen.
 		return nil, fmt.Errorf("account: %w", err)
 	}
 
-	var categoryID sql.NullInt64
-	if params.Category != "" {
-		category, err := s.ResolveCategory(params.Category)
-		if err != nil {
-			return nil, fmt.Errorf("category: %w", err)
-		}
-		categoryID = sql.NullInt64{Int64: category.ID, Valid: true}
+	category, err := s.ResolveCategory(params.Category)
+	if err != nil {
+		return nil, fmt.Errorf("category: %w", err)
 	}
+	categoryID := sql.NullInt64{Int64: category.ID, Valid: true}
 
 	startDate, err := parseDate(params.StartDate)
 	if err != nil {
