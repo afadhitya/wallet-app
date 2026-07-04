@@ -324,44 +324,118 @@ github.com/afadhitya/wallet-app/internal/cli/rate.go:118.9,120.4
 
 # === Report: Infrastructure/DB error paths ===
 
-# runReport: GenerateReport service error path (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:41.16,43.3
-
 # GenerateReport: GetBaseCurrency error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/report.go:45.16,47.3
+github.com/afadhitya/wallet-app/internal/service/report.go:93.16,95.3
 
-# GenerateReport: ListAllCategories error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/report.go:55.16,57.3
+# resolveReportFilters: ResolveAccount error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:129.17,131.4
 
-# GenerateReport: ListAccounts error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/report.go:60.16,62.3
+# resolvePeriod: DateFrom empty but DateTo set (validation, covered by TestGenerateReportDateRangeValidation)
+github.com/afadhitya/wallet-app/internal/service/report.go:148.70,150.4
 
-# fetchReportTransactions: ResolveAccount error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/report.go:157.30,159.17
-github.com/afadhitya/wallet-app/internal/service/report.go:159.17,161.4
+# resolvePeriod: DateFrom invalid date format (validation, covered by TestGenerateReportDateRangeValidation)
+github.com/afadhitya/wallet-app/internal/service/report.go:151.68,153.4
 
-# fetchReportTransactions: accountID assignment after resolve (covered by list-filter path)
-github.com/afadhitya/wallet-app/internal/service/report.go:162.3,162.25
+# resolvePeriod: DateTo invalid date format (validation, covered by TestGenerateReportDateRangeValidation)
+github.com/afadhitya/wallet-app/internal/service/report.go:165.17,167.4
 
-# fetchReportTransactions: ResolveCategory error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/report.go:165.31,167.17
-github.com/afadhitya/wallet-app/internal/service/report.go:167.17,169.4
+# nullFloatToInt64: return 0 when NullFloat64 is not valid (defensive)
+github.com/afadhitya/wallet-app/internal/service/report.go:182.2,182.10
 
-# fetchReportTransactions: categoryID assignment after resolve (covered by list-filter path)
-github.com/afadhitya/wallet-app/internal/service/report.go:170.3,170.27
+# genInterfaceToInt64: return 0 when non-int64 (defensive)
+github.com/afadhitya/wallet-app/internal/service/report.go:189.2,189.10
 
-# fetchReportTransactions: DateFrom/DateTo direct filter (tested via CLI --from/--to)
-github.com/afadhitya/wallet-app/internal/service/report.go:173.27,175.3
-github.com/afadhitya/wallet-app/internal/service/report.go:176.25,178.3
+# generateMonthlySummary: ReportIncomeTotal DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:208.16,210.3
 
-# fetchReportTransactions: parseMonth error (data integrity)
-github.com/afadhitya/wallet-app/internal/service/report.go:182.17,184.4
+# generateMonthlySummary: ReportExpenseTotal DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:213.16,215.3
 
-# fetchReportTransactions: default month filter (tested via no-filter report command)
-github.com/afadhitya/wallet-app/internal/service/report.go:189.108,195.3
+# generateMonthlySummary: ReportTransfers DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:218.16,220.3
 
-# fetchReportTransactions: ListTransactions DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/report.go:206.16,208.3
+# generateMonthlySummary: ReportTransactionCount DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:223.16,225.3
 
-# GenerateReport: fetchReportTransactions error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/report.go:50.16,52.3
+# generateMonthlySummary: ReportIncomeByCategory DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:232.16,234.3
+
+# generateMonthlySummary: ReportExpenseByCategory DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:237.16,239.3
+
+# generateCategoryBreakdownResult: ReportExpenseTotal DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:285.16,287.3
+
+# generateCategoryBreakdownResult: ReportExpenseByCategory DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:291.16,293.3
+
+# generateCategoryBreakdownResult: ReportTransactionCount DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:296.16,298.3
+
+# generateAccountBreakdownResult: ReportByAccount DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:334.16,336.3
+
+# generateTagBreakdownResult: ReportExpenseTotal DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:363.16,365.3
+
+# generateTagBreakdownResult: ReportByTag DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:369.16,371.3
+
+# generateTagBreakdownResult: ReportUntagged DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:374.16,376.3
+
+# generateTagBreakdownResult: ReportTransactionCount DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:379.16,381.3
+
+# GenerateExportRows: resolveReportFilters error (covered by caller)
+github.com/afadhitya/wallet-app/internal/service/report.go:426.16,428.3
+
+# GenerateExportRows: ReportExportTransactions DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:433.16,435.3
+
+# GenerateExportRows: base_amount SQL null check (defensive, always valid in context)
+github.com/afadhitya/wallet-app/internal/service/report.go:440.25,442.4
+
+# GenerateExportRows: ListTransactionTags DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/report.go:455.17,457.4
+
+# joinTagNames: empty names slice (defensive)
+github.com/afadhitya/wallet-app/internal/service/report.go:481.21,483.3
+
+# DefaultExportFilename: resolveReportFilters error (covered by caller)
+github.com/afadhitya/wallet-app/internal/service/report.go:493.16,495.3
+
+# DefaultExportFilename: time.Parse error on valid date (defensive)
+github.com/afadhitya/wallet-app/internal/service/report.go:498.16,500.3
+
+# === CLI Report: Infrastructure/OS error paths ===
+
+# newReportCmd: JSON error output for invalid --by (JSON rendering)
+github.com/afadhitya/wallet-app/internal/cli/report.go:35.21,38.7
+
+# newReportCmd: JSON error output for invalid --export (JSON rendering)
+github.com/afadhitya/wallet-app/internal/cli/report.go:45.21,48.7
+
+# runReportExport: GenerateExportRows error (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/report.go:87.16,89.3
+
+# runReportExport: DefaultExportFilename error (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/report.go:94.17,96.4
+
+# runReportExport: os.Create error (OS/infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/report.go:115.16,117.3
+
+# runReportExport: csv.Write header error (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/report.go:122.45,124.3
+
+# runReportExport: csv.Write row error (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/report.go:128.25,130.4
+
+# runReportExport: csv.Flush error check (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/report.go:142.46,144.4
+
+# runReportExport: writer.Error check (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/report.go:148.39,150.3
+
+# printMonthlySummary: transfer > 0 branch (covered by service test, tested behavior)
+github.com/afadhitya/wallet-app/internal/cli/report.go:193.30,195.3

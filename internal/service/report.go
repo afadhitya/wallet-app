@@ -204,38 +204,22 @@ func (s *Service) genReportParams(filters ReportFilters) gen.ReportByAccountPara
 func (s *Service) generateMonthlySummary(baseCurrency string, filters ReportFilters) (*ReportResult, error) {
 	arg := s.genReportParams(filters)
 
-	incomeTotal, err := s.q.ReportIncomeTotal(s.ctx(), gen.ReportIncomeTotalParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	incomeTotal, err := s.q.ReportIncomeTotal(s.ctx(), gen.ReportIncomeTotalParams(arg))
 	if err != nil {
 		return nil, err
 	}
 
-	expenseTotal, err := s.q.ReportExpenseTotal(s.ctx(), gen.ReportExpenseTotalParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	expenseTotal, err := s.q.ReportExpenseTotal(s.ctx(), gen.ReportExpenseTotalParams(arg))
 	if err != nil {
 		return nil, err
 	}
 
-	transfers, err := s.q.ReportTransfers(s.ctx(), gen.ReportTransfersParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	transfers, err := s.q.ReportTransfers(s.ctx(), gen.ReportTransfersParams(arg))
 	if err != nil {
 		return nil, err
 	}
 
-	txnCount, err := s.q.ReportTransactionCount(s.ctx(), gen.ReportTransactionCountParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	txnCount, err := s.q.ReportTransactionCount(s.ctx(), gen.ReportTransactionCountParams(arg))
 	if err != nil {
 		return nil, err
 	}
@@ -244,20 +228,12 @@ func (s *Service) generateMonthlySummary(baseCurrency string, filters ReportFilt
 	expenseTotalVal := genInterfaceToInt64(expenseTotal)
 	transferTotal := genInterfaceToInt64(transfers)
 
-	incomeRows, err := s.q.ReportIncomeByCategory(s.ctx(), gen.ReportIncomeByCategoryParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	incomeRows, err := s.q.ReportIncomeByCategory(s.ctx(), gen.ReportIncomeByCategoryParams(arg))
 	if err != nil {
 		return nil, err
 	}
 
-	expenseRows, err := s.q.ReportExpenseByCategory(s.ctx(), gen.ReportExpenseByCategoryParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	expenseRows, err := s.q.ReportExpenseByCategory(s.ctx(), gen.ReportExpenseByCategoryParams(arg))
 	if err != nil {
 		return nil, err
 	}
@@ -305,30 +281,18 @@ func (s *Service) generateMonthlySummary(baseCurrency string, filters ReportFilt
 func (s *Service) generateCategoryBreakdownResult(baseCurrency string, filters ReportFilters) (*ReportResult, error) {
 	arg := s.genReportParams(filters)
 
-	expenseTotal, err := s.q.ReportExpenseTotal(s.ctx(), gen.ReportExpenseTotalParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	expenseTotal, err := s.q.ReportExpenseTotal(s.ctx(), gen.ReportExpenseTotalParams(arg))
 	if err != nil {
 		return nil, err
 	}
 	expenseTotalVal := genInterfaceToInt64(expenseTotal)
 
-	rows, err := s.q.ReportExpenseByCategory(s.ctx(), gen.ReportExpenseByCategoryParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	rows, err := s.q.ReportExpenseByCategory(s.ctx(), gen.ReportExpenseByCategoryParams(arg))
 	if err != nil {
 		return nil, err
 	}
 
-	txnCount, err := s.q.ReportTransactionCount(s.ctx(), gen.ReportTransactionCountParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	txnCount, err := s.q.ReportTransactionCount(s.ctx(), gen.ReportTransactionCountParams(arg))
 	if err != nil {
 		return nil, err
 	}
@@ -395,39 +359,23 @@ func (s *Service) generateAccountBreakdownResult(baseCurrency string, filters Re
 func (s *Service) generateTagBreakdownResult(baseCurrency string, filters ReportFilters) (*ReportResult, error) {
 	arg := s.genReportParams(filters)
 
-	expenseTotal, err := s.q.ReportExpenseTotal(s.ctx(), gen.ReportExpenseTotalParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	expenseTotal, err := s.q.ReportExpenseTotal(s.ctx(), gen.ReportExpenseTotalParams(arg))
 	if err != nil {
 		return nil, err
 	}
 	expenseTotalVal := genInterfaceToInt64(expenseTotal)
 
-	taggedRows, err := s.q.ReportByTag(s.ctx(), gen.ReportByTagParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	taggedRows, err := s.q.ReportByTag(s.ctx(), gen.ReportByTagParams(arg))
 	if err != nil {
 		return nil, err
 	}
 
-	untaggedRow, err := s.q.ReportUntagged(s.ctx(), gen.ReportUntaggedParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	untaggedRow, err := s.q.ReportUntagged(s.ctx(), gen.ReportUntaggedParams(arg))
 	if err != nil {
 		return nil, err
 	}
 
-	txnCount, err := s.q.ReportTransactionCount(s.ctx(), gen.ReportTransactionCountParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	txnCount, err := s.q.ReportTransactionCount(s.ctx(), gen.ReportTransactionCountParams(arg))
 	if err != nil {
 		return nil, err
 	}
@@ -481,11 +429,7 @@ func (s *Service) GenerateExportRows(params ReportParams) ([]ReportExportRow, er
 
 	arg := s.genReportParams(filters)
 
-	rows, err := s.q.ReportExportTransactions(s.ctx(), gen.ReportExportTransactionsParams{
-		DateFrom:  arg.DateFrom,
-		DateTo:    arg.DateTo,
-		AccountID: arg.AccountID,
-	})
+	rows, err := s.q.ReportExportTransactions(s.ctx(), gen.ReportExportTransactionsParams(arg))
 	if err != nil {
 		return nil, err
 	}
