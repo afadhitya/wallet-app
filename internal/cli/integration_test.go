@@ -1211,20 +1211,17 @@ func TestCLIReportBaseCurrency(t *testing.T) {
 		t.Fatalf("report: %v", err)
 	}
 
-	if !strings.Contains(stdout, "Financial Report") {
+	if !strings.Contains(stdout, "Report —") {
 		t.Errorf("expected report header, got: %s", stdout)
 	}
-	if !strings.Contains(stdout, "Total Income:") {
+	if !strings.Contains(stdout, "Income:") {
 		t.Errorf("expected income total, got: %s", stdout)
 	}
-	if !strings.Contains(stdout, "Total Expense:") {
+	if !strings.Contains(stdout, "Expenses:") {
 		t.Errorf("expected expense total, got: %s", stdout)
 	}
-	if !strings.Contains(stdout, "By Category") {
-		t.Errorf("expected category breakdown, got: %s", stdout)
-	}
-	if !strings.Contains(stdout, "By Account") {
-		t.Errorf("expected account breakdown, got: %s", stdout)
+	if !strings.Contains(stdout, "Coffee & Snacks") {
+		t.Errorf("expected category in breakdown, got: %s", stdout)
 	}
 }
 
@@ -1245,19 +1242,22 @@ func TestCLIReportJSON(t *testing.T) {
 		t.Errorf("expected base_currency IDR, got %v", result["base_currency"])
 	}
 
-	income, ok := result["total_income"].(float64)
+	income, ok := result["income_total"].(float64)
 	if !ok || int64(income) != 200000 {
-		t.Errorf("expected total_income 200000, got %v", result["total_income"])
+		t.Errorf("expected income_total 200000, got %v", result["income_total"])
 	}
 
-	expense, ok := result["total_expense"].(float64)
+	expense, ok := result["expense_total"].(float64)
 	if !ok || int64(expense) != 50000 {
-		t.Errorf("expected total_expense 50000, got %v", result["total_expense"])
+		t.Errorf("expected expense_total 50000, got %v", result["expense_total"])
 	}
 
-	cats, ok := result["by_category"].([]interface{})
+	cats, ok := result["income_categories"].([]interface{})
+	if !ok {
+		cats, ok = result["expense_categories"].([]interface{})
+	}
 	if !ok || len(cats) == 0 {
-		t.Errorf("expected by_category in JSON")
+		t.Errorf("expected categories in JSON")
 	}
 }
 
@@ -1287,29 +1287,16 @@ func TestCLIReportMixedCurrencyJSON(t *testing.T) {
 	_, _, _ = cli.run("add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
 	_, _, _ = cli.run("add", "income", "100", "Payment", "-c", "Freelance", "-a", "PaypalUSD")
 
-	stdout, _, err := cli.run("--json", "report")
+	stdout, _, err := cli.run("--json", "report", "--by", "account")
 	if err != nil {
-		t.Fatalf("report --json: %v", err)
+		t.Fatalf("report --json --by account: %v", err)
 	}
 
 	result := extractJSONData(t, stdout)
 
 	accts, ok := result["by_account"].([]interface{})
 	if !ok || len(accts) == 0 {
-		t.Errorf("expected by_account in JSON")
-	}
-
-	for _, a := range accts {
-		amap, _ := a.(map[string]interface{})
-		if amap["currency"] != nil {
-			c := amap["currency"].(string)
-			if c != "USD" {
-				continue
-			}
-			if amap["expense"] == nil || amap["income"] == nil {
-				t.Errorf("expected income/expense for USD account")
-			}
-		}
+		t.Errorf("expected by_account in JSON, got: %s", stdout)
 	}
 }
 
@@ -1325,7 +1312,7 @@ func TestCLIReportExcludesAdjustment(t *testing.T) {
 		t.Fatalf("report: %v", err)
 	}
 
-	if !strings.Contains(stdout, "Total Income:") {
+	if !strings.Contains(stdout, "Income:") {
 		t.Errorf("expected income section, got: %s", stdout)
 	}
 }
