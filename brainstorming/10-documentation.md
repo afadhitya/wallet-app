@@ -1,0 +1,381 @@
+# 10 — Documentation
+
+> Depends on: [01-data-model](./01-data-model.md), [02-project-skeleton](./02-project-skeleton.md), [03-core-crud](./03-core-crud.md)
+> Status: 🔴 pending review | Unblocks: implementation
+
+---
+
+## Objective
+
+Establish project documentation that sets expectations for users, contributors, and AI agents. Clear, professional, minimal.
+
+---
+
+## Decisions
+
+### D1: License
+| Option | Description |
+|--------|-------------|
+| **A: MIT** | Permissive, simple, widely understood |
+| B: Apache 2.0 | Permissive + patent grant |
+| C: GPL | Copyleft |
+
+→ **A — MIT License.** Simple, permissive, matches open-source intent.
+
+### D2: README Structure
+| Option | Description |
+|--------|-------------|
+| A: Minimal (title + install) | Quick to write, sparse |
+| **B: Standard OSS** | Title, features, install, usage, config, contributing link, license |
+| C: Detailed with screenshots | Full walkthrough, GIF demos |
+
+→ **B — Standard OSS README.** Covers what users need without over-engineering.
+
+### D3: AGENTS.md Scope
+| Option | Description |
+|--------|-------------|
+| A: Minimal (build + test commands) | Just enough for AI to run the project |
+| **B: Full context** | Architecture overview, conventions, patterns, file structure |
+| C: Auto-generated from code | Keep in sync via tooling |
+
+→ **B — Full context.** AI agents need to understand patterns, not just commands.
+
+---
+
+## Documents
+
+### 1. `README.md`
+
+```markdown
+# wallet
+
+A personal finance CLI for tracking expenses, budgets, and planned payments.
+
+## Features
+
+- Track expenses, income, transfers, and balance adjustments
+- 2-level category hierarchy with 24 default categories
+- Freeform tags for cross-cutting labels
+- Named budgets with category/tag targets and alerts
+- Planned payments (recurring + one-time) with auto-fulfill
+- Forecasting based on planned payments
+- Multi-currency support with manual exchange rates
+- AI-native: all commands support `--json` for agent integration
+
+## Installation
+
+```bash
+go install github.com/afadhitya/wallet-app/cmd/wallet@latest
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/afadhitya/wallet-app.git
+cd wallet-app
+make build
+```
+
+## Quick Start
+
+```bash
+# Initialize database
+wallet init
+
+# Add an account
+wallet account add "BCA" --type checking --currency IDR
+
+# Record an expense
+wallet add expense 35000 "Lunch at Warung" -c food -a bca
+
+# Record an income
+wallet add income 5000000 "Salary" -c salary -a bca
+
+# Transfer between accounts
+wallet add transfer 100000 --from bca --to gopay
+
+# List transactions
+wallet list --month july
+
+# Check balance
+wallet account list
+
+# Create a budget
+wallet budget create "Monthly Food" --amount 3000000 -c food -c restaurant
+
+# Check budget status
+wallet budget check
+
+# Add a planned payment
+wallet bill add "Netflix" --amount 149000 -a bca -c entertainment --recurrence monthly
+
+# Forecast next 3 months
+wallet forecast --months 3
+```
+
+## Configuration
+
+Config file: `~/.config/wallet/config.toml`
+
+```toml
+[default]
+account = "bca"
+currency = "IDR"
+
+[rates]
+# Manual exchange rates
+USD = 16000
+EUR = 17500
+JPY = 110
+```
+
+Database: `~/.local/share/wallet/wallet.db`
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `wallet init` | Initialize database and seed data |
+| `wallet add expense/income/transfer` | Record transaction |
+| `wallet adjust <account> <balance>` | Adjust account balance |
+| `wallet list` | List transactions with filters |
+| `wallet edit <id>` | Edit transaction |
+| `wallet rm <id>` | Soft-delete transaction |
+| `wallet account add/list/edit` | Manage accounts |
+| `wallet category add/list/edit` | Manage categories |
+| `wallet tag add/list/rm` | Manage tags |
+| `wallet budget create/check/list` | Manage budgets |
+| `wallet bill add/list/pay/skip/pause` | Manage planned payments |
+| `wallet forecast` | Project future balances |
+| `wallet report` | Generate reports |
+| `wallet report --export csv` | Export to CSV |
+
+All commands support `--json` for machine-readable output.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## License
+
+[MIT](./LICENSE)
+```
+
+### 2. `LICENSE`
+
+Standard MIT License text with:
+- Copyright holder: Achmad Fadhitya
+- Year: 2026
+
+### 3. `CONTRIBUTING.md`
+
+```markdown
+# Contributing to wallet-app
+
+Thank you for considering contributing!
+
+## Development Setup
+
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/afadhitya/wallet-app.git
+   cd wallet-app
+   ```
+
+2. Install dependencies:
+   ```bash
+   go mod download
+   ```
+
+3. Build:
+   ```bash
+   make build
+   ```
+
+4. Run tests:
+   ```bash
+   make test
+   ```
+
+## Project Structure
+
+```
+wallet-app/
+├── cmd/wallet/          # Main entry point
+├── internal/
+│   ├── cmd/             # Cobra command handlers
+│   ├── service/         # Business logic
+│   ├── repository/      # Database access (generated by sqlc)
+│   └── config/          # Config loading
+├── migrations/          # SQL migration files
+├── queries/             # sqlc query definitions
+├── skill/               # AI agent skill file
+├── brainstorming/       # Design specs (historical reference)
+├── spec/                # Finalized specs
+├── Makefile
+└── sqlc.yaml
+```
+
+## Conventions
+
+- **Language:** Go 1.22+
+- **Formatting:** `gofmt` (enforced by CI)
+- **Linting:** `golangci-lint`
+- **Testing:** 100% unit test coverage gate (CI enforces)
+- **Commits:** Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`)
+- **PRs:** One feature per PR, squash merge
+- **Amounts:** Always integer minor units (sen), never float
+- **DB:** SQLite via `modernc.org/sqlite` (pure Go, no CGO)
+
+## Pull Request Process
+
+1. Create feature branch from `main`
+2. Make changes with tests
+3. Ensure `make test` passes with 100% coverage
+4. Open PR against `main`
+5. Address review comments
+6. Squash merge
+
+## Code Generation
+
+We use [sqlc](https://sqlc.dev/) for type-safe database access.
+
+After modifying `queries/*.sql`:
+
+```bash
+make generate
+```
+
+This regenerates `internal/repository/generated/`.
+
+## Questions?
+
+Open an issue or reach out to @afadhitya.
+```
+
+### 4. `AGENTS.md`
+
+```markdown
+# AGENTS.md — AI Agent Guide
+
+This file provides context for AI agents working on this codebase.
+
+## Project Overview
+
+A personal finance CLI built in Go with SQLite. Single-user, offline-first, AI-native.
+
+## Build & Test
+
+```bash
+make build          # Build binary to ./bin/wallet
+make test           # Run all tests with coverage
+make generate       # Regenerate sqlc code
+make lint           # Run golangci-lint
+make all            # generate + lint + test + build
+```
+
+## Architecture
+
+```
+cmd/wallet/main.go         → Entry point, calls cmd.Execute()
+internal/cmd/               → Cobra command definitions (one file per command group)
+internal/service/           → Business logic (TransactionService, BudgetService, etc.)
+internal/repository/        → Generated by sqlc (DO NOT EDIT manually)
+internal/config/            → TOML config loading
+migrations/                 → SQLite migration files (sequential numbered)
+queries/                    → sqlc query definitions (.sql files)
+```
+
+## Key Patterns
+
+### Transaction Types
+- `expense` — money out
+- `income` — money in
+- `transfer` — between accounts (single row, uses `transfer_to_id`)
+- `adjustment` — balance correction (not income/expense)
+
+### Amount Handling
+- All amounts in **minor units** (integer sen)
+- `100000` = Rp100.000
+- Never use float for money
+
+### Soft Delete
+- Transactions use `is_archived` flag
+- `wallet rm` sets `is_archived = 1`
+- All queries filter `is_archived = 0` by default
+- SumByAccount excludes archived transactions
+
+### Budget System
+- Named budgets with M2M targets
+- `budget_categories` — junction to categories
+- `budget_tags` — junction to tags
+- Budget can target categories AND/OR tags
+- Auto-generate periods for recurring budgets
+
+### Multi-Currency
+- Store original amount + currency
+- Store converted `base_amount` + `base_currency`
+- Exchange rates from config file (manual)
+
+### AI Integration
+- All commands support `--json` flag
+- Hermes skill at `skill/SKILL.md`
+- Skill is provider-agnostic (works with any AI)
+
+## Database
+
+- SQLite via `modernc.org/sqlite` (pure Go, no CGO)
+- DB path: `~/.local/share/wallet/wallet.db`
+- Migrations: sequential numbered files in `migrations/`
+- Code generation: sqlc (config in `sqlc.yaml`)
+
+## Config
+
+- TOML format at `~/.config/wallet/config.toml`
+- Default account, currency, exchange rates
+
+## Testing
+
+- Unit tests: service layer with in-memory SQLite (`:memory:`)
+- Integration tests: CLI commands via `exec.Command`
+- Coverage: 100% gate (CI enforced)
+- Test helpers: `testutil.SetupDB(t)` returns clean DB + seed data
+
+## Conventional Commits
+
+- `feat:` — new feature
+- `fix:` — bug fix
+- `docs:` — documentation
+- `test:` — tests
+- `refactor:` — code refactor
+- `chore:` — maintenance
+```
+
+---
+
+## File Summary
+
+| File | Purpose | Audience |
+|------|---------|----------|
+| `README.md` | Project overview, install, usage | Users, contributors |
+| `LICENSE` | MIT license | Legal, users |
+| `CONTRIBUTING.md` | Dev setup, conventions, PR process | Contributors |
+| `AGENTS.md` | Architecture, patterns, build commands | AI agents |
+
+---
+
+## Dependencies
+
+- Phase 01: Schema references
+- Phase 02: Project structure references
+- Phase 03: Command examples
+
+---
+
+## Ready to Review
+
+Check:
+- [ ] License choice OK?
+- [ ] README covers what users need?
+- [ ] Contributing guide helpful?
+- [ ] AGENTS.md gives enough context?
