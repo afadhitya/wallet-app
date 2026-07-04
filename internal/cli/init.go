@@ -51,6 +51,10 @@ func runInit(cmd *cobra.Command) error {
 	accounts, _ := svc.ListAccounts()
 	categories, _ := svc.ListAllCategories()
 
+	if err := config.EnsureRatesFile(); err != nil {
+		return formatError(cmd, fmt.Errorf("create rate config: %w", err))
+	}
+
 	if getServiceOverride != nil {
 		_ = database.Close()
 	}
