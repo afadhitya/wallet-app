@@ -6,8 +6,8 @@ INSERT INTO transactions (account_id, category_id, type, amount, currency, descr
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0) RETURNING *;
 
 -- name: CreateTransaction :one
-INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, is_archived)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0) RETURNING *;
+INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, base_amount, base_currency, is_archived)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, sqlc.narg('base_amount'), sqlc.narg('base_currency'), 0) RETURNING *;
 
 -- name: ListTransactions :many
 SELECT * FROM transactions

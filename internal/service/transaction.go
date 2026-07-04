@@ -65,15 +65,22 @@ func (s *Service) AddExpense(params CreateExpenseParams) (*TransactionResult, er
 
 	categoryID := sql.NullInt64{Int64: category.ID, Valid: true}
 
+	baseAmount, baseCurrency, err := s.resolveBaseFields(account.Currency, params.Amount)
+	if err != nil {
+		return nil, err
+	}
+
 	txn, err := s.q.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
-		AccountID:   account.ID,
-		CategoryID:  categoryID,
-		Type:        "expense",
-		Amount:      params.Amount,
-		Currency:    "IDR",
-		Description: description,
-		Notes:       notes,
-		Date:        date,
+		AccountID:    account.ID,
+		CategoryID:   categoryID,
+		Type:         "expense",
+		Amount:       params.Amount,
+		Currency:     account.Currency,
+		Description:  description,
+		Notes:        notes,
+		Date:         date,
+		BaseAmount:   baseAmount,
+		BaseCurrency: baseCurrency,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create transaction: %w", err)
@@ -129,15 +136,22 @@ func (s *Service) AddIncome(params CreateIncomeParams) (*TransactionResult, erro
 
 	categoryID := sql.NullInt64{Int64: category.ID, Valid: true}
 
+	baseAmount, baseCurrency, err := s.resolveBaseFields(account.Currency, params.Amount)
+	if err != nil {
+		return nil, err
+	}
+
 	txn, err := s.q.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
-		AccountID:   account.ID,
-		CategoryID:  categoryID,
-		Type:        "income",
-		Amount:      params.Amount,
-		Currency:    "IDR",
-		Description: description,
-		Notes:       notes,
-		Date:        date,
+		AccountID:    account.ID,
+		CategoryID:   categoryID,
+		Type:         "income",
+		Amount:       params.Amount,
+		Currency:     account.Currency,
+		Description:  description,
+		Notes:        notes,
+		Date:         date,
+		BaseAmount:   baseAmount,
+		BaseCurrency: baseCurrency,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create transaction: %w", err)
@@ -281,6 +295,8 @@ type ListTransactionsParams struct {
 type ListTransactionsResult struct {
 	Transactions []*gen.Transaction
 	Total        int64
+	BaseTotal    int64
+	Currency     string
 }
 
 func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransactionsResult, error) {
@@ -351,8 +367,7 @@ func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransact
 		if err != nil {
 			return nil, err
 		}
-		result := &ListTransactionsResult{Transactions: transactions}
-		result.Total = s.sumTransactionAmounts(transactions)
+		result := buildListResult(s, transactions)
 		return result, nil
 	}
 
@@ -369,9 +384,32 @@ func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransact
 		return nil, err
 	}
 
+	result := buildListResult(s, transactions)
+	return result, nil
+}
+
+func buildListResult(s *Service, transactions []*gen.Transaction) *ListTransactionsResult {
 	result := &ListTransactionsResult{Transactions: transactions}
 	result.Total = s.sumTransactionAmounts(transactions)
-	return result, nil
+	result.BaseTotal = s.sumBaseAmounts(transactions)
+	return result
+}
+
+func (s *Service) sumBaseAmounts(transactions []*gen.Transaction) int64 {
+	hasAnyBase := false
+	var baseTotal int64
+	for _, t := range transactions {
+		if t.BaseAmount.Valid {
+			hasAnyBase = true
+			baseTotal += t.BaseAmount.Int64
+		} else {
+			baseTotal += t.Amount
+		}
+	}
+	if !hasAnyBase {
+		return 0
+	}
+	return baseTotal
 }
 
 func (s *Service) sumTransactionAmounts(transactions []*gen.Transaction) int64 {
@@ -694,4 +732,22 @@ func (s *Service) GetTransactionByID(id int64) (*gen.Transaction, error) {
 		return nil, err
 	}
 	return txn, nil
+}
+
+func (s *Service) resolveBaseFields(accountCurrency string, amount int64) (sql.NullInt64, sql.NullString, error) {
+	baseCurrency, err := s.GetBaseCurrency()
+	if err != nil {
+		return sql.NullInt64{}, sql.NullString{}, err
+	}
+
+	if accountCurrency == baseCurrency {
+		return sql.NullInt64{}, sql.NullString{}, nil
+	}
+
+	converted, err := s.Convert(amount, accountCurrency)
+	if err != nil {
+		return sql.NullInt64{}, sql.NullString{}, err
+	}
+
+	return sql.NullInt64{Int64: converted, Valid: true}, sql.NullString{String: baseCurrency, Valid: true}, nil
 }

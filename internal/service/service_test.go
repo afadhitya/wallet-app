@@ -9,6 +9,7 @@ import (
 
 	"github.com/afadhitya/wallet-app/internal/gen"
 	"github.com/afadhitya/wallet-app/internal/testdb"
+	"github.com/afadhitya/wallet-app/pkg/config"
 )
 
 func setupService(t *testing.T) *Service {
@@ -3145,5 +3146,301 @@ func TestAdjustBalanceGetNewBalanceError(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected final balance read error")
+	}
+}
+
+func setupServiceWithMultiCurrency(t *testing.T) *Service {
+	t.Helper()
+	svc := setupService(t)
+
+	SetTestRateConfig(TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates: map[string]int64{
+			"USD": 15800,
+			"EUR": 17200,
+		},
+	})
+	t.Cleanup(ResetTestRateConfig)
+
+	return svc
+}
+
+func TestAddExpenseForeignCurrency(t *testing.T) {
+	svc := setupServiceWithMultiCurrency(t)
+
+	account, err := svc.CreateAccount("Wise USD", "checking", "USD")
+	if err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	result, err := svc.AddExpense(CreateExpenseParams{
+		Amount:      10,
+		Description: "AWS monthly",
+		Category:    "Subscriptions",
+		Account:     "Wise USD",
+		Date:        "2026-07-01",
+	})
+	if err != nil {
+		t.Fatalf("AddExpense: %v", err)
+	}
+
+	if result.Transaction.Amount != 10 {
+		t.Errorf("expected original amount 10, got %d", result.Transaction.Amount)
+	}
+	if result.Transaction.Currency != "USD" {
+		t.Errorf("expected currency USD, got %s", result.Transaction.Currency)
+	}
+
+	if !result.Transaction.BaseAmount.Valid {
+		t.Fatal("expected base_amount to be set for foreign currency")
+	}
+	expectedBase := int64(10 * 15800)
+	if result.Transaction.BaseAmount.Int64 != expectedBase {
+		t.Errorf("expected base_amount %d, got %d", expectedBase, result.Transaction.BaseAmount.Int64)
+	}
+	if !result.Transaction.BaseCurrency.Valid {
+		t.Fatal("expected base_currency to be set")
+	}
+	if result.Transaction.BaseCurrency.String != "IDR" {
+		t.Errorf("expected base_currency IDR, got %s", result.Transaction.BaseCurrency.String)
+	}
+
+	updated, err := svc.GetAccountByID(account.ID)
+	if err != nil {
+		t.Fatalf("get account: %v", err)
+	}
+	if updated.Balance != -10 {
+		t.Errorf("expected balance -10 (in account currency USD), got %d", updated.Balance)
+	}
+}
+
+func TestAddIncomeForeignCurrency(t *testing.T) {
+	svc := setupServiceWithMultiCurrency(t)
+
+	account, err := svc.CreateAccount("PayPal USD", "checking", "USD")
+	if err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	result, err := svc.AddIncome(CreateIncomeParams{
+		Amount:      100,
+		Description: "Freelance payment",
+		Category:    "Freelance",
+		Account:     "PayPal USD",
+		Date:        "2026-07-01",
+	})
+	if err != nil {
+		t.Fatalf("AddIncome: %v", err)
+	}
+
+	if result.Transaction.Amount != 100 {
+		t.Errorf("expected original amount 100, got %d", result.Transaction.Amount)
+	}
+	if result.Transaction.Currency != "USD" {
+		t.Errorf("expected currency USD, got %s", result.Transaction.Currency)
+	}
+
+	if !result.Transaction.BaseAmount.Valid {
+		t.Fatal("expected base_amount to be set for foreign currency")
+	}
+	expectedBase := int64(100 * 15800)
+	if result.Transaction.BaseAmount.Int64 != expectedBase {
+		t.Errorf("expected base_amount %d, got %d", expectedBase, result.Transaction.BaseAmount.Int64)
+	}
+
+	updated, err := svc.GetAccountByID(account.ID)
+	if err != nil {
+		t.Fatalf("get account: %v", err)
+	}
+	if updated.Balance != 100 {
+		t.Errorf("expected balance 100 (in account currency USD), got %d", updated.Balance)
+	}
+}
+
+func TestAddExpenseBaseCurrency(t *testing.T) {
+	svc := setupServiceWithMultiCurrency(t)
+
+	account, err := svc.CreateAccount("GoPay", "ewallet", "IDR")
+	if err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	result, err := svc.AddExpense(CreateExpenseParams{
+		Amount:      50000,
+		Description: "Coffee",
+		Category:    "Coffee & Snacks",
+		Account:     "GoPay",
+		Date:        "2026-07-01",
+	})
+	if err != nil {
+		t.Fatalf("AddExpense: %v", err)
+	}
+
+	if result.Transaction.Currency != "IDR" {
+		t.Errorf("expected currency IDR, got %s", result.Transaction.Currency)
+	}
+	if result.Transaction.BaseAmount.Valid {
+		t.Errorf("expected base_amount to be unset for base currency, got %d", result.Transaction.BaseAmount.Int64)
+	}
+	if result.Transaction.BaseCurrency.Valid {
+		t.Errorf("expected base_currency to be unset for base currency, got %s", result.Transaction.BaseCurrency.String)
+	}
+
+	updated, err := svc.GetAccountByID(account.ID)
+	if err != nil {
+		t.Fatalf("get account: %v", err)
+	}
+	if updated.Balance != -50000 {
+		t.Errorf("expected balance -50000, got %d", updated.Balance)
+	}
+}
+
+func TestAddExpenseForeignCurrencyEUR(t *testing.T) {
+	svc := setupServiceWithMultiCurrency(t)
+
+	account, err := svc.CreateAccount("Revolut EUR", "checking", "EUR")
+	if err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	result, err := svc.AddExpense(CreateExpenseParams{
+		Amount:      50,
+		Description: "Hotel booking",
+		Category:    "Travel",
+		Account:     "Revolut EUR",
+		Date:        "2026-07-01",
+	})
+	if err != nil {
+		t.Fatalf("AddExpense: %v", err)
+	}
+
+	if result.Transaction.Currency != "EUR" {
+		t.Errorf("expected currency EUR, got %s", result.Transaction.Currency)
+	}
+
+	if !result.Transaction.BaseAmount.Valid {
+		t.Fatal("expected base_amount to be set")
+	}
+	expectedBase := int64(50 * 17200)
+	if result.Transaction.BaseAmount.Int64 != expectedBase {
+		t.Errorf("expected base_amount %d, got %d", expectedBase, result.Transaction.BaseAmount.Int64)
+	}
+
+	updated, err := svc.GetAccountByID(account.ID)
+	if err != nil {
+		t.Fatalf("get account: %v", err)
+	}
+	if updated.Balance != -50 {
+		t.Errorf("expected balance -50 (in EUR), got %d", updated.Balance)
+	}
+}
+
+func TestAddExpenseMissingRate(t *testing.T) {
+	svc := setupServiceWithMultiCurrency(t)
+
+	_, err := svc.CreateAccount("KRW Account", "checking", "KRW")
+	if err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	_, err = svc.AddExpense(CreateExpenseParams{
+		Amount:      50000,
+		Description: "Korean food",
+		Category:    "Restaurant",
+		Account:     "KRW Account",
+		Date:        "2026-07-01",
+	})
+	if err == nil {
+		t.Fatal("expected error for missing rate")
+	}
+
+	var rnf *RateNotFoundError
+	if !errors.As(err, &rnf) {
+		t.Errorf("expected RateNotFoundError, got %T: %v", err, err)
+	}
+	if !strings.Contains(err.Error(), "wallet rate add KRW") {
+		t.Errorf("expected actionable error, got: %v", err)
+	}
+
+	transactions, err := svc.ListTransactions(ListTransactionsParams{Limit: 10})
+	if err != nil {
+		t.Fatalf("list transactions: %v", err)
+	}
+	if len(transactions.Transactions) > 0 {
+		t.Errorf("expected no transaction to be persisted, got %d", len(transactions.Transactions))
+	}
+}
+
+func TestAddIncomeMissingRate(t *testing.T) {
+	svc := setupServiceWithMultiCurrency(t)
+
+	_, err := svc.CreateAccount("JPY Account", "checking", "JPY")
+	if err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	_, err = svc.AddIncome(CreateIncomeParams{
+		Amount:      5000,
+		Description: "Japanese income",
+		Category:    "Salary",
+		Account:     "JPY Account",
+		Date:        "2026-07-01",
+	})
+	if err == nil {
+		t.Fatal("expected error for missing rate")
+	}
+
+	transactions, err := svc.ListTransactions(ListTransactionsParams{Limit: 10})
+	if err != nil {
+		t.Fatalf("list transactions: %v", err)
+	}
+	if len(transactions.Transactions) > 0 {
+		t.Errorf("expected no transaction to be persisted, got %d", len(transactions.Transactions))
+	}
+}
+
+func TestListTransactionsWithOnlyBaseCurrency(t *testing.T) {
+	svc := setupServiceWithMultiCurrency(t)
+
+	_, err := svc.CreateAccount("BCA", "checking", "IDR")
+	if err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	_, err = svc.AddExpense(CreateExpenseParams{
+		Amount:      50000,
+		Description: "Coffee",
+		Category:    "Coffee & Snacks",
+		Account:     "BCA",
+		Date:        "2026-07-01",
+	})
+	if err != nil {
+		t.Fatalf("AddExpense: %v", err)
+	}
+
+	result, err := svc.ListTransactions(ListTransactionsParams{Limit: 10})
+	if err != nil {
+		t.Fatalf("ListTransactions: %v", err)
+	}
+
+	if result.BaseTotal != 0 {
+		t.Errorf("expected BaseTotal 0 for base-only transactions, got %d", result.BaseTotal)
+	}
+	if len(result.Transactions) != 1 {
+		t.Errorf("expected 1 transaction, got %d", len(result.Transactions))
+	}
+}
+
+func TestResolveBaseFieldsMissingRateConfig(t *testing.T) {
+	origLoad := svcLoadRates
+	svcLoadRates = func() (config.RateConfig, error) {
+		return config.RateConfig{}, ErrRateConfigMissing
+	}
+	defer func() { svcLoadRates = origLoad }()
+
+	svc := New(testdb.Open(t))
+	_, _, err := svc.resolveBaseFields("USD", 100)
+	if err == nil {
+		t.Fatal("expected error for missing rate config in resolveBaseFields")
 	}
 }
