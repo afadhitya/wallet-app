@@ -60,7 +60,7 @@ func runList(cmd *cobra.Command, svc *service.Service, account, category, tag, t
 			output["base_total"] = formatAmount(result.BaseTotal)
 			output["base_currency"] = baseCurrency
 		}
-		return printJSON(stdout, output)
+		return printSuccessJSON(stdout, output, cmd)
 	}
 
 	if len(result.Transactions) == 0 {

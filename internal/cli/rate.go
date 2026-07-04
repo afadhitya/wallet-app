@@ -91,10 +91,10 @@ func runRateList(cmd *cobra.Command, svc *service.Service) error {
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"base_currency": base,
 			"rates":         rates,
-		})
+		}, cmd)
 	}
 
 	if len(rates) == 0 {
@@ -137,12 +137,12 @@ func runRateSet(cmd *cobra.Command, currency, rateStr string, svc *service.Servi
 	stdout, _ := resolveOut(cmd)
 	base, _ := svc.GetBaseCurrency()
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"status":   "updated",
 			"currency": currency,
 			"rate":     rate,
 			"base":     base,
-		})
+		}, cmd)
 	}
 	_, _ = fmt.Fprintf(stdout, "Rate updated: 1 %s = %s %s\n", currency, formatNum(rate), base)
 	return nil
@@ -161,12 +161,12 @@ func runRateAdd(cmd *cobra.Command, currency, rateStr string, svc *service.Servi
 	stdout, _ := resolveOut(cmd)
 	base, _ := svc.GetBaseCurrency()
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"status":   "added",
 			"currency": currency,
 			"rate":     rate,
 			"base":     base,
-		})
+		}, cmd)
 	}
 	_, _ = fmt.Fprintf(stdout, "Rate added: 1 %s = %s %s\n", currency, formatNum(rate), base)
 	return nil
@@ -179,10 +179,10 @@ func runRateRm(cmd *cobra.Command, currency string, svc *service.Service) error 
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"status":   "removed",
 			"currency": currency,
-		})
+		}, cmd)
 	}
 	_, _ = fmt.Fprintf(stdout, "Rate removed: %s\n", currency)
 	return nil

@@ -90,7 +90,7 @@ func runCategoryList(cmd *cobra.Command, svc *service.Service) error {
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, categories)
+		return printSuccessJSON(stdout, categories, cmd)
 	}
 
 	if len(categories) == 0 {
@@ -126,7 +126,7 @@ func runCategoryAdd(cmd *cobra.Command, name string, svc *service.Service, paren
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, result)
+		return printSuccessJSON(stdout, result, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Category '%s' created (ID: %d).\n", result.Name, result.ID)
@@ -147,7 +147,7 @@ func runCategoryEdit(cmd *cobra.Command, idStr string, svc *service.Service, nam
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, result)
+		return printSuccessJSON(stdout, result, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Category %d updated.\n", result.ID)
@@ -167,7 +167,7 @@ func runCategoryRm(cmd *cobra.Command, idStr string, svc *service.Service) error
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{"status": "removed", "id": id})
+		return printSuccessJSON(stdout, map[string]interface{}{"status": "removed", "id": id}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Category %d removed.\n", id)

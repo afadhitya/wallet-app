@@ -146,7 +146,7 @@ func runBudgetSet(cmd *cobra.Command, name, amountStr string, svc *service.Servi
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"id":            result.Budget.ID,
 			"name":          budgetDisplayName(result.Budget),
 			"amount":        result.Budget.Amount,
@@ -158,7 +158,7 @@ func runBudgetSet(cmd *cobra.Command, name, amountStr string, svc *service.Servi
 			"is_active":     result.Budget.IsActive == 1,
 			"categories":    categoryNames(result.Categories),
 			"tags":          tagNames(result.Tags),
-		})
+		}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Budget '%s' set: %s (period: %s)\n",
@@ -192,7 +192,7 @@ func runBudgetList(cmd *cobra.Command, svc *service.Service, all bool) error {
 				"tags":          tagNames(item.Tags),
 			})
 		}
-		return printJSON(stdout, output)
+		return printSuccessJSON(stdout, output, cmd)
 	}
 
 	if len(items) == 0 {
@@ -251,7 +251,7 @@ func runBudgetCheck(cmd *cobra.Command, svc *service.Service, budget string, all
 				"notify_at_pct": budgetNotifyPct(r.Budget),
 			})
 		}
-		return printJSON(stdout, output)
+		return printSuccessJSON(stdout, output, cmd)
 	}
 
 	if len(results) == 0 {
@@ -310,7 +310,7 @@ func runBudgetEdit(cmd *cobra.Command, idStr string, svc *service.Service, amoun
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"id":            result.Budget.ID,
 			"name":          budgetDisplayName(result.Budget),
 			"amount":        result.Budget.Amount,
@@ -321,7 +321,7 @@ func runBudgetEdit(cmd *cobra.Command, idStr string, svc *service.Service, amoun
 			"is_active":     result.Budget.IsActive == 1,
 			"categories":    categoryNames(result.Categories),
 			"tags":          tagNames(result.Tags),
-		})
+		}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Budget %d updated.\n", result.Budget.ID)
@@ -341,7 +341,7 @@ func runBudgetRm(cmd *cobra.Command, idStr string, svc *service.Service) error {
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{"status": "removed", "id": id})
+		return printSuccessJSON(stdout, map[string]interface{}{"status": "removed", "id": id}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Budget %d removed.\n", id)

@@ -62,7 +62,7 @@ func runTagList(cmd *cobra.Command, svc *service.Service) error {
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, tags)
+		return printSuccessJSON(stdout, tags, cmd)
 	}
 
 	if len(tags) == 0 {
@@ -85,7 +85,7 @@ func runTagAdd(cmd *cobra.Command, name string, svc *service.Service) error {
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, result)
+		return printSuccessJSON(stdout, result, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Tag '%s' created (ID: %d).\n", result.Name, result.ID)
@@ -105,7 +105,7 @@ func runTagRm(cmd *cobra.Command, name string, svc *service.Service) error {
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{"status": "removed", "name": name})
+		return printSuccessJSON(stdout, map[string]interface{}{"status": "removed", "name": name}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Tag '%s' removed.\n", name)

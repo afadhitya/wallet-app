@@ -47,13 +47,13 @@ func runAdjust(cmd *cobra.Command, args []string, svc *service.Service, notes st
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"account":     result.Account.Name,
 			"old_balance": result.OldBalance,
 			"new_balance": result.NewBalance,
 			"difference":  result.Difference,
 			"description": description,
-		})
+		}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Balance adjusted for %s:\n", result.Account.Name)

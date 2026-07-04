@@ -174,7 +174,7 @@ func runAddTransfer(cmd *cobra.Command, args []string, svc *service.Service, fro
 		if result.Warning != "" {
 			output["warning"] = result.Warning
 		}
-		return printJSON(stdout, output)
+		return printSuccessJSON(stdout, output, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Transfer recorded: %d from %s to %s on %s\n",
@@ -206,7 +206,7 @@ func printTransactionResult(cmd *cobra.Command, result *service.TransactionResul
 			output["base_amount"] = result.Transaction.BaseAmount.Int64
 			output["base_currency"] = result.Transaction.BaseCurrency.String
 		}
-		return printJSON(stdout, output)
+		return printSuccessJSON(stdout, output, cmd)
 	}
 
 	desc := ""

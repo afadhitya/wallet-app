@@ -45,7 +45,7 @@ func runReport(cmd *cobra.Command, svc *service.Service, account, category, mont
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, result)
+		return printSuccessJSON(stdout, result, cmd)
 	}
 
 	printReportText(stdout, result)
