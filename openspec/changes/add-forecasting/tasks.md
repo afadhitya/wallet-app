@@ -26,4 +26,4 @@
 - [x] 4.2 Run the full Go test suite.
 - [x] 4.3 Run the project linter and fix reported issues.
 - [x] 4.4 Verify test coverage passes project expectations; if specific code is impractical to test directly, document the exclusion rationale.
-- [ ] 4.5 Run OpenSpec validation for the `add-forecasting` change.
+- [x] 4.5 Run OpenSpec validation for the `add-forecasting` change.
