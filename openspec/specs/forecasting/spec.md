@@ -71,17 +71,28 @@ The system SHALL provide `wallet forecast bills` to show upcoming planned expens
 - **AND** recurring planned expenses contribute each occurrence due in that horizon
 
 ### Requirement: Forecast JSON Output
-The system SHALL support machine-readable JSON output for forecast commands when global `--json` is supplied.
+The system SHALL support machine-readable AI-native JSON output for forecast commands when global `--json` is supplied and SHALL use the shared JSON response envelope.
 
 #### Scenario: Render balance forecast JSON
 - **WHEN** the user runs `wallet forecast --months 3 --json`
-- **THEN** the system writes a JSON response containing the forecast horizon, forecast rows, planned payment details, totals, and warnings
-- **AND** does not include table formatting in the response
+- **THEN** the system writes a JSON envelope with `success: true`
+- **AND** `data` contains the forecast horizon, forecast rows, planned payment details, totals, and warnings
+- **AND** `meta.command` identifies the forecast command
+- **AND** the response does not include table formatting in the response
 
 #### Scenario: Render bills forecast JSON
 - **WHEN** the user runs `wallet forecast bills --json`
-- **THEN** the system writes a JSON response containing bill rows, running totals, total amount, count, and horizon
-- **AND** does not include table formatting in the response
+- **THEN** the system writes a JSON envelope with `success: true`
+- **AND** `data` contains bill rows, running totals, total amount, count, and horizon
+- **AND** `meta.command` identifies the forecast bills command
+- **AND** the response does not include table formatting in the response
+
+#### Scenario: Forecast errors return envelope JSON
+- **WHEN** the user runs a forecast command with `--json` and provides an invalid horizon or unknown account
+- **THEN** the system exits with a non-zero status
+- **AND** writes a JSON envelope with `success: false`
+- **AND** `error.code` identifies the invalid horizon or missing account
+- **AND** `error.message` describes the failure without table formatting
 
 ### Requirement: Forecast Warnings and Empty State
 The system SHALL communicate forecast limitations and warning states without failing successful forecast commands.
