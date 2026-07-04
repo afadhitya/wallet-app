@@ -6,10 +6,10 @@
 
 ## 2. Forecast Service
 
-- [ ] 2.1 Implement service validation for positive `months` values and account resolution for optional account-scoped forecasts.
-- [ ] 2.2 Implement planned-payment occurrence expansion across the forecast horizon, including recurring payments and month-end clamping behavior.
-- [ ] 2.3 Implement balance forecast calculation using current account balances, monthly projected income, monthly projected expenses, net movement, ending balances, and warning generation for negative balances.
-- [ ] 2.4 Implement bill forecast calculation for active unpaused expense planned payments, ordered by due date with running totals.
+- [x] 2.1 Implement service validation for positive `months` values and account resolution for optional account-scoped forecasts.
+- [x] 2.2 Implement planned-payment occurrence expansion across the forecast horizon, including recurring payments and month-end clamping behavior.
+- [x] 2.3 Implement balance forecast calculation using current account balances, monthly projected income, monthly projected expenses, net movement, ending balances, and warning generation for negative balances.
+- [x] 2.4 Implement bill forecast calculation for active unpaused expense planned payments, ordered by due date with running totals.
 - [ ] 2.5 Add service tests for default horizon, multi-month recurrence expansion, account filtering, invalid months, no planned payments, and negative-balance warnings.
 
 ## 3. CLI Commands and Output
