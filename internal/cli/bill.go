@@ -87,7 +87,7 @@ func runBillAdd(cmd *cobra.Command, svc *service.Service, name, amountStr string
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printJSON(stdout, pp)
+		return printSuccessJSON(stdout, pp, cmd)
 	}
 
 	nextDue := "N/A"
@@ -155,10 +155,10 @@ func runBillList(cmd *cobra.Command, svc *service.Service, active, paused, all b
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"planned_payments": payments,
 			"count":            len(payments),
-		})
+		}, cmd)
 	}
 
 	if len(payments) == 0 {
@@ -230,11 +230,11 @@ func runBillDue(cmd *cobra.Command, svc *service.Service, overdue, week bool, ne
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
-			"due":   due,
-			"total": formatAmount(total),
-			"count": len(due),
-		})
+		return printSuccessJSON(stdout, map[string]interface{}{
+			"due":       due,
+			"total_due": total,
+			"count":     len(due),
+		}, cmd)
 	}
 
 	if len(due) == 0 {
@@ -294,7 +294,7 @@ func runBillPay(cmd *cobra.Command, svc *service.Service, id int64, date string,
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printJSON(stdout, result)
+		return printSuccessJSON(stdout, result, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Paid planned payment #%d: %s\n", result.PlannedPayment.ID, result.PlannedPayment.Name)
@@ -333,7 +333,7 @@ func runBillSkip(cmd *cobra.Command, svc *service.Service, id int64) error {
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printJSON(stdout, pp)
+		return printSuccessJSON(stdout, pp, cmd)
 	}
 
 	nextDue := "N/A"
@@ -371,9 +371,9 @@ func runBillPause(cmd *cobra.Command, svc *service.Service, id int64) error {
 	pp, _ := svc.GetPlannedPaymentByID(id)
 	if isJSON(cmd) {
 		if pp != nil {
-			return printJSON(stdout, pp)
+			return printSuccessJSON(stdout, pp, cmd)
 		}
-		return printJSON(stdout, map[string]string{"status": "paused", "id": fmt.Sprintf("%d", id)})
+		return printSuccessJSON(stdout, map[string]string{"status": "paused", "id": fmt.Sprintf("%d", id)}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Paused planned payment #%d\n", id)
@@ -406,9 +406,9 @@ func runBillResume(cmd *cobra.Command, svc *service.Service, id int64) error {
 	pp, _ := svc.GetPlannedPaymentByID(id)
 	if isJSON(cmd) {
 		if pp != nil {
-			return printJSON(stdout, pp)
+			return printSuccessJSON(stdout, pp, cmd)
 		}
-		return printJSON(stdout, map[string]string{"status": "resumed", "id": fmt.Sprintf("%d", id)})
+		return printSuccessJSON(stdout, map[string]string{"status": "resumed", "id": fmt.Sprintf("%d", id)}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Resumed planned payment #%d\n", id)
@@ -480,7 +480,7 @@ func runBillEdit(cmd *cobra.Command, svc *service.Service, id int64, name string
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printJSON(stdout, pp)
+		return printSuccessJSON(stdout, pp, cmd)
 	}
 
 	nextDue := "N/A"
@@ -517,10 +517,10 @@ func runBillRm(cmd *cobra.Command, svc *service.Service, id int64) error {
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"status": "deleted",
 			"id":     id,
-		})
+		}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Deleted planned payment #%d\n", id)

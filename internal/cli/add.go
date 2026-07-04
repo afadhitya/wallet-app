@@ -116,7 +116,7 @@ func runAddExpense(cmd *cobra.Command, args []string, svc *service.Service, acco
 		return formatError(cmd, err)
 	}
 
-	return printTransactionResult(cmd, result, "expense")
+	return printTransactionResult(cmd, result, "expense", svc)
 }
 
 func runAddIncome(cmd *cobra.Command, args []string, svc *service.Service, account, category string, tags []string, date, notes string) error {
@@ -139,7 +139,7 @@ func runAddIncome(cmd *cobra.Command, args []string, svc *service.Service, accou
 		return formatError(cmd, err)
 	}
 
-	return printTransactionResult(cmd, result, "income")
+	return printTransactionResult(cmd, result, "income", svc)
 }
 
 func runAddTransfer(cmd *cobra.Command, args []string, svc *service.Service, fromAccount, toAccount, date, notes string) error {
@@ -174,7 +174,7 @@ func runAddTransfer(cmd *cobra.Command, args []string, svc *service.Service, fro
 		if result.Warning != "" {
 			output["warning"] = result.Warning
 		}
-		return printJSON(stdout, output)
+		return printSuccessJSON(stdout, output, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Transfer recorded: %d from %s to %s on %s\n",
@@ -185,13 +185,19 @@ func runAddTransfer(cmd *cobra.Command, args []string, svc *service.Service, fro
 	return nil
 }
 
-func printTransactionResult(cmd *cobra.Command, result *service.TransactionResult, txnType string) error {
+func printTransactionResult(cmd *cobra.Command, result *service.TransactionResult, txnType string, svc *service.Service) error {
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
 		desc := ""
 		if result.Transaction.Description.Valid {
 			desc = result.Transaction.Description.String
+		}
+		categoryName := svc.GetCategoryName(result.Transaction.CategoryID.Int64)
+		account, _ := svc.GetAccountByID(result.Transaction.AccountID)
+		accountName := ""
+		if account != nil {
+			accountName = account.Name
 		}
 		output := map[string]interface{}{
 			"id":          result.Transaction.ID,
@@ -200,13 +206,15 @@ func printTransactionResult(cmd *cobra.Command, result *service.TransactionResul
 			"currency":    result.Transaction.Currency,
 			"description": desc,
 			"date":        result.Transaction.Date,
+			"category":    categoryName,
+			"account":     accountName,
 			"tags":        tagNames(result.Tags),
 		}
 		if result.Transaction.BaseAmount.Valid {
 			output["base_amount"] = result.Transaction.BaseAmount.Int64
 			output["base_currency"] = result.Transaction.BaseCurrency.String
 		}
-		return printJSON(stdout, output)
+		return printSuccessJSON(stdout, output, cmd)
 	}
 
 	desc := ""

@@ -54,7 +54,7 @@ func runForecastBalance(cmd *cobra.Command, svc *service.Service, months int, ac
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printBalanceForecastJSON(stdout, result)
+		return printBalanceForecastJSON(stdout, result, cmd)
 	}
 	return printBalanceForecastText(stdout, result)
 }
@@ -67,7 +67,7 @@ func runForecastBills(cmd *cobra.Command, svc *service.Service, months int) erro
 
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
-		return printBillsForecastJSON(stdout, result)
+		return printBillsForecastJSON(stdout, result, cmd)
 	}
 	return printBillsForecastText(stdout, result)
 }
@@ -180,7 +180,7 @@ func printBillsForecastText(w io.Writer, result *service.ForecastBillsResult) er
 	return nil
 }
 
-func printBalanceForecastJSON(w io.Writer, result *service.ForecastBalanceResult) error {
+func printBalanceForecastJSON(w io.Writer, result *service.ForecastBalanceResult, cmd *cobra.Command) error {
 	type jsonMonthlyBalance struct {
 		Year              int    `json:"year"`
 		Month             string `json:"month"`
@@ -259,10 +259,10 @@ func printBalanceForecastJSON(w io.Writer, result *service.ForecastBalanceResult
 		}
 	}
 
-	return printJSON(w, jsonResponse)
+	return printSuccessJSON(w, jsonResponse, cmd)
 }
 
-func printBillsForecastJSON(w io.Writer, result *service.ForecastBillsResult) error {
+func printBillsForecastJSON(w io.Writer, result *service.ForecastBillsResult, cmd *cobra.Command) error {
 	type jsonBillRow struct {
 		DueDate      string `json:"due_date"`
 		Name         string `json:"name"`
@@ -288,5 +288,5 @@ func printBillsForecastJSON(w io.Writer, result *service.ForecastBillsResult) er
 		"warnings":     result.Warnings,
 	}
 
-	return printJSON(w, jsonResponse)
+	return printSuccessJSON(w, jsonResponse, cmd)
 }

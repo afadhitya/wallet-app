@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -64,10 +63,7 @@ func TestCLIRateListJSON(t *testing.T) {
 		t.Fatalf("rate list --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["base_currency"] != "IDR" {
 		t.Errorf("expected base_currency IDR, got %v", result["base_currency"])
 	}
@@ -104,10 +100,7 @@ func TestCLIRateAddJSON(t *testing.T) {
 		t.Fatalf("rate add --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["status"] != "added" {
 		t.Errorf("expected status 'added', got %v", result["status"])
 	}
@@ -131,10 +124,7 @@ func TestCLIRateSetJSON(t *testing.T) {
 		t.Fatalf("rate set --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["status"] != "updated" {
 		t.Errorf("expected status 'updated', got %v", result["status"])
 	}
@@ -158,10 +148,7 @@ func TestCLIRateRmJSON(t *testing.T) {
 		t.Fatalf("rate rm --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["status"] != "removed" {
 		t.Errorf("expected status 'removed', got %v", result["status"])
 	}

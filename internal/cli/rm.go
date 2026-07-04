@@ -71,10 +71,10 @@ func runRm(cmd *cobra.Command, idStr string, svc *service.Service, force bool) e
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		return printSuccessJSON(stdout, map[string]interface{}{
 			"status": "removed",
 			"id":     id,
-		})
+		}, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Transaction %d removed.\n", id)

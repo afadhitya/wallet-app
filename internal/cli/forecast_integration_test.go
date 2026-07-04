@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -115,10 +114,7 @@ func TestCLIForecastAccountJSON(t *testing.T) {
 		t.Fatalf("forecast --json --account BCA: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	account, ok := result["account"].(map[string]interface{})
 	if !ok {
 		t.Error("expected 'account' key in JSON")
@@ -141,10 +137,7 @@ func TestCLIForecastJSON(t *testing.T) {
 		t.Fatalf("forecast --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if horizon, ok := result["horizon"].(float64); !ok || int(horizon) != 3 {
 		t.Errorf("expected horizon 3, got %v", result["horizon"])
 	}
@@ -236,10 +229,7 @@ func TestCLIForecastBillsJSON(t *testing.T) {
 		t.Fatalf("forecast bills --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if horizon, ok := result["horizon"].(float64); !ok || int(horizon) != 2 {
 		t.Errorf("expected horizon 2, got %v", result["horizon"])
 	}

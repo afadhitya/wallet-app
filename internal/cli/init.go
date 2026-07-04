@@ -60,13 +60,13 @@ func runInit(cmd *cobra.Command) error {
 	}
 
 	if isJSON(cmd) {
-		_ = printJSON(stdout, map[string]interface{}{
+		_ = printSuccessJSON(stdout, map[string]interface{}{
 			"status":     "initialized",
 			"database":   dbPath,
 			"accounts":   len(accounts),
 			"categories": len(categories),
 			"message":    "Wallet database initialized successfully",
-		})
+		}, cmd)
 		return nil
 	}
 

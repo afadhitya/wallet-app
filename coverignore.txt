@@ -198,13 +198,13 @@ github.com/afadhitya/wallet-app/internal/cli/bill.go:318.18,320.5
 github.com/afadhitya/wallet-app/internal/cli/bill.go:355.18,357.5
 
 # runBillPause: GetPlannedPaymentByID error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/bill.go:376.3,376.95
+github.com/afadhitya/wallet-app/internal/cli/bill.go:376.3,376.107
 
 # newBillResumeCmd: RunE closure body (command wiring)
 github.com/afadhitya/wallet-app/internal/cli/bill.go:390.18,392.5
 
 # runBillResume: GetPlannedPaymentByID error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/bill.go:411.3,411.96
+github.com/afadhitya/wallet-app/internal/cli/bill.go:411.3,411.108
 
 # newBillEditCmd: RunE closure body (command wiring)
 github.com/afadhitya/wallet-app/internal/cli/bill.go:429.18,431.5
