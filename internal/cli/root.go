@@ -20,13 +20,12 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newAdjustCmd())
 	cmd.AddCommand(newBudgetCmd())
 	cmd.AddCommand(newBillCmd())
+	cmd.AddCommand(newRateCmd())
 	cmd.AddCommand(newReportCmd())
 	cmd.AddCommand(newForecastCmd())
 
 	return cmd
 }
-
-
 
 func newReportCmd() *cobra.Command {
 	return &cobra.Command{
@@ -37,5 +36,3 @@ func newReportCmd() *cobra.Command {
 		},
 	}
 }
-
-
