@@ -38,12 +38,4 @@ func newReportCmd() *cobra.Command {
 	}
 }
 
-func newForecastCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "forecast",
-		Short: "Forecast future balances",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-}
+

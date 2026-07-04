@@ -14,11 +14,11 @@
 
 ## 3. CLI Commands and Output
 
-- [ ] 3.1 Replace the placeholder forecast command with `wallet forecast` flags for `--months`/`-n` and `--account`/`-a`.
-- [ ] 3.2 Add `wallet forecast bills` with `--months`/`-n` defaulting to 2.
-- [ ] 3.3 Implement text output for balance forecasts with projected income, expenses, net movement, ending balances, planned payment details, category breakdowns, empty states, and warnings.
-- [ ] 3.4 Implement text output for bills forecasts with date, bill name, amount, running total, total amount, empty states, and planned-payment-only context.
-- [ ] 3.5 Implement JSON output for balance and bills forecasts using the existing global `--json` flag.
+- [x] 3.1 Replace the placeholder forecast command with `wallet forecast` flags for `--months`/`-n` and `--account`/`-a`.
+- [x] 3.2 Add `wallet forecast bills` with `--months`/`-n` defaulting to 2.
+- [x] 3.3 Implement text output for balance forecasts with projected income, expenses, net movement, ending balances, planned payment details, category breakdowns, empty states, and warnings.
+- [x] 3.4 Implement text output for bills forecasts with date, bill name, amount, running total, total amount, empty states, and planned-payment-only context.
+- [x] 3.5 Implement JSON output for balance and bills forecasts using the existing global `--json` flag.
 
 ## 4. Verification
 
