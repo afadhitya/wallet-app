@@ -3,11 +3,13 @@ package cli
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/afadhitya/wallet-app/internal/db"
 	"github.com/afadhitya/wallet-app/internal/service"
@@ -31,8 +33,160 @@ func printJSON(w io.Writer, v interface{}) error {
 	return enc.Encode(v)
 }
 
+type successMeta struct {
+	Command   string `json:"command"`
+	Timestamp string `json:"timestamp"`
+}
+
+type successResponse struct {
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data"`
+	Meta    successMeta `json:"meta"`
+}
+
+func newSuccessResponse(data interface{}, cmd *cobra.Command) *successResponse {
+	return &successResponse{
+		Success: true,
+		Data:    data,
+		Meta: successMeta{
+			Command:   cmd.CommandPath(),
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		},
+	}
+}
+
+func printSuccessJSON(w io.Writer, data interface{}, cmd *cobra.Command) error {
+	return printJSON(w, newSuccessResponse(data, cmd))
+}
+
+type errorBody struct {
+	Code       string `json:"code"`
+	Message    string `json:"message"`
+	Suggestion string `json:"suggestion,omitempty"`
+}
+
+type errorResponse struct {
+	Success bool      `json:"success"`
+	Error   errorBody `json:"error"`
+}
+
+const (
+	ErrCodeInvalidInput           = "INVALID_INPUT"
+	ErrCodeNotFound               = "NOT_FOUND"
+	ErrCodeAccountNotFound        = "ACCOUNT_NOT_FOUND"
+	ErrCodeCategoryNotFound       = "CATEGORY_NOT_FOUND"
+	ErrCodeTagNotFound            = "TAG_NOT_FOUND"
+	ErrCodeTransactionNotFound    = "TRANSACTION_NOT_FOUND"
+	ErrCodeBudgetNotFound         = "BUDGET_NOT_FOUND"
+	ErrCodePlannedPaymentNotFound = "PLANNED_PAYMENT_NOT_FOUND"
+	ErrCodeInvalidAmount          = "INVALID_AMOUNT"
+	ErrCodeInvalidDate            = "INVALID_DATE"
+	ErrCodeValidation             = "VALIDATION_ERROR"
+	ErrCodeBillPaused             = "BILL_PAUSED"
+	ErrCodeBillAlreadyPaid        = "BILL_ALREADY_PAID"
+	ErrCodeExchangeRateNotFound   = "EXCHANGE_RATE_NOT_FOUND"
+	ErrCodeExchangeRateConfig     = "EXCHANGE_RATE_CONFIG_MISSING"
+	ErrCodeExchangeRateInvalid    = "EXCHANGE_RATE_INVALID"
+	ErrCodeDBError                = "DB_ERROR"
+	ErrCodeInternal               = "INTERNAL_ERROR"
+)
+
+func classifyError(err error) (code string, suggestion string) {
+	var notFound *service.NotFoundError
+	if errors.As(err, &notFound) {
+		switch notFound.Entity {
+		case "account":
+			return ErrCodeAccountNotFound, ""
+		case "category":
+			return ErrCodeCategoryNotFound, ""
+		case "tag":
+			return ErrCodeTagNotFound, ""
+		case "transaction":
+			return ErrCodeTransactionNotFound, ""
+		case "budget":
+			return ErrCodeBudgetNotFound, ""
+		case "planned payment":
+			return ErrCodePlannedPaymentNotFound, ""
+		default:
+			return ErrCodeNotFound, ""
+		}
+	}
+
+	var validation *service.ValidationError
+	if errors.As(err, &validation) {
+		switch validation.Field {
+		case "amount":
+			return ErrCodeInvalidAmount, validation.Message
+		case "date", "start_date", "from", "to":
+			return ErrCodeInvalidDate, validation.Message
+		case "state":
+			msg := validation.Message
+			if strings.Contains(strings.ToLower(msg), "paused") {
+				return ErrCodeBillPaused, "unpause the planned payment first"
+			}
+			if strings.Contains(strings.ToLower(msg), "not paused") {
+				return ErrCodeBillPaused, "planned payment is not paused"
+			}
+			return ErrCodeValidation, msg
+		default:
+			return ErrCodeValidation, validation.Message
+		}
+	}
+
+	var rateNotFound *service.RateNotFoundError
+	if errors.As(err, &rateNotFound) {
+		return ErrCodeExchangeRateNotFound, fmt.Sprintf("use 'wallet rate add %s <rate>'", rateNotFound.Currency)
+	}
+
+	if errors.Is(err, service.ErrInvalidAmount) {
+		return ErrCodeInvalidAmount, "amount must be positive"
+	}
+
+	if errors.Is(err, service.ErrRateConfigMissing) {
+		return ErrCodeExchangeRateConfig, "run 'wallet init' to set up"
+	}
+
+	if errors.Is(err, service.ErrRateMustBePositive) {
+		return ErrCodeExchangeRateInvalid, "rate must be a positive integer"
+	}
+
+	if errors.Is(err, service.ErrDuplicateName) {
+		return ErrCodeValidation, "name already exists"
+	}
+
+	if errors.Is(err, service.ErrNotFound) {
+		return ErrCodeNotFound, ""
+	}
+
+	if errors.Is(err, service.ErrMissingField) {
+		return ErrCodeValidation, "required field missing"
+	}
+
+	msg := err.Error()
+	if strings.Contains(strings.ToLower(msg), "database") || strings.Contains(strings.ToLower(msg), "sql") {
+		return ErrCodeDBError, ""
+	}
+
+	if strings.Contains(strings.ToLower(msg), "invalid") || strings.Contains(strings.ToLower(msg), "required") {
+		return ErrCodeInvalidInput, ""
+	}
+
+	return ErrCodeInternal, ""
+}
+
 func printErrJSON(w io.Writer, msg string) {
 	_ = printJSON(w, map[string]string{"error": msg})
+}
+
+func printErrorJSON(w io.Writer, code, message, suggestion string) error {
+	return printJSON(w, &errorResponse{
+		Success: false,
+		Error: errorBody{
+			Code:       code,
+			Message:    message,
+			Suggestion: suggestion,
+		},
+	})
 }
 
 func formatError(cmd *cobra.Command, err error) error {
@@ -41,7 +195,8 @@ func formatError(cmd *cobra.Command, err error) error {
 	}
 	_, stderr := resolveOut(cmd)
 	if isJSON(cmd) {
-		printErrJSON(stderr, err.Error())
+		code, suggestion := classifyError(err)
+		_ = printErrorJSON(stderr, code, err.Error(), suggestion)
 	} else {
 		_, _ = fmt.Fprintf(stderr, "Error: %s\n", err.Error())
 	}
