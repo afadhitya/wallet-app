@@ -155,6 +155,52 @@ func (q *Queries) ListActivePlannedPayments(ctx context.Context) ([]*PlannedPaym
 	return items, nil
 }
 
+const listActivePlannedPaymentsForAccount = `-- name: ListActivePlannedPaymentsForAccount :many
+SELECT id, account_id, category_id, type, amount, currency, name, recurrence, recurrence_rule, start_date, next_due_date, is_paused, created_at, updated_at, is_active FROM planned_payments
+WHERE is_active = 1 AND is_paused = 0
+AND (?1 IS NULL OR account_id = ?1)
+ORDER BY COALESCE(next_due_date, start_date) ASC
+`
+
+func (q *Queries) ListActivePlannedPaymentsForAccount(ctx context.Context, accountID interface{}) ([]*PlannedPayment, error) {
+	rows, err := q.db.QueryContext(ctx, listActivePlannedPaymentsForAccount, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*PlannedPayment{}
+	for rows.Next() {
+		var i PlannedPayment
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.CategoryID,
+			&i.Type,
+			&i.Amount,
+			&i.Currency,
+			&i.Name,
+			&i.Recurrence,
+			&i.RecurrenceRule,
+			&i.StartDate,
+			&i.NextDueDate,
+			&i.IsPaused,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAllPlannedPayments = `-- name: ListAllPlannedPayments :many
 SELECT id, account_id, category_id, type, amount, currency, name, recurrence, recurrence_rule, start_date, next_due_date, is_paused, created_at, updated_at, is_active FROM planned_payments
 ORDER BY COALESCE(next_due_date, start_date) ASC
