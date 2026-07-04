@@ -1,5 +1,11 @@
 # Wallet App
 
+[![Go Version](https://img.shields.io/github/go-mod/go-version/afadhitya/wallet-app?style=flat)](https://go.dev/)
+[![CI](https://github.com/afadhitya/wallet-app/actions/workflows/go-quality.yml/badge.svg)](https://github.com/afadhitya/wallet-app/actions/workflows/go-quality.yml)
+[![Coverage](https://codecov.io/gh/afadhitya/wallet-app/branch/main/graph/badge.svg)](https://codecov.io/gh/afadhitya/wallet-app)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/afadhitya/wallet-app?style=flat)](https://github.com/afadhitya/wallet-app/releases)
+
 A CLI-first personal finance tracker written in Go. Track expenses, income, and transfers across multiple accounts with budgets, recurring bills, multi-currency support, and AI-friendly JSON output.
 
 ## Features
