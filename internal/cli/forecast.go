@@ -245,11 +245,11 @@ func printBalanceForecastJSON(w io.Writer, result *service.ForecastBalanceResult
 	}
 
 	jsonResponse := map[string]interface{}{
-		"horizon":             result.Months,
-		"forecast":            mbs,
-		"planned_payments":    pps,
-		"category_breakdown":  cbs,
-		"warnings":            result.Warnings,
+		"horizon":            result.Months,
+		"forecast":           mbs,
+		"planned_payments":   pps,
+		"category_breakdown": cbs,
+		"warnings":           result.Warnings,
 	}
 
 	if result.AccountName != "" {

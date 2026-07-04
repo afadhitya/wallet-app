@@ -273,7 +273,7 @@ func (s *Service) ForecastBills(months int) (*ForecastBillsResult, error) {
 	dateFormat := "2006-01-02"
 
 	type billOccurrence struct {
-		Date   time.Time
+		Date    time.Time
 		BillRow BillRow
 	}
 	var bills []billOccurrence
