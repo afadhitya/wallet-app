@@ -334,6 +334,8 @@ func TestListBudgetsActive(t *testing.T) {
 
 func TestListBudgetsWithSpent(t *testing.T) {
 	svc := setupService(t)
+	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
+	defer ResetTestRateConfig()
 
 	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
 
@@ -485,6 +487,8 @@ func TestCheckBudgetsNotFound(t *testing.T) {
 
 func TestCheckBudgetsStatusWarning(t *testing.T) {
 	svc := setupService(t)
+	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
+	defer ResetTestRateConfig()
 
 	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
 
@@ -524,6 +528,8 @@ func TestCheckBudgetsStatusWarning(t *testing.T) {
 
 func TestCheckBudgetsStatusOver(t *testing.T) {
 	svc := setupService(t)
+	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
+	defer ResetTestRateConfig()
 
 	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
 
@@ -561,6 +567,8 @@ func TestCheckBudgetsStatusOver(t *testing.T) {
 
 func TestSpendingExcludesNonExpense(t *testing.T) {
 	svc := setupService(t)
+	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
+	defer ResetTestRateConfig()
 
 	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
 
@@ -598,6 +606,8 @@ func TestSpendingExcludesNonExpense(t *testing.T) {
 
 func TestSpendingExcludesArchived(t *testing.T) {
 	svc := setupService(t)
+	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
+	defer ResetTestRateConfig()
 
 	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
 
@@ -639,6 +649,8 @@ func TestSpendingExcludesArchived(t *testing.T) {
 
 func TestSpendingMixedOverlapDoubleCounted(t *testing.T) {
 	svc := setupService(t)
+	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
+	defer ResetTestRateConfig()
 
 	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
 	_, _ = svc.CreateTag("japan-2026")
