@@ -249,3 +249,75 @@ github.com/afadhitya/wallet-app/internal/service/forecast.go:352.17,353.9
 
 # expandOccurrences: next date not advancing (infinite-loop safety guard)
 github.com/afadhitya/wallet-app/internal/service/forecast.go:355.27,356.9
+
+# === Multi-Currency: Infrastructure error paths ===
+
+# ratesConfigPath: userHomeDir error (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:31.16,33.3
+
+# LoadRates: ReadFile error when file exists but cannot be read (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:41.16,43.3
+
+# LoadRates: TOML parse error (bad file contents)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:50.3,50.62
+
+# LoadRates: nil rates map init (edge case with empty rates section)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:53.51,55.3
+github.com/afadhitya/wallet-app/pkg/config/rates.go:57.22,59.3
+
+# EnsureRatesFile: os.Stat non-not-exist error (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:66.16,68.3
+
+# EnsureRatesFile: fallthrough isNotExist (handled by EnsureRates)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:72.36,74.3
+
+# EnsureRatesFile: os.MkdirAll error (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:77.47,79.3
+
+# EnsureRatesFile: SaveRates error (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:82.39,84.3
+
+# SaveRates: os.MkdirAll error (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:91.16,93.3
+
+# SaveRates: os.Create error (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:96.47,98.3
+
+# SaveRates: toml.Encode error (file write error)
+github.com/afadhitya/wallet-app/pkg/config/rates.go:101.16,103.3
+github.com/afadhitya/wallet-app/pkg/config/rates.go:106.55,108.3
+
+# runInit: EnsureRatesFile error (OS/infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/init.go:54.49,56.3
+
+# SetTestRateConfig: svcSaveRates closure body (test helper only)
+github.com/afadhitya/wallet-app/internal/service/currency.go:31.50,35.3
+
+# loadRateConfig: generic load error wrapping (OS/infrastructure)
+github.com/afadhitya/wallet-app/internal/service/currency.go:79.16,81.3
+
+# Convert: missing rate error path (tested by GetRate path)
+github.com/afadhitya/wallet-app/internal/service/currency.go:101.16,103.3
+
+# AddRate: svcSaveRates error path (OS/infrastructure)
+github.com/afadhitya/wallet-app/internal/service/currency.go:136.16,138.3
+
+# SetRate: svcSaveRates error path (OS/infrastructure)
+github.com/afadhitya/wallet-app/internal/service/currency.go:158.16,160.3
+
+# RemoveRate: svcSaveRates error path (OS/infrastructure)
+github.com/afadhitya/wallet-app/internal/service/currency.go:176.16,178.3
+
+# sumBaseAmounts: base_amount valid but expense adjustment (transfer branches)
+github.com/afadhitya/wallet-app/internal/service/transaction.go:402.25,405.4
+
+# sumBaseAmounts: no base amounts in any transaction
+github.com/afadhitya/wallet-app/internal/service/transaction.go:412.2,412.18
+
+# runRateList: missing rate config error path (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/rate.go:87.16,89.3
+
+# runRateList: small inverse display branches (data formatting)
+github.com/afadhitya/wallet-app/internal/cli/rate.go:116.9,116.25
+github.com/afadhitya/wallet-app/internal/cli/rate.go:116.25,118.4
+github.com/afadhitya/wallet-app/internal/cli/rate.go:118.9,120.4
