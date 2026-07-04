@@ -19,6 +19,7 @@
 | 07 | Multi-Currency | Exchange rates, conversion, mixed-currency reporting | ✅ design approved |
 | 08 | AI-Native Layer | Hermes skill, JSON output mode, all commands wrapped | ✅ design approved |
 | 09 | Reports & Export | Reports by category/account/tag, CSV export | ✅ design approved |
+| 10 | Documentation | README, LICENSE (MIT), CONTRIBUTING, AGENTS.md | 🔴 pending review |
 
 ---
 
@@ -46,6 +47,8 @@
 | Multi-currency strategy | **Manual rate source** (config file), convert at transaction time |
 | Balance adjustment | **New tx type `adjustment`** — not income/expense, tracked, excluded from reports |
 | Delete behavior | **Soft delete** (is_archived) — preserve history |
+| License | **MIT** |
+| README style | **Standard OSS** |
 
 ---
 
