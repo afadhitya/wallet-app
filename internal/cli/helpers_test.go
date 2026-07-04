@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/afadhitya/wallet-app/internal/gen"
+	"github.com/afadhitya/wallet-app/internal/service"
 	"github.com/afadhitya/wallet-app/pkg/config"
 	"github.com/spf13/cobra"
 )
@@ -99,12 +100,21 @@ func TestFormatError_JSON(t *testing.T) {
 		t.Fatal("expected non-nil error")
 	}
 
-	var result map[string]string
+	var result map[string]interface{}
 	if jsonErr := json.Unmarshal(stderr.Bytes(), &result); jsonErr != nil {
 		t.Fatalf("expected JSON output in stderr, got: %s", stderr.String())
 	}
-	if result["error"] != "json error test" {
-		t.Errorf("expected error 'json error test', got %q", result["error"])
+
+	if success, ok := result["success"].(bool); !ok || success {
+		t.Errorf("expected success false, got %v", result["success"])
+	}
+
+	errorObj, ok := result["error"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected error object, got %T", result["error"])
+	}
+	if errorObj["message"] != "json error test" {
+		t.Errorf("expected error message 'json error test', got %q", errorObj["message"])
 	}
 }
 
@@ -120,12 +130,21 @@ func TestFormatError_JSON_DirectFlag(t *testing.T) {
 		t.Fatal("expected non-nil error")
 	}
 
-	var result map[string]string
+	var result map[string]interface{}
 	if jsonErr := json.Unmarshal(stderr.Bytes(), &result); jsonErr != nil {
 		t.Fatalf("expected JSON output in stderr, got: %s", stderr.String())
 	}
-	if result["error"] != "direct flag test" {
-		t.Errorf("expected error 'direct flag test', got %q", result["error"])
+
+	if success, ok := result["success"].(bool); !ok || success {
+		t.Errorf("expected success false, got %v", result["success"])
+	}
+
+	errorObj, ok := result["error"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected error object, got %T", result["error"])
+	}
+	if errorObj["message"] != "direct flag test" {
+		t.Errorf("expected error message 'direct flag test', got %q", errorObj["message"])
 	}
 }
 
@@ -419,5 +438,258 @@ func TestExpandHomePath_UserHomeDirError(t *testing.T) {
 	result := expandHomePath("~/test/path")
 	if result != "~/test/path" {
 		t.Errorf("expected '~/test/path' when home dir fails, got %q", result)
+	}
+}
+
+func TestNewSuccessResponse(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	parent := &cobra.Command{Use: "wallet"}
+	parent.AddCommand(cmd)
+
+	data := map[string]interface{}{"key": "value"}
+	resp := newSuccessResponse(data, cmd)
+
+	if !resp.Success {
+		t.Error("expected success true")
+	}
+
+	if resp.Data == nil {
+		t.Error("expected non-nil data")
+	}
+
+	m, ok := resp.Data.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected map[string]interface{}, got %T", resp.Data)
+	}
+	if m["key"] != "value" {
+		t.Errorf("expected data.key 'value', got %v", m["key"])
+	}
+
+	if resp.Meta.Command == "" {
+		t.Error("expected non-empty meta.command")
+	}
+
+	if resp.Meta.Timestamp == "" {
+		t.Error("expected non-empty meta.timestamp")
+	}
+}
+
+func TestClassifyErrorNotFound(t *testing.T) {
+	testCases := []struct {
+		err         error
+		expected    string
+		description string
+	}{
+		{&service.NotFoundError{Entity: "category", Name: "food"}, ErrCodeCategoryNotFound, "category not found"},
+		{&service.NotFoundError{Entity: "account", Name: "bca"}, ErrCodeAccountNotFound, "account not found"},
+		{&service.NotFoundError{Entity: "tag", Name: "vip"}, ErrCodeTagNotFound, "tag not found"},
+		{&service.NotFoundError{Entity: "transaction", Name: "1"}, ErrCodeTransactionNotFound, "transaction not found"},
+		{&service.NotFoundError{Entity: "budget", Name: "1"}, ErrCodeBudgetNotFound, "budget not found"},
+		{&service.NotFoundError{Entity: "planned payment", Name: "1"}, ErrCodePlannedPaymentNotFound, "bill not found"},
+		{&service.NotFoundError{Entity: "unknown", Name: "x"}, ErrCodeNotFound, "unknown not found"},
+	}
+
+	for _, tc := range testCases {
+		code, _ := classifyError(tc.err)
+		if code != tc.expected {
+			t.Errorf("%s: expected %s, got %s", tc.description, tc.expected, code)
+		}
+	}
+}
+
+func TestClassifyErrorValidation(t *testing.T) {
+	tests := []struct {
+		err      error
+		code     string
+		suggest  string
+	}{
+		{&service.ValidationError{Field: "amount", Message: "invalid"}, ErrCodeInvalidAmount, "invalid"},
+		{&service.ValidationError{Field: "date", Message: "bad date"}, ErrCodeInvalidDate, "bad date"},
+		{&service.ValidationError{Field: "start_date", Message: "bad"}, ErrCodeInvalidDate, "bad"},
+		{&service.ValidationError{Field: "state", Message: "paused"}, ErrCodeBillPaused, "unpause the planned payment first"},
+		{&service.ValidationError{Field: "unknown_field", Message: "fail"}, ErrCodeValidation, "fail"},
+	}
+
+	for _, tc := range tests {
+		code, suggestion := classifyError(tc.err)
+		if code != tc.code {
+			t.Errorf("expected code %s, got %s", tc.code, code)
+		}
+		if suggestion != tc.suggest {
+			t.Errorf("expected suggestion %q, got %q", tc.suggest, suggestion)
+		}
+	}
+}
+
+func TestClassifyErrorSentinel(t *testing.T) {
+	tests := []struct {
+		err  error
+		code string
+	}{
+		{service.ErrInvalidAmount, ErrCodeInvalidAmount},
+		{service.ErrRateConfigMissing, ErrCodeExchangeRateConfig},
+		{service.ErrRateMustBePositive, ErrCodeExchangeRateInvalid},
+		{service.ErrDuplicateName, ErrCodeValidation},
+		{service.ErrNotFound, ErrCodeNotFound},
+		{service.ErrMissingField, ErrCodeValidation},
+	}
+
+	for _, tc := range tests {
+		code, _ := classifyError(tc.err)
+		if code != tc.code {
+			t.Errorf("expected %s for %v, got %s", tc.code, tc.err, code)
+		}
+	}
+}
+
+func TestClassifyErrorRateNotFound(t *testing.T) {
+	err := &service.RateNotFoundError{Currency: "KRW", Base: "IDR"}
+	code, suggestion := classifyError(err)
+	if code != ErrCodeExchangeRateNotFound {
+		t.Errorf("expected %s, got %s", ErrCodeExchangeRateNotFound, code)
+	}
+	if !strings.Contains(suggestion, "wallet rate add KRW") {
+		t.Errorf("expected actionable suggestion, got %s", suggestion)
+	}
+}
+
+func TestClassifyErrorDBError(t *testing.T) {
+	err := fmt.Errorf("database: sql error occurred")
+	code, _ := classifyError(err)
+	if code != ErrCodeDBError {
+		t.Errorf("expected %s, got %s", ErrCodeDBError, code)
+	}
+}
+
+func TestClassifyErrorInvalidInput(t *testing.T) {
+	err := fmt.Errorf("invalid something required")
+	code, _ := classifyError(err)
+	if code != ErrCodeInvalidInput {
+		t.Errorf("expected %s, got %s", ErrCodeInvalidInput, code)
+	}
+}
+
+func TestClassifyErrorInternal(t *testing.T) {
+	err := fmt.Errorf("something unexpected happened")
+	code, _ := classifyError(err)
+	if code != ErrCodeInternal {
+		t.Errorf("expected %s, got %s", ErrCodeInternal, code)
+	}
+}
+
+func TestPrintSuccessJSON(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	parent := &cobra.Command{Use: "wallet"}
+	parent.AddCommand(cmd)
+
+	buf := new(bytes.Buffer)
+	if err := printSuccessJSON(buf, map[string]int{"id": 42}, cmd); err != nil {
+		t.Fatalf("printSuccessJSON: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	success, _ := result["success"].(bool)
+	if !success {
+		t.Error("expected success true")
+	}
+
+	data := result["data"].(map[string]interface{})
+	if data["id"].(float64) != 42 {
+		t.Errorf("expected data.id 42, got %v", data["id"])
+	}
+
+	meta := result["meta"].(map[string]interface{})
+	if meta["command"] == nil {
+		t.Error("expected meta.command")
+	}
+	if meta["timestamp"] == nil {
+		t.Error("expected meta.timestamp")
+	}
+}
+
+func TestPrintErrorJSON(t *testing.T) {
+	buf := new(bytes.Buffer)
+	if err := printErrorJSON(buf, "TEST_CODE", "test message", "try harder"); err != nil {
+		t.Fatalf("printErrorJSON: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	success, _ := result["success"].(bool)
+	if success {
+		t.Error("expected success false")
+	}
+
+	errObj := result["error"].(map[string]interface{})
+	if errObj["code"] != "TEST_CODE" {
+		t.Errorf("expected code TEST_CODE, got %v", errObj["code"])
+	}
+	if errObj["message"] != "test message" {
+		t.Errorf("expected message, got %v", errObj["message"])
+	}
+	if errObj["suggestion"] != "try harder" {
+		t.Errorf("expected suggestion, got %v", errObj["suggestion"])
+	}
+}
+
+func TestPrintErrorJSONNoSuggestion(t *testing.T) {
+	buf := new(bytes.Buffer)
+	_ = printErrorJSON(buf, "CODE", "msg", "")
+
+	var result map[string]interface{}
+	_ = json.Unmarshal(buf.Bytes(), &result)
+
+	errObj := result["error"].(map[string]interface{})
+	if _, exists := errObj["suggestion"]; exists {
+		t.Error("expected no suggestion field when empty")
+	}
+}
+
+func TestSkillFileExists(t *testing.T) {
+	skillPath := filepath.Join("..", "..", "skill", "SKILL.md")
+	info, err := os.Stat(skillPath)
+	if err != nil {
+		t.Fatalf("skill/SKILL.md not found at %s: %v", skillPath, err)
+	}
+	if info.IsDir() {
+		t.Error("skill/SKILL.md should be a file, not a directory")
+	}
+}
+
+func TestSkillFileContent(t *testing.T) {
+	skillPath := filepath.Join("..", "..", "skill", "SKILL.md")
+	content, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatalf("read skill/SKILL.md: %v", err)
+	}
+
+	text := string(content)
+	casesSensitive := []string{
+		"name: wallet",
+		"wallet add expense",
+		"wallet bill due",
+		"wallet forecast",
+		"--json",
+		"success",
+		"data",
+		"CATEGORY_NOT_FOUND",
+		"BILL_PAUSED",
+	}
+
+	for _, check := range casesSensitive {
+		if !strings.Contains(text, check) {
+			t.Errorf("skill/SKILL.md missing expected content: %q", check)
+		}
+	}
+
+	if !strings.Contains(strings.ToLower(text), "auto-create") {
+		t.Error("skill/SKILL.md missing guidance about auto-creating tags")
 	}
 }

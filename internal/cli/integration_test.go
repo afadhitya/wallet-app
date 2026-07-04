@@ -33,6 +33,40 @@ func newTestCLI(t *testing.T) *testCLI {
 	return &testCLI{t: t, svc: svc, cleanup: cleanup}
 }
 
+func extractJSONData(t *testing.T, stdout string) map[string]interface{} {
+	t.Helper()
+	var envelope map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+		t.Fatalf("unmarshal JSON envelope: %v, output: %s", err, stdout)
+	}
+	data, ok := envelope["data"]
+	if !ok {
+		t.Fatalf("envelope missing 'data' field: %s", stdout)
+	}
+	m, ok := data.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected data to be an object, got type %T: %s", data, stdout)
+	}
+	return m
+}
+
+func extractJSONArray(t *testing.T, stdout string) []interface{} {
+	t.Helper()
+	var envelope map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &envelope); err != nil {
+		t.Fatalf("unmarshal JSON envelope: %v, output: %s", err, stdout)
+	}
+	data, ok := envelope["data"]
+	if !ok {
+		t.Fatalf("envelope missing 'data' field: %s", stdout)
+	}
+	arr, ok := data.([]interface{})
+	if !ok {
+		t.Fatalf("expected data to be an array, got type %T: %s", data, stdout)
+	}
+	return arr
+}
+
 func (c *testCLI) run(args ...string) (string, string, error) {
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
@@ -64,10 +98,7 @@ func TestCLIInitJSON(t *testing.T) {
 		t.Fatalf("init --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["status"] != "initialized" {
 		t.Errorf("expected status 'initialized', got %v", result["status"])
 	}
@@ -91,12 +122,9 @@ func TestCLICategoryListJSON(t *testing.T) {
 		t.Fatalf("category list --json: %v", err)
 	}
 
-	var categories []map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &categories); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
-	if len(categories) < 10 {
-		t.Errorf("expected at least 10 categories, got %d", len(categories))
+	arr := extractJSONArray(t, stdout)
+	if len(arr) < 10 {
+		t.Errorf("expected at least 10 categories, got %d", len(arr))
 	}
 }
 
@@ -190,10 +218,7 @@ func TestCLIListJSON(t *testing.T) {
 		t.Fatalf("list --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["count"].(float64) != 0 {
 		t.Errorf("expected count 0, got %v", result["count"])
 	}
@@ -348,10 +373,7 @@ func TestCLIRmJSON(t *testing.T) {
 		t.Fatalf("rm --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["status"] != "removed" {
 		t.Errorf("expected status 'removed', got %v", result["status"])
 	}
@@ -366,12 +388,9 @@ func TestCLITagListJSON(t *testing.T) {
 		t.Fatalf("tag list --json: %v", err)
 	}
 
-	var tags []map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &tags); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
-	if len(tags) != 1 {
-		t.Errorf("expected 1 tag, got %d", len(tags))
+	arr := extractJSONArray(t, stdout)
+	if len(arr) != 1 {
+		t.Errorf("expected 1 tag, got %d", len(arr))
 	}
 }
 
@@ -384,10 +403,7 @@ func TestCLITagRmJSON(t *testing.T) {
 		t.Fatalf("tag rm --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	_ = extractJSONData(t, stdout)
 }
 
 func TestCLITagRmNameNotFound(t *testing.T) {
@@ -407,10 +423,7 @@ func TestCLIAdjustJSON(t *testing.T) {
 		t.Fatalf("adjust --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["difference"].(float64) != 500000 {
 		t.Errorf("expected difference 500000, got %v", result["difference"])
 	}
@@ -423,10 +436,7 @@ func TestCLIAddExpenseJSON(t *testing.T) {
 		t.Fatalf("add expense --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["type"] != "expense" {
 		t.Errorf("expected type 'expense', got %v", result["type"])
 	}
@@ -439,10 +449,7 @@ func TestCLIAddTransferJSON(t *testing.T) {
 		t.Fatalf("add transfer --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["type"] != "transfer" {
 		t.Errorf("expected type 'transfer', got %v", result["type"])
 	}
@@ -457,10 +464,7 @@ func TestCLIEditJSON(t *testing.T) {
 		t.Fatalf("edit --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	_ = extractJSONData(t, stdout)
 }
 
 func TestCLIEditInvalidID(t *testing.T) {
@@ -621,10 +625,7 @@ func TestCLIBudgetSetJSON(t *testing.T) {
 		t.Fatalf("budget set --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["name"] != "Monthly Food" {
 		t.Errorf("expected name 'Monthly Food', got %v", result["name"])
 	}
@@ -671,12 +672,9 @@ func TestCLIBudgetListJSON(t *testing.T) {
 		t.Fatalf("budget list --json: %v", err)
 	}
 
-	var results []map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &results); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
-	if len(results) != 1 {
-		t.Errorf("expected 1 budget, got %d", len(results))
+	arr := extractJSONArray(t, stdout)
+	if len(arr) != 1 {
+		t.Errorf("expected 1 budget, got %d", len(arr))
 	}
 }
 
@@ -716,15 +714,13 @@ func TestCLIBudgetCheckJSON(t *testing.T) {
 		t.Fatalf("budget check --json: %v", err)
 	}
 
-	var results []map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &results); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
+	arr := extractJSONArray(t, stdout)
+	if len(arr) != 1 {
+		t.Errorf("expected 1 result, got %d", len(arr))
 	}
-	if len(results) != 1 {
-		t.Errorf("expected 1 result, got %d", len(results))
-	}
-	if results[0]["status"] != "ok" {
-		t.Errorf("expected status 'ok', got %v", results[0]["status"])
+	results0 := arr[0].(map[string]interface{})
+	if results0["status"] != "ok" {
+		t.Errorf("expected status 'ok', got %v", results0["status"])
 	}
 }
 
@@ -758,10 +754,7 @@ func TestCLIBudgetEditJSON(t *testing.T) {
 		t.Fatalf("budget edit --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	_ = extractJSONData(t, stdout)
 }
 
 func TestCLIBudgetRm(t *testing.T) {
@@ -786,10 +779,7 @@ func TestCLIBudgetRmJSON(t *testing.T) {
 		t.Fatalf("budget rm --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 	if result["status"] != "removed" {
 		t.Errorf("expected status 'removed', got %v", result["status"])
 	}
@@ -1015,10 +1005,7 @@ func TestCLIAddExpenseForeignCurrencyJSON(t *testing.T) {
 		t.Fatalf("add expense --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 
 	currency, ok := result["currency"].(string)
 	if !ok || currency != "USD" {
@@ -1084,10 +1071,7 @@ func TestCLIListMultiCurrencyJSON(t *testing.T) {
 		t.Fatalf("list --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 
 	transactions, ok := result["transactions"].([]interface{})
 	if !ok {
@@ -1247,10 +1231,7 @@ func TestCLIReportJSON(t *testing.T) {
 		t.Fatalf("report --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 
 	if result["base_currency"] != "IDR" {
 		t.Errorf("expected base_currency IDR, got %v", result["base_currency"])
@@ -1303,10 +1284,7 @@ func TestCLIReportMixedCurrencyJSON(t *testing.T) {
 		t.Fatalf("report --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("unmarshal JSON: %v", err)
-	}
+	result := extractJSONData(t, stdout)
 
 	accts, ok := result["by_account"].([]interface{})
 	if !ok || len(accts) == 0 {

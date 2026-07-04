@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"encoding/json"
 	"io"
 	"strings"
 	"testing"
@@ -38,10 +37,7 @@ func TestCLIAddExpense_JSON(t *testing.T) {
 		t.Fatalf("add expense --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["type"] != "expense" {
 		t.Errorf("expected type 'expense', got %v", result["type"])
 	}
@@ -55,10 +51,7 @@ func TestCLIAddExpense_JSON_WithTag(t *testing.T) {
 		t.Fatalf("add expense --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v", jerr)
-	}
+	result := extractJSONData(t, stdout)
 	tags, ok := result["tags"].([]interface{})
 	if !ok {
 		t.Fatalf("expected tags array, got %T", result["tags"])
@@ -93,10 +86,7 @@ func TestCLIAddIncome_JSON(t *testing.T) {
 		t.Fatalf("add income --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v", jerr)
-	}
+	result := extractJSONData(t, stdout)
 	if result["type"] != "income" {
 		t.Errorf("expected type 'income', got %v", result["type"])
 	}
@@ -109,10 +99,7 @@ func TestCLIAddTransfer_JSON(t *testing.T) {
 		t.Fatalf("add transfer --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["type"] != "transfer" {
 		t.Errorf("expected type 'transfer', got %v", result["type"])
 	}
@@ -138,10 +125,7 @@ func TestCLIEdit_JSON(t *testing.T) {
 		t.Fatalf("edit --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["amount"].(float64) != 40000 {
 		t.Errorf("expected amount 40000, got %v", result["amount"])
 	}
@@ -156,10 +140,7 @@ func TestCLIRm_JSON(t *testing.T) {
 		t.Fatalf("rm --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["status"] != "removed" {
 		t.Errorf("expected status 'removed', got %v", result["status"])
 	}
@@ -174,10 +155,7 @@ func TestCLIAdjust_JSON(t *testing.T) {
 		t.Fatalf("adjust --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["account"] != "BCA" {
 		t.Errorf("expected account 'BCA', got %v", result["account"])
 	}
@@ -193,10 +171,7 @@ func TestCLICategoryAdd_JSON(t *testing.T) {
 		t.Fatalf("category add --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["name"] != "Kopi" {
 		t.Errorf("expected name 'Kopi', got %v", result["name"])
 	}
@@ -211,10 +186,7 @@ func TestCLICategoryEdit_JSON(t *testing.T) {
 		t.Fatalf("category edit --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["name"] != "Modified" {
 		t.Errorf("expected name 'Modified', got %v", result["name"])
 	}
@@ -229,10 +201,7 @@ func TestCLICategoryRm_JSON(t *testing.T) {
 		t.Fatalf("category rm --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["status"] != "removed" {
 		t.Errorf("expected status 'removed', got %v", result["status"])
 	}
@@ -264,12 +233,9 @@ func TestCLITagList_JSON(t *testing.T) {
 		t.Fatalf("tag list --json: %v", err)
 	}
 
-	var tags []map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &tags); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
-	if len(tags) != 1 {
-		t.Errorf("expected 1 tag, got %d", len(tags))
+	arr := extractJSONArray(t, stdout)
+	if len(arr) != 1 {
+		t.Errorf("expected 1 tag, got %d", len(arr))
 	}
 }
 
@@ -280,12 +246,9 @@ func TestCLITagList_JSON_Empty(t *testing.T) {
 		t.Fatalf("tag list --json: %v", err)
 	}
 
-	var tags []map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &tags); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
-	if len(tags) != 0 {
-		t.Errorf("expected 0 tags, got %d", len(tags))
+	arr := extractJSONArray(t, stdout)
+	if len(arr) != 0 {
+		t.Errorf("expected 0 tags, got %d", len(arr))
 	}
 }
 
@@ -296,10 +259,7 @@ func TestCLITagAdd_JSON(t *testing.T) {
 		t.Fatalf("tag add --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["name"] != "japan-2026" {
 		t.Errorf("expected name 'japan-2026', got %v", result["name"])
 	}
@@ -314,10 +274,7 @@ func TestCLITagRm_JSON(t *testing.T) {
 		t.Fatalf("tag rm --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v, output: %s", jerr, stdout)
-	}
+	result := extractJSONData(t, stdout)
 	if result["status"] != "removed" {
 		t.Errorf("expected status 'removed', got %v", result["status"])
 	}
@@ -726,10 +683,7 @@ func TestCLIInit_JSONOutput(t *testing.T) {
 		t.Fatalf("init --json: %v", err)
 	}
 
-	var result map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &result); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v", jerr)
-	}
+	_ = extractJSONData(t, stdout)
 }
 
 func TestCLITagList_EmptyJSON(t *testing.T) {
@@ -739,12 +693,9 @@ func TestCLITagList_EmptyJSON(t *testing.T) {
 		t.Fatalf("tag list --json: %v", err)
 	}
 
-	var tags []map[string]interface{}
-	if jerr := json.Unmarshal([]byte(stdout), &tags); jerr != nil {
-		t.Fatalf("unmarshal JSON: %v", jerr)
-	}
-	if len(tags) != 0 {
-		t.Errorf("expected 0 tags, got %d", len(tags))
+	arr := extractJSONArray(t, stdout)
+	if len(arr) != 0 {
+		t.Errorf("expected 0 tags, got %d", len(arr))
 	}
 }
 
