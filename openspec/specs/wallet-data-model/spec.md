@@ -47,7 +47,7 @@ The schema SHALL support unique freeform tags for cross-cutting transaction and 
 - **THEN** the second insert fails due to the unique tag name constraint
 
 ### Requirement: Transactions
-The schema SHALL store every money movement as a transaction with support for expenses, income, transfers, and balance adjustments.
+The schema SHALL store every money movement as a transaction with support for expenses, income, transfers, balance adjustments, and optional planned-payment linkage.
 
 #### Scenario: Standard transaction stores classification and dates
 - **WHEN** an expense or income transaction is inserted
@@ -63,6 +63,11 @@ The schema SHALL store every money movement as a transaction with support for ex
 - **WHEN** a transaction is recorded in a currency different from the account currency
 - **THEN** it stores original `amount` and `currency`
 - **AND** it can store converted `base_amount` and `base_currency`
+
+#### Scenario: Planned payment transaction stores source linkage
+- **WHEN** a transaction is created by paying a planned payment
+- **THEN** it stores a marker indicating the transaction is planned
+- **AND** it stores the source planned payment identifier
 
 ### Requirement: Transaction Tags
 The schema SHALL support many-to-many tags on transactions.
@@ -85,11 +90,16 @@ The schema SHALL store budgets as per-period snapshots with category and tag tar
 - **AND** deleting the budget removes its target links
 
 ### Requirement: Planned Payments
-The schema SHALL store planned income and expense payments with precomputed due dates.
+The schema SHALL store planned income and expense payments with precomputed due dates, recurrence state, active state, and pause state.
 
 #### Scenario: Planned payment stores recurrence details
 - **WHEN** a planned payment is inserted
-- **THEN** it stores account, optional category, type, amount, currency, name, recurrence, optional recurrence rule, start date, next due date, paused state, creation timestamp, and update timestamp
+- **THEN** it stores account, optional category, type, amount, currency, name, recurrence, optional recurrence rule, start date, next due date, active state, paused state, creation timestamp, and update timestamp
+
+#### Scenario: Archived planned payment remains linkable
+- **WHEN** a one-time planned payment is paid and archived
+- **THEN** existing transactions can still reference the archived planned payment
+- **AND** default active planned-payment queries exclude it
 
 ### Requirement: Exchange Rates
 The schema SHALL store cached exchange rates for currency conversion.
