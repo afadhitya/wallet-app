@@ -192,7 +192,7 @@ func runBudgetList(cmd *cobra.Command, svc *service.Service, all bool) error {
 				"tags":          tagNames(item.Tags),
 			})
 		}
-		return printSuccessJSON(stdout, output, cmd)
+		return printSuccessJSON(stdout, map[string]interface{}{"budgets": output}, cmd)
 	}
 
 	if len(items) == 0 {
@@ -251,7 +251,7 @@ func runBudgetCheck(cmd *cobra.Command, svc *service.Service, budget string, all
 				"notify_at_pct": budgetNotifyPct(r.Budget),
 			})
 		}
-		return printSuccessJSON(stdout, output, cmd)
+		return printSuccessJSON(stdout, map[string]interface{}{"budgets": output}, cmd)
 	}
 
 	if len(results) == 0 {

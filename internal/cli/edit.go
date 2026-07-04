@@ -70,12 +70,20 @@ func runEdit(cmd *cobra.Command, idStr string, svc *service.Service, amountStr, 
 		if result.Transaction.Description.Valid {
 			desc = result.Transaction.Description.String
 		}
+		categoryName := svc.GetCategoryName(result.Transaction.CategoryID.Int64)
+		account, _ := svc.GetAccountByID(result.Transaction.AccountID)
+		accountName := ""
+		if account != nil {
+			accountName = account.Name
+		}
 		return printSuccessJSON(stdout, map[string]interface{}{
 			"id":          result.Transaction.ID,
 			"type":        result.Transaction.Type,
 			"amount":      result.Transaction.Amount,
 			"description": desc,
 			"date":        result.Transaction.Date,
+			"category":    categoryName,
+			"account":     accountName,
 			"tags":        tagNames(result.Tags),
 		}, cmd)
 	}

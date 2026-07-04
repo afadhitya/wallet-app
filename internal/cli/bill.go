@@ -231,9 +231,9 @@ func runBillDue(cmd *cobra.Command, svc *service.Service, overdue, week bool, ne
 	stdout, _ := resolveOut(cmd)
 	if isJSON(cmd) {
 		return printSuccessJSON(stdout, map[string]interface{}{
-			"due":   due,
-			"total": formatAmount(total),
-			"count": len(due),
+			"due":       due,
+			"total_due": total,
+			"count":     len(due),
 		}, cmd)
 	}
 

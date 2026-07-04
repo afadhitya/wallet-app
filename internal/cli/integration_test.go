@@ -672,9 +672,13 @@ func TestCLIBudgetListJSON(t *testing.T) {
 		t.Fatalf("budget list --json: %v", err)
 	}
 
-	arr := extractJSONArray(t, stdout)
-	if len(arr) != 1 {
-		t.Errorf("expected 1 budget, got %d", len(arr))
+	result := extractJSONData(t, stdout)
+	budgets, ok := result["budgets"].([]interface{})
+	if !ok {
+		t.Fatalf("expected budgets array, got %T", result["budgets"])
+	}
+	if len(budgets) != 1 {
+		t.Errorf("expected 1 budget, got %d", len(budgets))
 	}
 }
 
@@ -714,11 +718,15 @@ func TestCLIBudgetCheckJSON(t *testing.T) {
 		t.Fatalf("budget check --json: %v", err)
 	}
 
-	arr := extractJSONArray(t, stdout)
-	if len(arr) != 1 {
-		t.Errorf("expected 1 result, got %d", len(arr))
+	result := extractJSONData(t, stdout)
+	budgets, ok := result["budgets"].([]interface{})
+	if !ok {
+		t.Fatalf("expected budgets array, got %T", result["budgets"])
 	}
-	results0 := arr[0].(map[string]interface{})
+	if len(budgets) != 1 {
+		t.Errorf("expected 1 result, got %d", len(budgets))
+	}
+	results0 := budgets[0].(map[string]interface{})
 	if results0["status"] != "ok" {
 		t.Errorf("expected status 'ok', got %v", results0["status"])
 	}
