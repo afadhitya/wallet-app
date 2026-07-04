@@ -18,9 +18,6 @@ func newForecastCmd() *cobra.Command {
 		Use:   "forecast",
 		Short: "Forecast future balances and bills from planned payments",
 		RunE: withService(func(cmd *cobra.Command, args []string, svc *service.Service, db *sql.DB) error {
-			if months == 0 {
-				months = 1
-			}
 			return runForecastBalance(cmd, svc, months, account)
 		}),
 	}
@@ -40,9 +37,6 @@ func newForecastBillsCmd() *cobra.Command {
 		Use:   "bills",
 		Short: "Show upcoming bill impact from planned payments",
 		RunE: withService(func(cmd *cobra.Command, args []string, svc *service.Service, db *sql.DB) error {
-			if months == 0 {
-				months = 2
-			}
 			return runForecastBills(cmd, svc, months)
 		}),
 	}
@@ -80,7 +74,7 @@ func runForecastBills(cmd *cobra.Command, svc *service.Service, months int) erro
 
 func printBalanceForecastText(w io.Writer, result *service.ForecastBalanceResult) error {
 	if len(result.PlannedPayments) == 0 {
-		fmt.Fprintln(w, "No planned payments found. Forecasts are based on planned payments only.")
+		_, _ = fmt.Fprintln(w, "No planned payments found. Forecasts are based on planned payments only.")
 		return nil
 	}
 
@@ -88,16 +82,16 @@ func printBalanceForecastText(w io.Writer, result *service.ForecastBalanceResult
 	if result.AccountName != "" {
 		scopeLabel = result.AccountName
 	}
-	fmt.Fprintf(w, "Forecast: %s (%d month", scopeLabel, result.Months)
+	_, _ = fmt.Fprintf(w, "Forecast: %s (%d month", scopeLabel, result.Months)
 	if result.Months > 1 {
-		fmt.Fprint(w, "s")
+		_, _ = fmt.Fprint(w, "s")
 	}
-	fmt.Fprintln(w, ")")
-	fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w, ")")
+	_, _ = fmt.Fprintln(w)
 
-	fmt.Fprintf(w, "%-12s %14s %14s %14s %14s %14s\n",
+	_, _ = fmt.Fprintf(w, "%-12s %14s %14s %14s %14s %14s\n",
 		"Month", "Start Balance", "Income", "Expenses", "Net Movement", "Ending Balance")
-	fmt.Fprintf(w, "%-12s %14s %14s %14s %14s %14s\n",
+	_, _ = fmt.Fprintf(w, "%-12s %14s %14s %14s %14s %14s\n",
 		"------------", "-------------", "-------------", "-------------", "-------------", "-------------")
 
 	for _, mb := range result.MonthlyBalances {
@@ -106,7 +100,7 @@ func printBalanceForecastText(w io.Writer, result *service.ForecastBalanceResult
 		if mb.IsNegative {
 			endLabel += " *"
 		}
-		fmt.Fprintf(w, "%-12s %14s %14s %14s %14s %14s\n",
+		_, _ = fmt.Fprintf(w, "%-12s %14s %14s %14s %14s %14s\n",
 			monthLabel,
 			formatAmount(mb.StartBalance),
 			formatAmount(mb.ProjectedIncome),
@@ -117,16 +111,16 @@ func printBalanceForecastText(w io.Writer, result *service.ForecastBalanceResult
 	}
 
 	if len(result.PlannedPayments) > 0 {
-		fmt.Fprintln(w)
-		fmt.Fprintf(w, "%-22s %-12s %-10s %-10s\n", "Name", "Due Date", "Amount", "Type")
-		fmt.Fprintf(w, "%-22s %-12s %-10s %-10s\n", "----------------------", "------------", "----------", "----------")
+		_, _ = fmt.Fprintln(w)
+		_, _ = fmt.Fprintf(w, "%-22s %-12s %-10s %-10s\n", "Name", "Due Date", "Amount", "Type")
+		_, _ = fmt.Fprintf(w, "%-22s %-12s %-10s %-10s\n", "----------------------", "------------", "----------", "----------")
 
 		sort.Slice(result.PlannedPayments, func(i, j int) bool {
 			return result.PlannedPayments[i].DueDate < result.PlannedPayments[j].DueDate
 		})
 
 		for _, pp := range result.PlannedPayments {
-			fmt.Fprintf(w, "%-22s %-12s %-10s %-10s\n",
+			_, _ = fmt.Fprintf(w, "%-22s %-12s %-10s %-10s\n",
 				truncate(pp.PlannedPaymentName, 22),
 				pp.DueDate,
 				formatAmount(pp.Amount),
@@ -136,17 +130,17 @@ func printBalanceForecastText(w io.Writer, result *service.ForecastBalanceResult
 	}
 
 	if len(result.CategoryBreakdown) > 0 {
-		fmt.Fprintln(w)
-		fmt.Fprintln(w, "Category Breakdown:")
+		_, _ = fmt.Fprintln(w)
+		_, _ = fmt.Fprintln(w, "Category Breakdown:")
 		for _, cb := range result.CategoryBreakdown {
-			fmt.Fprintf(w, "  %-20s %s\n", cb.CategoryName, formatAmount(cb.TotalExpense))
+			_, _ = fmt.Fprintf(w, "  %-20s %s\n", cb.CategoryName, formatAmount(cb.TotalExpense))
 		}
 	}
 
 	if len(result.Warnings) > 0 {
-		fmt.Fprintln(w)
+		_, _ = fmt.Fprintln(w)
 		for _, warn := range result.Warnings {
-			fmt.Fprintf(w, "Warning: %s\n", warn)
+			_, _ = fmt.Fprintf(w, "Warning: %s\n", warn)
 		}
 	}
 
@@ -155,22 +149,22 @@ func printBalanceForecastText(w io.Writer, result *service.ForecastBalanceResult
 
 func printBillsForecastText(w io.Writer, result *service.ForecastBillsResult) error {
 	if len(result.Bills) == 0 {
-		fmt.Fprintln(w, "No planned payments found. Forecasts are based on planned payments only.")
+		_, _ = fmt.Fprintln(w, "No planned payments found. Forecasts are based on planned payments only.")
 		return nil
 	}
 
-	fmt.Fprintf(w, "Upcoming Bills (%d month", result.Months)
+	_, _ = fmt.Fprintf(w, "Upcoming Bills (%d month", result.Months)
 	if result.Months > 1 {
-		fmt.Fprint(w, "s")
+		_, _ = fmt.Fprint(w, "s")
 	}
-	fmt.Fprintln(w, ")")
-	fmt.Fprintln(w)
+	_, _ = fmt.Fprintln(w, ")")
+	_, _ = fmt.Fprintln(w)
 
-	fmt.Fprintf(w, "%-12s %-22s %-14s %14s\n", "Due Date", "Name", "Amount", "Running Total")
-	fmt.Fprintf(w, "%-12s %-22s %-14s %14s\n", "------------", "----------------------", "--------------", "-------------")
+	_, _ = fmt.Fprintf(w, "%-12s %-22s %-14s %14s\n", "Due Date", "Name", "Amount", "Running Total")
+	_, _ = fmt.Fprintf(w, "%-12s %-22s %-14s %14s\n", "------------", "----------------------", "--------------", "-------------")
 
 	for _, bill := range result.Bills {
-		fmt.Fprintf(w, "%-12s %-22s %-14s %14s\n",
+		_, _ = fmt.Fprintf(w, "%-12s %-22s %-14s %14s\n",
 			bill.DueDate,
 			truncate(bill.Name, 22),
 			formatAmount(bill.Amount),
@@ -179,14 +173,8 @@ func printBillsForecastText(w io.Writer, result *service.ForecastBillsResult) er
 	}
 
 	if result.TotalAmount > 0 {
-		fmt.Fprintln(w)
-		fmt.Fprintf(w, "Total: %s across %d bill(s)\n", formatAmount(result.TotalAmount), len(result.Bills))
-	}
-
-	if len(result.Warnings) > 0 {
-		for _, warn := range result.Warnings {
-			fmt.Fprintf(w, "Warning: %s\n", warn)
-		}
+		_, _ = fmt.Fprintln(w)
+		_, _ = fmt.Fprintf(w, "Total: %s across %d bill(s)\n", formatAmount(result.TotalAmount), len(result.Bills))
 	}
 
 	return nil

@@ -211,3 +211,41 @@ github.com/afadhitya/wallet-app/internal/cli/bill.go:429.18,431.5
 
 # newBillRmCmd: RunE closure body (command wiring)
 github.com/afadhitya/wallet-app/internal/cli/bill.go:503.18,505.5
+
+# === Forecast Service: infrastructure/data-integrity error paths ===
+
+# ForecastBalance: ListActivePlannedPaymentsForAccount DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:81.16,83.3
+
+# ForecastBalance: ListAccounts DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:90.17,92.4
+
+# ForecastBalance: planned payment without next_due_date (data integrity)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:113.28,114.12
+
+# ForecastBalance: category lookup DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:119.55,121.5
+
+# ForecastBalance: invalid next_due_date parse error (data integrity)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:136.17,137.12
+
+# ForecastBalance: expandOccurrences safety guard — already filtered upstream
+github.com/afadhitya/wallet-app/internal/service/forecast.go:143.67,144.13
+
+# ForecastBills: ListActivePlannedPaymentsForAccount DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:264.16,266.3
+
+# ForecastBills: planned payment without next_due_date (data integrity)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:285.28,286.12
+
+# ForecastBills: invalid next_due_date parse error (data integrity)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:290.17,291.12
+
+# ForecastBills: expandOccurrences safety guard — already filtered upstream
+github.com/afadhitya/wallet-app/internal/service/forecast.go:297.67,298.13
+
+# expandOccurrences: calcNextDue error from invalid recurrence (data integrity)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:352.17,353.9
+
+# expandOccurrences: next date not advancing (infinite-loop safety guard)
+github.com/afadhitya/wallet-app/internal/service/forecast.go:355.27,356.9

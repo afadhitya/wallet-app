@@ -22,8 +22,8 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Add CLI tests for `wallet forecast`, `wallet forecast --months`, `wallet forecast --account`, `wallet forecast bills`, invalid months, JSON output, and empty states.
-- [ ] 4.2 Run the full Go test suite.
-- [ ] 4.3 Run the project linter and fix reported issues.
-- [ ] 4.4 Verify test coverage passes project expectations; if specific code is impractical to test directly, document the exclusion rationale.
+- [x] 4.1 Add CLI tests for `wallet forecast`, `wallet forecast --months`, `wallet forecast --account`, `wallet forecast bills`, invalid months, JSON output, and empty states.
+- [x] 4.2 Run the full Go test suite.
+- [x] 4.3 Run the project linter and fix reported issues.
+- [x] 4.4 Verify test coverage passes project expectations; if specific code is impractical to test directly, document the exclusion rationale.
 - [ ] 4.5 Run OpenSpec validation for the `add-forecasting` change.

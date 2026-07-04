@@ -257,6 +257,75 @@ func TestForecastBalance_UnknownAccount(t *testing.T) {
 	}
 }
 
+func TestForecastBalance_IncomePlannedPayment(t *testing.T) {
+	svc := setupServiceForForecast(t)
+	originalToday := todayFunc
+	todayFunc = func() time.Time { return time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { todayFunc = originalToday })
+
+	if _, err := svc.CreateAccount("BCA", "checking", "IDR"); err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+		Name:       "Salary",
+		Amount:     10000000,
+		Type:       "income",
+		Account:    "BCA",
+		Category:   "Salary",
+		Recurrence: "monthly",
+		StartDate:  "2026-07-01",
+		DueDay:     1,
+	})
+	if err != nil {
+		t.Fatalf("create income PP: %v", err)
+	}
+
+	result, err := svc.ForecastBalance(2, "")
+	if err != nil {
+		t.Fatalf("ForecastBalance: %v", err)
+	}
+	if len(result.MonthlyBalances) < 2 {
+		t.Fatalf("expected 2 monthly balances, got %d", len(result.MonthlyBalances))
+	}
+	if result.MonthlyBalances[1].ProjectedIncome <= 0 {
+		t.Errorf("expected projected income > 0 in month 2, got %d", result.MonthlyBalances[1].ProjectedIncome)
+	}
+}
+
+func TestForecastBills_SkipsIncomePayments(t *testing.T) {
+	svc := setupServiceForForecast(t)
+	originalToday := todayFunc
+	todayFunc = func() time.Time { return time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { todayFunc = originalToday })
+
+	if _, err := svc.CreateAccount("BCA", "checking", "IDR"); err != nil {
+		t.Fatalf("create account: %v", err)
+	}
+
+	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+		Name:       "Salary",
+		Amount:     10000000,
+		Type:       "income",
+		Account:    "BCA",
+		Category:   "Salary",
+		Recurrence: "monthly",
+		StartDate:  "2026-07-01",
+		DueDay:     1,
+	})
+	if err != nil {
+		t.Fatalf("create income PP: %v", err)
+	}
+
+	result, err := svc.ForecastBills(2)
+	if err != nil {
+		t.Fatalf("ForecastBills: %v", err)
+	}
+	if len(result.Bills) != 0 {
+		t.Errorf("expected 0 bills (income payments skipped), got %d", len(result.Bills))
+	}
+}
+
 func TestForecastBills_DefaultTwoMonths(t *testing.T) {
 	svc := setupServiceForForecast(t)
 	originalToday := todayFunc
