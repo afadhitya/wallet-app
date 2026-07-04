@@ -27,12 +27,4 @@ func NewRootCmd() *cobra.Command {
 	return cmd
 }
 
-func newReportCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "report",
-		Short: "Generate financial reports",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-}
+

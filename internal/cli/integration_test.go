@@ -1206,3 +1206,191 @@ func newMultiCurrencyTestCLI(t *testing.T) *testCLI {
 
 	return &testCLI{t: t, svc: svc, cleanup: cleanup}
 }
+
+func TestCLIReportBaseCurrency(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+	_, _, _ = cli.run("add", "income", "200000", "Freelance", "-c", "Freelance", "-a", "BCA")
+
+	stdout, _, err := cli.run("report")
+	if err != nil {
+		t.Fatalf("report: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Financial Report") {
+		t.Errorf("expected report header, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Total Income:") {
+		t.Errorf("expected income total, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Total Expense:") {
+		t.Errorf("expected expense total, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "By Category") {
+		t.Errorf("expected category breakdown, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "By Account") {
+		t.Errorf("expected account breakdown, got: %s", stdout)
+	}
+}
+
+func TestCLIReportJSON(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+	_, _, _ = cli.run("add", "income", "200000", "Freelance", "-c", "Freelance", "-a", "BCA")
+
+	stdout, _, err := cli.run("--json", "report")
+	if err != nil {
+		t.Fatalf("report --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+
+	if result["base_currency"] != "IDR" {
+		t.Errorf("expected base_currency IDR, got %v", result["base_currency"])
+	}
+
+	income, ok := result["total_income"].(float64)
+	if !ok || int64(income) != 200000 {
+		t.Errorf("expected total_income 200000, got %v", result["total_income"])
+	}
+
+	expense, ok := result["total_expense"].(float64)
+	if !ok || int64(expense) != 50000 {
+		t.Errorf("expected total_expense 50000, got %v", result["total_expense"])
+	}
+
+	cats, ok := result["by_category"].([]interface{})
+	if !ok || len(cats) == 0 {
+		t.Errorf("expected by_category in JSON")
+	}
+}
+
+func TestCLIReportMixedCurrency(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+	_, _, _ = cli.run("add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
+	_, _, _ = cli.run("add", "expense", "20", "Hotel", "-c", "Travel", "-a", "WiseEUR")
+
+	stdout, _, err := cli.run("report")
+	if err != nil {
+		t.Fatalf("report: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Base Currency: IDR") {
+		t.Errorf("expected base currency IDR, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Coffee & Snacks") {
+		t.Errorf("expected category in breakdown, got: %s", stdout)
+	}
+}
+
+func TestCLIReportMixedCurrencyJSON(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
+	_, _, _ = cli.run("add", "income", "100", "Payment", "-c", "Freelance", "-a", "PaypalUSD")
+
+	stdout, _, err := cli.run("--json", "report")
+	if err != nil {
+		t.Fatalf("report --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+
+	accts, ok := result["by_account"].([]interface{})
+	if !ok || len(accts) == 0 {
+		t.Errorf("expected by_account in JSON")
+	}
+
+	for _, a := range accts {
+		amap, _ := a.(map[string]interface{})
+		if amap["currency"] != nil {
+			c := amap["currency"].(string)
+			if c != "USD" {
+				continue
+			}
+			if amap["expense"] == nil || amap["income"] == nil {
+				t.Errorf("expected income/expense for USD account")
+			}
+		}
+	}
+}
+
+func TestCLIReportExcludesAdjustment(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+	_, _, _ = cli.run("adjust", "BCA", "0", "Correction")
+	_, _, _ = cli.run("add", "income", "200000", "Salary", "-c", "Salary", "-a", "BCA")
+
+	stdout, _, err := cli.run("report")
+	if err != nil {
+		t.Fatalf("report: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Total Income:") {
+		t.Errorf("expected income section, got: %s", stdout)
+	}
+}
+
+func TestCLIReportNoTransactions(t *testing.T) {
+	cli := newTestCLI(t)
+
+	stdout, _, err := cli.run("report")
+	if err != nil {
+		t.Fatalf("report: %v", err)
+	}
+
+	if !strings.Contains(stdout, "No transactions found") {
+		t.Errorf("expected empty message, got: %s", stdout)
+	}
+}
+
+func TestCLIReportWithMonthFilter(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA", "-d", "2026-06-15")
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	stdout, _, err := cli.run("report", "--month", "june")
+	if err != nil {
+		t.Fatalf("report --month: %v", err)
+	}
+
+	if !strings.Contains(stdout, "50.000") {
+		t.Errorf("expected June transaction, got: %s", stdout)
+	}
+	if strings.Contains(stdout, "35.000") {
+		t.Errorf("expected no July transaction, got: %s", stdout)
+	}
+}
+
+func TestCLIReportWithAccountFilter(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+	_, _, _ = cli.run("add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
+
+	stdout, _, err := cli.run("report", "--account", "BCA")
+	if err != nil {
+		t.Fatalf("report --account: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Coffee & Snacks") {
+		t.Errorf("expected BCA category, got: %s", stdout)
+	}
+	if strings.Contains(stdout, "Subscriptions") {
+		t.Errorf("expected no WiseUSD category, got: %s", stdout)
+	}
+}
