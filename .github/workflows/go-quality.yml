@@ -50,6 +50,11 @@ jobs:
           name: coverage-profile
           path: coverage.out
 
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Generate coverage report
         if: failure() && steps.coverage.outcome == 'failure'
         run: go tool cover -html=coverage.out -o coverage.html
