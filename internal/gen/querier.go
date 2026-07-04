@@ -68,6 +68,16 @@ type Querier interface {
 	RemoveBudgetCategory(ctx context.Context, arg RemoveBudgetCategoryParams) error
 	RemoveBudgetTag(ctx context.Context, arg RemoveBudgetTagParams) error
 	RemoveTransactionTag(ctx context.Context, arg RemoveTransactionTagParams) error
+	ReportByAccount(ctx context.Context, arg ReportByAccountParams) ([]*ReportByAccountRow, error)
+	ReportByTag(ctx context.Context, arg ReportByTagParams) ([]*ReportByTagRow, error)
+	ReportExpenseByCategory(ctx context.Context, arg ReportExpenseByCategoryParams) ([]*ReportExpenseByCategoryRow, error)
+	ReportExpenseTotal(ctx context.Context, arg ReportExpenseTotalParams) (interface{}, error)
+	ReportExportTransactions(ctx context.Context, arg ReportExportTransactionsParams) ([]*ReportExportTransactionsRow, error)
+	ReportIncomeByCategory(ctx context.Context, arg ReportIncomeByCategoryParams) ([]*ReportIncomeByCategoryRow, error)
+	ReportIncomeTotal(ctx context.Context, arg ReportIncomeTotalParams) (interface{}, error)
+	ReportTransactionCount(ctx context.Context, arg ReportTransactionCountParams) (int64, error)
+	ReportTransfers(ctx context.Context, arg ReportTransfersParams) (interface{}, error)
+	ReportUntagged(ctx context.Context, arg ReportUntaggedParams) (*ReportUntaggedRow, error)
 	ResumePlannedPayment(ctx context.Context, id int64) error
 	SumCategoryExpenses(ctx context.Context, arg SumCategoryExpensesParams) (interface{}, error)
 	SumTagExpenses(ctx context.Context, arg SumTagExpensesParams) (interface{}, error)

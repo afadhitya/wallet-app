@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -1211,20 +1212,20 @@ func TestCLIReportBaseCurrency(t *testing.T) {
 		t.Fatalf("report: %v", err)
 	}
 
-	if !strings.Contains(stdout, "Financial Report") {
+	if !strings.Contains(stdout, "Report —") {
 		t.Errorf("expected report header, got: %s", stdout)
 	}
-	if !strings.Contains(stdout, "Total Income:") {
+	if !strings.Contains(stdout, "Income:") {
 		t.Errorf("expected income total, got: %s", stdout)
 	}
-	if !strings.Contains(stdout, "Total Expense:") {
+	if !strings.Contains(stdout, "Expenses:") {
 		t.Errorf("expected expense total, got: %s", stdout)
 	}
-	if !strings.Contains(stdout, "By Category") {
-		t.Errorf("expected category breakdown, got: %s", stdout)
+	if !strings.Contains(stdout, "Coffee & Snacks") {
+		t.Errorf("expected category in breakdown, got: %s", stdout)
 	}
-	if !strings.Contains(stdout, "By Account") {
-		t.Errorf("expected account breakdown, got: %s", stdout)
+	if !strings.Contains(stdout, "Transactions:") {
+		t.Errorf("expected transaction count, got: %s", stdout)
 	}
 }
 
@@ -1245,19 +1246,22 @@ func TestCLIReportJSON(t *testing.T) {
 		t.Errorf("expected base_currency IDR, got %v", result["base_currency"])
 	}
 
-	income, ok := result["total_income"].(float64)
+	income, ok := result["income_total"].(float64)
 	if !ok || int64(income) != 200000 {
-		t.Errorf("expected total_income 200000, got %v", result["total_income"])
+		t.Errorf("expected income_total 200000, got %v", result["income_total"])
 	}
 
-	expense, ok := result["total_expense"].(float64)
+	expense, ok := result["expense_total"].(float64)
 	if !ok || int64(expense) != 50000 {
-		t.Errorf("expected total_expense 50000, got %v", result["total_expense"])
+		t.Errorf("expected expense_total 50000, got %v", result["expense_total"])
 	}
 
-	cats, ok := result["by_category"].([]interface{})
+	cats, ok := result["income_categories"].([]interface{})
+	if !ok {
+		cats, ok = result["expense_categories"].([]interface{})
+	}
 	if !ok || len(cats) == 0 {
-		t.Errorf("expected by_category in JSON")
+		t.Errorf("expected categories in JSON")
 	}
 }
 
@@ -1287,29 +1291,16 @@ func TestCLIReportMixedCurrencyJSON(t *testing.T) {
 	_, _, _ = cli.run("add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
 	_, _, _ = cli.run("add", "income", "100", "Payment", "-c", "Freelance", "-a", "PaypalUSD")
 
-	stdout, _, err := cli.run("--json", "report")
+	stdout, _, err := cli.run("--json", "report", "--by", "account")
 	if err != nil {
-		t.Fatalf("report --json: %v", err)
+		t.Fatalf("report --json --by account: %v", err)
 	}
 
 	result := extractJSONData(t, stdout)
 
 	accts, ok := result["by_account"].([]interface{})
 	if !ok || len(accts) == 0 {
-		t.Errorf("expected by_account in JSON")
-	}
-
-	for _, a := range accts {
-		amap, _ := a.(map[string]interface{})
-		if amap["currency"] != nil {
-			c := amap["currency"].(string)
-			if c != "USD" {
-				continue
-			}
-			if amap["expense"] == nil || amap["income"] == nil {
-				t.Errorf("expected income/expense for USD account")
-			}
-		}
+		t.Errorf("expected by_account in JSON, got: %s", stdout)
 	}
 }
 
@@ -1325,7 +1316,7 @@ func TestCLIReportExcludesAdjustment(t *testing.T) {
 		t.Fatalf("report: %v", err)
 	}
 
-	if !strings.Contains(stdout, "Total Income:") {
+	if !strings.Contains(stdout, "Income:") {
 		t.Errorf("expected income section, got: %s", stdout)
 	}
 }
@@ -1378,5 +1369,277 @@ func TestCLIReportWithAccountFilter(t *testing.T) {
 	}
 	if strings.Contains(stdout, "Subscriptions") {
 		t.Errorf("expected no WiseUSD category, got: %s", stdout)
+	}
+}
+
+func TestCLIReportByCategory(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	stdout, _, err := cli.run("report", "--by", "category")
+	if err != nil {
+		t.Fatalf("report --by category: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Expenses by Category") {
+		t.Errorf("expected 'Expenses by Category', got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "TOTAL") {
+		t.Errorf("expected TOTAL row, got: %s", stdout)
+	}
+}
+
+func TestCLIReportByAccount(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+	_, _, _ = cli.run("add", "income", "100000", "Salary", "-c", "Salary", "-a", "GoPay")
+
+	stdout, _, err := cli.run("report", "--by", "account")
+	if err != nil {
+		t.Fatalf("report --by account: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Transactions by Account") {
+		t.Errorf("expected 'Transactions by Account', got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "TOTAL") {
+		t.Errorf("expected TOTAL row, got: %s", stdout)
+	}
+}
+
+func TestCLIReportByTag(t *testing.T) {
+	cli := newTestCLI(t)
+
+	workTag, _ := cli.svc.CreateTag("work")
+
+	txn, _ := cli.svc.AddExpense(service.CreateExpenseParams{
+		Amount: 50000, Description: "Coffee", Category: "Coffee & Snacks",
+		Account: "BCA", Date: "2026-07-01",
+	})
+	_ = cli.svc.AddTransactionTag(txn.Transaction.ID, workTag.ID)
+	_, _ = cli.svc.AddExpense(service.CreateExpenseParams{
+		Amount: 30000, Description: "Snack", Category: "Coffee & Snacks",
+		Account: "BCA", Date: "2026-07-01",
+	})
+
+	stdout, _, err := cli.run("report", "--by", "tag", "--month", "july")
+	if err != nil {
+		t.Fatalf("report --by tag: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Expenses by Tag") {
+		t.Errorf("expected 'Expenses by Tag', got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "work") {
+		t.Errorf("expected work tag in output, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "(untagged)") {
+		t.Errorf("expected untagged row, got: %s", stdout)
+	}
+}
+
+func TestCLIReportByCategoryJSON(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+
+	stdout, _, err := cli.run("--json", "report", "--by", "category")
+	if err != nil {
+		t.Fatalf("report --json --by category: %v", err)
+	}
+
+	result := extractJSONData(t, stdout)
+	if _, ok := result["by_category"]; !ok {
+		t.Errorf("expected by_category in JSON, got: %s", stdout)
+	}
+}
+
+func TestCLIReportByAccountJSON(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+
+	stdout, _, err := cli.run("--json", "report", "--by", "account")
+	if err != nil {
+		t.Fatalf("report --json --by account: %v", err)
+	}
+
+	result := extractJSONData(t, stdout)
+	if _, ok := result["by_account"]; !ok {
+		t.Errorf("expected by_account in JSON, got: %s", stdout)
+	}
+}
+
+func TestCLIReportByTagJSON(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+
+	stdout, _, err := cli.run("--json", "report", "--by", "tag")
+	if err != nil {
+		t.Fatalf("report --json --by tag: %v", err)
+	}
+
+	result := extractJSONData(t, stdout)
+	if _, ok := result["by_tag"]; !ok {
+		t.Errorf("expected by_tag in JSON, got: %s", stdout)
+	}
+}
+
+func TestCLIReportInvalidBy(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, err := cli.run("report", "--by", "invalid")
+	if err == nil {
+		t.Fatal("expected error for invalid --by")
+	}
+}
+
+func TestCLIReportInvalidExport(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, err := cli.run("report", "--export", "pdf")
+	if err == nil {
+		t.Fatal("expected error for invalid --export")
+	}
+}
+
+func TestCLIReportExportCSV(t *testing.T) {
+	cli := newTestCLI(t)
+
+	workTag, _ := cli.svc.CreateTag("work")
+
+	txn, _ := cli.svc.AddExpense(service.CreateExpenseParams{
+		Amount: 50000, Description: "Coffee", Category: "Coffee & Snacks",
+		Account: "BCA", Date: "2026-07-01",
+	})
+	_ = cli.svc.AddTransactionTag(txn.Transaction.ID, workTag.ID)
+
+	tmpDir := t.TempDir()
+	outputPath := tmpDir + "/test-export.csv"
+
+	stdout, _, err := cli.run("report", "--export", "csv", "--output", outputPath, "--month", "july")
+	if err != nil {
+		t.Fatalf("report --export csv: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Exported to:") {
+		t.Errorf("expected 'Exported to:' in output, got: %s", stdout)
+	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("reading exported CSV: %v", err)
+	}
+
+	content := string(data)
+	if !strings.Contains(content, "date,type,amount,currency,base_amount,category,account,description,tags") {
+		t.Errorf("expected CSV header, got: %s", content)
+	}
+	if !strings.Contains(content, "2026-07-01,expense,50000,IDR,,") {
+		t.Errorf("expected transaction row, got: %s", content)
+	}
+	if !strings.Contains(content, "Coffee & Snacks,BCA,Coffee,work") {
+		t.Errorf("expected full row with tags, got: %s", content)
+	}
+}
+
+func TestCLIReportExportCSVDefaultFilename(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _ = cli.svc.AddExpense(service.CreateExpenseParams{
+		Amount: 50000, Description: "Coffee", Category: "Coffee & Snacks",
+		Account: "BCA", Date: "2026-07-01",
+	})
+
+	tmpDir := t.TempDir()
+	origWd, _ := os.Getwd()
+	_ = os.Chdir(tmpDir)
+	defer func() { _ = os.Chdir(origWd) }()
+
+	stdout, _, err := cli.run("report", "--export", "csv", "--month", "2026-07")
+	if err != nil {
+		t.Fatalf("report --export csv: %v", err)
+	}
+
+	if !strings.Contains(stdout, "wallet-report-2026-07.csv") {
+		t.Errorf("expected default filename, got: %s", stdout)
+	}
+
+	_ = os.Remove("wallet-report-2026-07.csv")
+}
+
+func TestCLIReportExportCSVJSON(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _ = cli.svc.AddExpense(service.CreateExpenseParams{
+		Amount: 50000, Description: "Coffee", Category: "Coffee & Snacks",
+		Account: "BCA", Date: "2026-07-01",
+	})
+
+	tmpDir := t.TempDir()
+	outputPath := tmpDir + "/json-export.csv"
+
+	stdout, _, err := cli.run("--json", "report", "--export", "csv", "--output", outputPath, "--month", "july")
+	if err != nil {
+		t.Fatalf("report --json --export csv: %v", err)
+	}
+
+	result := extractJSONData(t, stdout)
+	if _, ok := result["file_path"]; !ok {
+		t.Errorf("expected file_path in JSON, got: %s", stdout)
+	}
+	if _, ok := result["rows"]; !ok {
+		t.Errorf("expected rows in JSON, got: %s", stdout)
+	}
+}
+
+func TestCLIReportInvalidMonth(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, err := cli.run("report", "--month", "not-a-month")
+	if err == nil {
+		t.Fatal("expected error for invalid month")
+	}
+}
+
+func TestCLIReportInvalidMonthJSON(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, stderr, err := cli.run("--json", "report", "--month", "not-a-month")
+	if err == nil {
+		t.Fatal("expected error for invalid month")
+	}
+
+	if !strings.Contains(stderr, `"success": false`) {
+		t.Errorf("expected JSON error in stderr, got: %s", stderr)
+	}
+}
+
+func TestCLIReportDateRangeOverride(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _ = cli.svc.AddExpense(service.CreateExpenseParams{
+		Amount: 50000, Description: "Coffee", Category: "Coffee & Snacks",
+		Account: "BCA", Date: "2026-07-15",
+	})
+	_, _ = cli.svc.AddExpense(service.CreateExpenseParams{
+		Amount: 35000, Description: "Lunch", Category: "Restaurant",
+		Account: "BCA", Date: "2026-07-01",
+	})
+
+	stdout, _, err := cli.run("report", "--month", "2026-07", "--from", "2026-07-10", "--to", "2026-07-20")
+	if err != nil {
+		t.Fatalf("report with date range: %v", err)
+	}
+
+	if !strings.Contains(stdout, "50.000") {
+		t.Errorf("expected July 15 transaction, got: %s", stdout)
+	}
+	if strings.Contains(stdout, "35.000") {
+		t.Errorf("expected no July 1 transaction, got: %s", stdout)
 	}
 }
