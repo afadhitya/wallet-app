@@ -1,6 +1,10 @@
 -- name: GetTransactionByID :one
 SELECT * FROM transactions WHERE id = ?;
 
+-- name: CreatePlannedTransaction :one
+INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, is_archived)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0) RETURNING *;
+
 -- name: CreateTransaction :one
 INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, is_archived)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0) RETURNING *;

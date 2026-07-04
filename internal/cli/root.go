@@ -28,16 +28,6 @@ func NewRootCmd() *cobra.Command {
 
 
 
-func newBillCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "bill",
-		Short: "Manage bills and planned payments",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
-}
-
 func newReportCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "report",

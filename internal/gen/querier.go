@@ -6,6 +6,7 @@ package gen
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
@@ -14,13 +15,17 @@ type Querier interface {
 	AddTransactionTag(ctx context.Context, arg AddTransactionTagParams) error
 	ArchiveAccount(ctx context.Context, id int64) error
 	ArchiveCategory(ctx context.Context, id int64) error
+	ArchivePlannedPayment(ctx context.Context, id int64) error
 	ArchiveTransaction(ctx context.Context, id int64) error
 	CountTransactions(ctx context.Context, arg CountTransactionsParams) (int64, error)
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (*Account, error)
 	CreateBudget(ctx context.Context, arg CreateBudgetParams) (*Budget, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (*Category, error)
+	CreatePlannedPayment(ctx context.Context, arg CreatePlannedPaymentParams) (*PlannedPayment, error)
+	CreatePlannedTransaction(ctx context.Context, arg CreatePlannedTransactionParams) (*Transaction, error)
 	CreateTag(ctx context.Context, name string) (*Tag, error)
 	CreateTransaction(ctx context.Context, arg CreateTransactionParams) (*Transaction, error)
+	DeletePlannedPayment(ctx context.Context, id int64) error
 	DeleteTag(ctx context.Context, id int64) error
 	DeleteTransactionTags(ctx context.Context, transactionID int64) error
 	GetAccountBalance(ctx context.Context, accountID int64) (interface{}, error)
@@ -33,27 +38,36 @@ type Querier interface {
 	GetCategorySuggestions(ctx context.Context, name string) ([]*Category, error)
 	GetDefaultAccount(ctx context.Context) (*Account, error)
 	GetMostRecentPriorBudget(ctx context.Context, arg GetMostRecentPriorBudgetParams) (*Budget, error)
+	GetPlannedPaymentByID(ctx context.Context, id int64) (*PlannedPayment, error)
 	GetTagByID(ctx context.Context, id int64) (*Tag, error)
 	GetTagByName(ctx context.Context, name string) (*Tag, error)
 	GetTransactionByID(ctx context.Context, id int64) (*Transaction, error)
 	ListAccounts(ctx context.Context) ([]*Account, error)
 	ListActiveBudgets(ctx context.Context) ([]*Budget, error)
+	ListActivePlannedPayments(ctx context.Context) ([]*PlannedPayment, error)
 	ListAllAccounts(ctx context.Context) ([]*Account, error)
 	ListAllBudgets(ctx context.Context) ([]*Budget, error)
 	ListAllCategories(ctx context.Context) ([]*Category, error)
+	ListAllPlannedPayments(ctx context.Context) ([]*PlannedPayment, error)
+	ListArchivedPlannedPayments(ctx context.Context) ([]*PlannedPayment, error)
 	ListBudgetCategories(ctx context.Context, budgetID int64) ([]*Category, error)
 	ListBudgetTags(ctx context.Context, budgetID int64) ([]*Tag, error)
 	ListCategories(ctx context.Context) ([]*Category, error)
+	ListDuePlannedPayments(ctx context.Context, arg ListDuePlannedPaymentsParams) ([]*PlannedPayment, error)
+	ListOverduePlannedPayments(ctx context.Context, today sql.NullString) ([]*PlannedPayment, error)
+	ListPausedPlannedPayments(ctx context.Context) ([]*PlannedPayment, error)
 	ListTags(ctx context.Context) ([]*Tag, error)
 	ListTransactionTags(ctx context.Context, transactionID int64) ([]*Tag, error)
 	ListTransactions(ctx context.Context, arg ListTransactionsParams) ([]*Transaction, error)
 	ListTransactionsByTag(ctx context.Context, arg ListTransactionsByTagParams) ([]*Transaction, error)
 	MarkBudgetInactive(ctx context.Context, id int64) error
+	PausePlannedPayment(ctx context.Context, id int64) error
 	RemoveAllBudgetCategories(ctx context.Context, budgetID int64) error
 	RemoveAllBudgetTags(ctx context.Context, budgetID int64) error
 	RemoveBudgetCategory(ctx context.Context, arg RemoveBudgetCategoryParams) error
 	RemoveBudgetTag(ctx context.Context, arg RemoveBudgetTagParams) error
 	RemoveTransactionTag(ctx context.Context, arg RemoveTransactionTagParams) error
+	ResumePlannedPayment(ctx context.Context, id int64) error
 	SumCategoryExpenses(ctx context.Context, arg SumCategoryExpensesParams) (interface{}, error)
 	SumTagExpenses(ctx context.Context, arg SumTagExpensesParams) (interface{}, error)
 	SumTransactions(ctx context.Context, arg SumTransactionsParams) (interface{}, error)
@@ -61,6 +75,8 @@ type Querier interface {
 	UpdateAccountBalance(ctx context.Context, arg UpdateAccountBalanceParams) error
 	UpdateBudget(ctx context.Context, arg UpdateBudgetParams) (*Budget, error)
 	UpdateCategory(ctx context.Context, arg UpdateCategoryParams) (*Category, error)
+	UpdatePlannedPayment(ctx context.Context, arg UpdatePlannedPaymentParams) (*PlannedPayment, error)
+	UpdatePlannedPaymentNextDueDate(ctx context.Context, arg UpdatePlannedPaymentNextDueDateParams) (*PlannedPayment, error)
 	UpdateTransaction(ctx context.Context, arg UpdateTransactionParams) (*Transaction, error)
 }
 
