@@ -73,103 +73,103 @@ github.com/afadhitya/wallet-app/internal/service/planned_payment.go:237.16,239.3
 github.com/afadhitya/wallet-app/internal/service/planned_payment.go:274.16,276.3
 
 # PayPlannedPayment: recalculate balance DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:297.16,299.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:296.16,298.3
 
 # PayPlannedPayment: archive DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:301.57,303.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:300.57,302.3
 
 # PayPlannedPayment: parse current due date error (data integrity — invalid stored date)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:307.67,309.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:306.67,308.4
 
 # PayPlannedPayment: parse date error (data integrity)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:315.9,317.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:314.9,316.4
 
 # PayPlannedPayment: calcNextDue error (data integrity — invalid recurrence)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:319.17,321.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:318.17,320.4
 
 # PayPlannedPayment: calcNextDue error (data integrity — invalid recurrence)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:324.17,326.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:323.17,325.4
 
 # PayPlannedPayment: update next due date DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:332.17,334.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:331.17,333.4
 
 # SkipPlannedPayment: parse current due date error (data integrity — invalid stored date)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:347.16,349.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:346.16,348.3
 
 # SkipPlannedPayment: parse date error (data integrity)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:357.8,359.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:356.8,358.3
 
 # SkipPlannedPayment: calcNextDue error (data integrity — invalid recurrence)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:361.16,363.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:360.16,362.3
 
 # SkipPlannedPayment: update next due date DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:366.16,368.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:365.16,367.3
 
 # SkipPlannedPayment: update next due date DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:375.16,377.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:374.16,376.3
 
 # ResumePlannedPayment: paused overdue calcNextDue error (data integrity)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:408.8,408.31
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:407.8,407.31
 
 # ResumePlannedPayment: paused overdue update next due date DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:408.31,410.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:407.31,409.3
 
 # ResumePlannedPayment: calcNextDue error in while loop (data integrity)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:415.17,417.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:414.17,416.4
 
 # ResumePlannedPayment: update next due date DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:421.18,423.5
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:420.18,422.5
 
 # ResumePlannedPayment: update next due date DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:429.18,431.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:428.18,430.4
 
 # EditPlannedPayment: createPlannedPayment DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:439.16,441.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:438.16,440.3
 
 # EditPlannedPayment: invalid amount (data integrity, tested by service path)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:455.28,457.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:454.28,456.3
 
-# EditPlannedPayment: account not found during edit (covered by TestEditPlannedPayment_AccountNotFound)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:458.24,460.3
+# EditPlannedPayment: account not found during edit
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:457.24,459.3
 
 # EditPlannedPayment: category not found during edit
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:487.4,487.64
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:486.4,486.64
 
 # EditPlannedPayment: category resolve error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:487.64,489.5
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:486.64,488.5
 
 # EditPlannedPayment: invalid recurrence during edit
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:493.34,495.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:492.34,494.3
 
 # EditPlannedPayment: custom RRULE missing during edit
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:507.31,509.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:506.31,508.4
 
 # EditPlannedPayment: invalid RRULE during edit
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:511.35,513.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:510.35,512.4
 
 # EditPlannedPayment: update DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:519.16,521.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:518.16,520.3
 
 # computeInitialDueDate: time.Parse error (data integrity)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:538.16,540.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:537.16,539.3
 
 # computeInitialDueDate: weekly dueDay out of range (invalid user input)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:550.3,551.52
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:549.3,550.52
 
 # computeInitialDueDate: default (daily recurrence)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:556.10,557.32
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:555.10,556.32
 
 # setDayInMonth: day > lastDay clamp (tested via EOM test)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:563.19,565.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:562.19,564.3
 
 # calcNextDueFromRRULE: RRULE not set (data integrity)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:604.39,606.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:603.39,605.3
 
-# calcNextDueFromRRULE: BYMONTHDAY Sscanf (tested, but coverage tool counts Sscanf)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:626.17,629.4
+# calcNextDueFromRRULE: BYMONTHDAY Sscanf (tested)
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:625.17,628.4
 
 # calcNextDueFromRRULE: unsupported RRULE (covered by error test)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:635.20,637.4
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:634.20,636.4
 
 # === CLI bill.go: error/infrastructure paths ===
 
@@ -182,10 +182,10 @@ github.com/afadhitya/wallet-app/internal/cli/bill.go:107.16,109.3
 # runBillList: ListPlannedPayments error (infrastructure)
 github.com/afadhitya/wallet-app/internal/cli/bill.go:152.16,154.3
 
-# runBillList: status="paused" branch (text rendering, covered by text test)
+# runBillList: status="paused" branch (text rendering)
 github.com/afadhitya/wallet-app/internal/cli/bill.go:178.23,180.4
 
-# runBillList: status="archived" branch (text rendering, covered by text test)
+# runBillList: status="archived" branch (text rendering)
 github.com/afadhitya/wallet-app/internal/cli/bill.go:181.23,183.4
 
 # runBillDue: ListDuePlannedPayments error (infrastructure)
@@ -197,7 +197,7 @@ github.com/afadhitya/wallet-app/internal/cli/bill.go:318.18,320.5
 # newBillPauseCmd: RunE closure body (command wiring)
 github.com/afadhitya/wallet-app/internal/cli/bill.go:355.18,357.5
 
-# runBillPause: GetPlannedPaymentByID error (infrastructure — pause succeeded but get failed)
+# runBillPause: GetPlannedPaymentByID error (infrastructure)
 github.com/afadhitya/wallet-app/internal/cli/bill.go:376.3,376.95
 
 # newBillResumeCmd: RunE closure body (command wiring)

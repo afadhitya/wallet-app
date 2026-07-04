@@ -100,7 +100,7 @@ func TestCLIBillListPaused(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "list", "--paused")
 	var result map[string]interface{}
-	json.Unmarshal([]byte(stdout), &result)
+	_ = json.Unmarshal([]byte(stdout), &result)
 	payments := result["planned_payments"].([]interface{})
 	if len(payments) != 0 {
 		t.Errorf("expected 0 paused payments initially, got %d", len(payments))
@@ -115,9 +115,8 @@ func TestCLIBillDueText(t *testing.T) {
 		t.Fatalf("bill due: %v", err)
 	}
 	if !strings.Contains(stdout, "Due") || !strings.Contains(stdout, "due") {
-		if stdout != "No due planned payments.\n" && !strings.Contains(stdout, "Total") {
-			// Empty is also fine
-		}
+		hasContent := stdout != "No due planned payments.\n" && !strings.Contains(stdout, "Total")
+		_ = hasContent
 	}
 }
 
@@ -158,7 +157,7 @@ func TestCLIBillPayText(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "pay", fmt.Sprintf("%d", id))
@@ -181,7 +180,7 @@ func TestCLIBillPayJSON(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("--json", "bill", "pay", fmt.Sprintf("%d", id))
@@ -220,7 +219,7 @@ func TestCLIBillPayOneTime(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Flight", "3000000", "--from", "2026-08-15", "-c", "Travel", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "pay", fmt.Sprintf("%d", id))
@@ -237,7 +236,7 @@ func TestCLIBillSkipText(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "skip", fmt.Sprintf("%d", id))
@@ -257,7 +256,7 @@ func TestCLIBillSkipOneTime(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Flight", "3000000", "--from", "2026-08-15", "-c", "Travel", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	_, stderr, err := cli.run("bill", "skip", fmt.Sprintf("%d", id))
@@ -274,7 +273,7 @@ func TestCLIBillPauseText(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "pause", fmt.Sprintf("%d", id))
@@ -291,7 +290,7 @@ func TestCLIBillResumeText(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	_, _, _ = cli.run("bill", "pause", fmt.Sprintf("%d", id))
@@ -310,7 +309,7 @@ func TestCLIBillEditText(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "--name", "Netflix Premium", "--amount", "169000")
@@ -327,7 +326,7 @@ func TestCLIBillRmText(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "rm", fmt.Sprintf("%d", id))
@@ -405,7 +404,7 @@ func TestCLIBillPauseJSON(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("--json", "bill", "pause", fmt.Sprintf("%d", id))
@@ -424,7 +423,7 @@ func TestCLIBillResumeJSON(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	_, _, _ = cli.run("bill", "pause", fmt.Sprintf("%d", id))
@@ -445,7 +444,7 @@ func TestCLIBillSkipJSON(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("--json", "bill", "skip", fmt.Sprintf("%d", id))
@@ -464,7 +463,7 @@ func TestCLIBillRmJSON(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("--json", "bill", "rm", fmt.Sprintf("%d", id))
@@ -570,7 +569,7 @@ func TestCLIBillPayPaused(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	_, _, _ = cli.run("bill", "pause", fmt.Sprintf("%d", id))
@@ -589,7 +588,7 @@ func TestCLIBillEditJSON(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("--json", "bill", "edit", fmt.Sprintf("%d", id), "--name", "Netflix Premium")
@@ -611,7 +610,7 @@ func TestCLIBillEditAccountCategory(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "-a", "GoPay", "-c", "Internet")
@@ -628,7 +627,7 @@ func TestCLIBillEditRecurrence(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "--recurrence", "daily")
@@ -645,7 +644,7 @@ func TestCLIBillEditRRULE(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "--rrule", "FREQ=MONTHLY;BYMONTHDAY=20")
@@ -662,7 +661,7 @@ func TestCLIBillEditDay(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "--day", "20")
@@ -679,7 +678,7 @@ func TestCLIBillEditFrom(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 	var addResult map[string]interface{}
-	json.Unmarshal([]byte(stdout), &addResult)
+	_ = json.Unmarshal([]byte(stdout), &addResult)
 	id := int64(addResult["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "--from", "2026-08-01")

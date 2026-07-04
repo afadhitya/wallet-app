@@ -279,8 +279,7 @@ func (s *Service) PayPlannedPayment(params PayPlannedPaymentParams) (*PayPlanned
 	if pp.Name != "" {
 		description = sql.NullString{String: pp.Name, Valid: true}
 	}
-	var plannedPaymentID sql.NullInt64
-	plannedPaymentID = sql.NullInt64{Int64: pp.ID, Valid: true}
+	plannedPaymentID := sql.NullInt64{Int64: pp.ID, Valid: true}
 
 	txn, err := s.q.CreatePlannedTransaction(s.ctx(), gen.CreatePlannedTransactionParams{
 		AccountID:        pp.AccountID,
@@ -611,7 +610,7 @@ func calcNextDueFromRRULE(currentDue time.Time, rrule string) (time.Time, error)
 
 	for _, part := range parts[1:] {
 		if strings.HasPrefix(part, "BYMONTHDAY=") {
-			fmt.Sscanf(part, "BYMONTHDAY=%d", &byMonthDay)
+			_, _ = fmt.Sscanf(part, "BYMONTHDAY=%d", &byMonthDay)
 		}
 	}
 
