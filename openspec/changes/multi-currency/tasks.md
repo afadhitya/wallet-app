@@ -36,9 +36,9 @@
 
 ## 5. Quality Gates
 
-- [ ] 5.1 Run code generation or query generation if data access signatures changed.
-- [ ] 5.2 Run formatting and linting checks used by the repository and ensure the linter passes.
-- [ ] 5.3 Run the full Go test suite.
-- [ ] 5.4 Run the repository coverage gate and add focused tests until the accepted coverage policy passes.
-- [ ] 5.5 If code is genuinely hard to test without brittle fault injection or OS-level manipulation, document the specific exclusion and keep it out of coverage totals only when it is not business validation, service behavior, rendering, or normal command error handling.
-- [ ] 5.6 Run `openspec status --change "multi-currency"` and confirm the change is apply-ready.
+- [x] 5.1 Run code generation or query generation if data access signatures changed.
+- [x] 5.2 Run formatting and linting checks used by the repository and ensure the linter passes.
+- [x] 5.3 Run the full Go test suite.
+- [x] 5.4 Run the repository coverage gate and add focused tests until the accepted coverage policy passes.
+- [x] 5.5 If code is genuinely hard to test without brittle fault injection or OS-level manipulation, document the specific exclusion and keep it out of coverage totals only when it is not business validation, service behavior, rendering, or normal command error handling.
+- [x] 5.6 Run `openspec status --change "multi-currency"` and confirm the change is apply-ready.
