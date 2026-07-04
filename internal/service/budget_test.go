@@ -42,12 +42,12 @@ func TestSetBudgetWithTags(t *testing.T) {
 	_, _ = svc.CreateTag("tokyo")
 
 	result, err := svc.SetBudget(SetBudgetParams{
-		Name:       "Japan Trip",
-		Amount:     10000000,
-		Period:     "one_time",
-		From:       "2026-01-01",
-		To:         "2026-12-31",
-		Tags:       []string{"japan-2026", "tokyo"},
+		Name:   "Japan Trip",
+		Amount: 10000000,
+		Period: "one_time",
+		From:   "2026-01-01",
+		To:     "2026-12-31",
+		Tags:   []string{"japan-2026", "tokyo"},
 	})
 	if err != nil {
 		t.Fatalf("SetBudget with tags: %v", err)
@@ -960,8 +960,8 @@ func (q *budgetListFailQuerier) ListActiveBudgets(ctx context.Context) ([]*gen.B
 
 type budgetSpendingFailQuerier struct {
 	gen.Querier
-	catFail   bool
-	tagOnly   bool
+	catFail bool
+	tagOnly bool
 }
 
 func (q *budgetSpendingFailQuerier) SumCategoryExpenses(ctx context.Context, arg gen.SumCategoryExpensesParams) (interface{}, error) {

@@ -24,8 +24,18 @@ func setupTestService() func() {
 	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
 		return svc, dbase, nil
 	}
+
+	service.SetTestRateConfig(service.TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates: map[string]int64{
+			"USD": 15800,
+			"EUR": 17200,
+		},
+	})
+
 	return func() {
 		getServiceOverride = nil
+		service.ResetTestRateConfig()
 		_ = dbase.Close()
 	}
 }
@@ -58,6 +68,7 @@ func TestSubcommandRegistration(t *testing.T) {
 		"init", "add", "list", "edit", "rm",
 		"category", "tag", "adjust",
 		"budget", "bill", "report", "forecast",
+		"rate",
 	}
 
 	subcommands := cmd.Commands()
@@ -160,7 +171,7 @@ func TestRootCmdHelpOutput(t *testing.T) {
 	}
 
 	output := buf.String()
-	for _, sub := range []string{"init", "add", "list", "category", "tag", "edit", "rm", "adjust", "budget", "bill", "report", "forecast"} {
+	for _, sub := range []string{"init", "add", "list", "category", "tag", "edit", "rm", "adjust", "budget", "bill", "rate", "report", "forecast"} {
 		if !strings.Contains(output, sub) {
 			t.Errorf("expected help output to contain '%s'", sub)
 		}

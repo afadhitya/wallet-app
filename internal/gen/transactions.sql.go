@@ -105,8 +105,8 @@ func (q *Queries) CreatePlannedTransaction(ctx context.Context, arg CreatePlanne
 }
 
 const createTransaction = `-- name: CreateTransaction :one
-INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, is_archived)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0) RETURNING id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived
+INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, base_amount, base_currency, is_archived)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?10, ?11, 0) RETURNING id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived
 `
 
 type CreateTransactionParams struct {
@@ -119,6 +119,8 @@ type CreateTransactionParams struct {
 	Notes        sql.NullString `db:"notes" json:"notes"`
 	TransferToID sql.NullInt64  `db:"transfer_to_id" json:"transfer_to_id"`
 	Date         string         `db:"date" json:"date"`
+	BaseAmount   sql.NullInt64  `db:"base_amount" json:"base_amount"`
+	BaseCurrency sql.NullString `db:"base_currency" json:"base_currency"`
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (*Transaction, error) {
@@ -132,6 +134,8 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		arg.Notes,
 		arg.TransferToID,
 		arg.Date,
+		arg.BaseAmount,
+		arg.BaseCurrency,
 	)
 	var i Transaction
 	err := row.Scan(

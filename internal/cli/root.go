@@ -20,22 +20,11 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newAdjustCmd())
 	cmd.AddCommand(newBudgetCmd())
 	cmd.AddCommand(newBillCmd())
+	cmd.AddCommand(newRateCmd())
 	cmd.AddCommand(newReportCmd())
 	cmd.AddCommand(newForecastCmd())
 
 	return cmd
-}
-
-
-
-func newReportCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "report",
-		Short: "Generate financial reports",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
-		},
-	}
 }
 
 
