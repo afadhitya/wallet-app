@@ -50,11 +50,17 @@ func runList(cmd *cobra.Command, svc *service.Service, account, category, tag, t
 	stdout, _ := resolveOut(cmd)
 
 	if isJSON(cmd) {
-		return printJSON(stdout, map[string]interface{}{
+		output := map[string]interface{}{
 			"transactions": result.Transactions,
 			"total":        formatAmount(result.Total),
 			"count":        len(result.Transactions),
-		})
+		}
+		if result.BaseTotal != 0 {
+			baseCurrency, _ := svc.GetBaseCurrency()
+			output["base_total"] = formatAmount(result.BaseTotal)
+			output["base_currency"] = baseCurrency
+		}
+		return printJSON(stdout, output)
 	}
 
 	if len(result.Transactions) == 0 {
@@ -62,8 +68,11 @@ func runList(cmd *cobra.Command, svc *service.Service, account, category, tag, t
 		return nil
 	}
 
-	_, _ = fmt.Fprintf(stdout, "%-6s %-10s %-12s %-20s %-8s %s\n", "ID", "Date", "Type", "Description", "Amount", "Category")
-	_, _ = fmt.Fprintf(stdout, "%-6s %-10s %-12s %-20s %-8s %s\n", "------", "----------", "------------", "--------------------", "--------", "--------")
+	baseCurrency, _ := svc.GetBaseCurrency()
+	hasBaseTotal := result.BaseTotal != 0
+
+	_, _ = fmt.Fprintf(stdout, "%-6s %-10s %-12s %-20s %-18s %s\n", "ID", "Date", "Type", "Description", "Amount", "Category")
+	_, _ = fmt.Fprintf(stdout, "%-6s %-10s %-12s %-20s %-18s %s\n", "------", "----------", "------------", "--------------------", "------------------", "--------")
 
 	for _, t := range result.Transactions {
 		desc := ""
@@ -76,10 +85,19 @@ func runList(cmd *cobra.Command, svc *service.Service, account, category, tag, t
 			cat = categoryName.Name
 		}
 
-		_, _ = fmt.Fprintf(stdout, "%-6d %-10s %-12s %-20s %-8s %s\n",
-			t.ID, t.Date, t.Type, truncate(desc, 20), formatAmount(t.Amount), cat)
+		amountStr := fmt.Sprintf("%s %s", formatNum(t.Amount), t.Currency)
+		if t.BaseAmount.Valid {
+			amountStr = fmt.Sprintf("%s (%s %s)", amountStr, formatNum(t.BaseAmount.Int64), baseCurrency)
+		}
+
+		_, _ = fmt.Fprintf(stdout, "%-6d %-10s %-12s %-20s %-18s %s\n",
+			t.ID, t.Date, t.Type, truncate(desc, 20), amountStr, cat)
 	}
 
-	_, _ = fmt.Fprintf(stdout, "\nTotal: %s (%d transactions)\n", formatAmount(result.Total), len(result.Transactions))
+	totalStr := formatAmount(result.Total)
+	if hasBaseTotal {
+		totalStr = fmt.Sprintf("%s (Base: %s)", totalStr, formatAmount(result.BaseTotal))
+	}
+	_, _ = fmt.Fprintf(stdout, "\nTotal: %s (%d transactions)\n", totalStr, len(result.Transactions))
 	return nil
 }

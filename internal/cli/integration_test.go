@@ -991,3 +991,218 @@ func TestCLIBudgetEditError(t *testing.T) {
 		t.Errorf("expected error output, got stderr: %s", stderr.String())
 	}
 }
+
+func TestCLIAddExpenseForeignCurrency(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	stdout, _, err := cli.run("add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
+	if err != nil {
+		t.Fatalf("add expense: %v", err)
+	}
+	if !strings.Contains(stdout, "10 USD") {
+		t.Errorf("expected '10 USD' in output, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "158.000") {
+		t.Errorf("expected base amount in output, got: %s", stdout)
+	}
+}
+
+func TestCLIAddExpenseForeignCurrencyJSON(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	stdout, _, err := cli.run("--json", "add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
+	if err != nil {
+		t.Fatalf("add expense --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+
+	currency, ok := result["currency"].(string)
+	if !ok || currency != "USD" {
+		t.Errorf("expected currency USD, got %v", result["currency"])
+	}
+
+	baseAmount, ok := result["base_amount"].(float64)
+	if !ok {
+		t.Fatalf("expected base_amount in JSON, got %T", result["base_amount"])
+	}
+	expectedBase := float64(10 * 15800)
+	if baseAmount != expectedBase {
+		t.Errorf("expected base_amount %f, got %f", expectedBase, baseAmount)
+	}
+
+	baseCurrency, ok := result["base_currency"].(string)
+	if !ok || baseCurrency != "IDR" {
+		t.Errorf("expected base_currency IDR, got %v", result["base_currency"])
+	}
+}
+
+func TestCLIAddExpenseForeignCurrencyMissingRate(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	_, stderr, _ := cli.run("add", "expense", "50000", "Food", "-c", "Restaurant", "-a", "KRWAccount")
+	if !strings.Contains(stderr, "wallet rate add KRW") {
+		t.Errorf("expected actionable error, got: %s", stderr)
+	}
+}
+
+func TestCLIListMultiCurrency(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
+	_, _, _ = cli.run("add", "expense", "50000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	stdout, _, err := cli.run("list", "-n", "10")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if !strings.Contains(stdout, "10 USD") {
+		t.Errorf("expected '10 USD' in output, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "158.000") {
+		t.Errorf("expected base amount in output, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "50.000") {
+		t.Errorf("expected IDR amount in output, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Base:") {
+		t.Errorf("expected base total in output, got: %s", stdout)
+	}
+}
+
+func TestCLIListMultiCurrencyJSON(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
+	_, _, _ = cli.run("add", "expense", "50000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	stdout, _, err := cli.run("--json", "list", "-n", "10")
+	if err != nil {
+		t.Fatalf("list --json: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("unmarshal JSON: %v", err)
+	}
+
+	transactions, ok := result["transactions"].([]interface{})
+	if !ok {
+		t.Fatalf("expected transactions array, got %T", result["transactions"])
+	}
+
+	baseTotal, ok := result["base_total"].(string)
+	if !ok {
+		t.Errorf("expected base_total in JSON, got %v", result["base_total"])
+	} else if baseTotal == "" {
+		t.Error("expected non-empty base_total")
+	}
+
+	baseCurrency, ok := result["base_currency"].(string)
+	if !ok || baseCurrency != "IDR" {
+		t.Errorf("expected base_currency IDR, got %v", result["base_currency"])
+	}
+
+	hasBaseAmount := false
+	for _, tx := range transactions {
+		txMap, ok := tx.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if ba, ok := txMap["base_amount"]; ok && ba != nil {
+			hasBaseAmount = true
+		}
+	}
+
+	if !hasBaseAmount {
+		t.Error("expected at least one transaction with base_amount in JSON")
+	}
+	_ = len(transactions)
+}
+
+func TestCLIAddIncomeForeignCurrency(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	stdout, _, err := cli.run("add", "income", "100", "Freelance", "-c", "Freelance", "-a", "PaypalUSD")
+	if err != nil {
+		t.Fatalf("add income: %v", err)
+	}
+	if !strings.Contains(stdout, "100 USD") {
+		t.Errorf("expected '100 USD' in output, got: %s", stdout)
+	}
+}
+
+func TestCLIAddIncomeForeignCurrencyMissingRate(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	_, stderr, _ := cli.run("add", "income", "5000", "Income", "-c", "Salary", "-a", "JPYAccount")
+	if !strings.Contains(stderr, "wallet rate add JPY") {
+		t.Errorf("expected actionable error, got: %s", stderr)
+	}
+}
+
+func TestCLIAddExpenseBaseCurrency(t *testing.T) {
+	cli := newTestCLI(t)
+	stdout, _, err := cli.run("add", "expense", "50000", "Coffee", "-c", "Coffee & Snacks", "-a", "BCA")
+	if err != nil {
+		t.Fatalf("add expense: %v", err)
+	}
+	if !strings.Contains(stdout, "50000") {
+		t.Errorf("expected 50000 in output, got: %s", stdout)
+	}
+}
+
+func TestCLIListBaseCurrencyTransactionsNoBaseTotal(t *testing.T) {
+	cli := newTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "35000", "Lunch", "-c", "Restaurant", "-a", "BCA")
+
+	stdout, _, err := cli.run("list", "-n", "10")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if strings.Contains(stdout, "Base:") {
+		t.Errorf("expected no Base: total for base-only transactions, got: %s", stdout)
+	}
+}
+
+func TestCLIListForeignCurrencyTransactionsOriginalOnly(t *testing.T) {
+	cli := newMultiCurrencyTestCLI(t)
+
+	_, _, _ = cli.run("add", "expense", "10", "AWS", "-c", "Subscriptions", "-a", "WiseUSD")
+	_, _, _ = cli.run("add", "expense", "20", "Hotel", "-c", "Travel", "-a", "WiseEUR")
+
+	stdout, _, err := cli.run("list", "-n", "10")
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if !strings.Contains(stdout, "10 USD") {
+		t.Errorf("expected USD transaction, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "20 EUR") {
+		t.Errorf("expected EUR transaction, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Base:") {
+		t.Errorf("expected base total for mixed currencies, got: %s", stdout)
+	}
+}
+
+func newMultiCurrencyTestCLI(t *testing.T) *testCLI {
+	t.Helper()
+	cleanup := setupTestService()
+	t.Cleanup(cleanup)
+
+	svc, _, _ := getServiceOverride(nil)
+	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = svc.CreateAccount("GoPay", "ewallet", "IDR")
+	_, _ = svc.CreateAccount("WiseUSD", "checking", "USD")
+	_, _ = svc.CreateAccount("WiseEUR", "checking", "EUR")
+	_, _ = svc.CreateAccount("PaypalUSD", "checking", "USD")
+	_, _ = svc.CreateAccount("KRWAccount", "checking", "KRW")
+	_, _ = svc.CreateAccount("JPYAccount", "checking", "JPY")
+
+	return &testCLI{t: t, svc: svc, cleanup: cleanup}
+}

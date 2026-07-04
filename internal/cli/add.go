@@ -193,22 +193,32 @@ func printTransactionResult(cmd *cobra.Command, result *service.TransactionResul
 		if result.Transaction.Description.Valid {
 			desc = result.Transaction.Description.String
 		}
-		return printJSON(stdout, map[string]interface{}{
+		output := map[string]interface{}{
 			"id":          result.Transaction.ID,
 			"type":        txnType,
 			"amount":      result.Transaction.Amount,
+			"currency":    result.Transaction.Currency,
 			"description": desc,
 			"date":        result.Transaction.Date,
 			"tags":        tagNames(result.Tags),
-		})
+		}
+		if result.Transaction.BaseAmount.Valid {
+			output["base_amount"] = result.Transaction.BaseAmount.Int64
+			output["base_currency"] = result.Transaction.BaseCurrency.String
+		}
+		return printJSON(stdout, output)
 	}
 
 	desc := ""
 	if result.Transaction.Description.Valid {
 		desc = result.Transaction.Description.String
 	}
-	_, _ = fmt.Fprintf(stdout, "%s recorded: %d [%s] on %s\n",
-		txnType, result.Transaction.Amount, desc, result.Transaction.Date)
+	amountStr := fmt.Sprintf("%d %s", result.Transaction.Amount, result.Transaction.Currency)
+	if result.Transaction.BaseAmount.Valid {
+		amountStr = fmt.Sprintf("%s (%s %s)", amountStr, formatNum(result.Transaction.BaseAmount.Int64), result.Transaction.BaseCurrency.String)
+	}
+	_, _ = fmt.Fprintf(stdout, "%s recorded: %s [%s] on %s\n",
+		txnType, amountStr, desc, result.Transaction.Date)
 	if len(result.Tags) > 0 {
 		_, _ = fmt.Fprintf(stdout, "Tags: %v\n", tagNames(result.Tags))
 	}
