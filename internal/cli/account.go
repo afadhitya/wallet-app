@@ -126,7 +126,7 @@ func runAccountList(cmd *cobra.Command, svc *service.Service, all bool) error {
 		return formatError(cmd, err)
 	}
 
-	stdout, _ := resolveOut(cmd)
+	stdout, stderr := resolveOut(cmd)
 
 	if isJSON(cmd) {
 		return printSuccessJSON(stdout, accounts, cmd)
@@ -137,10 +137,16 @@ func runAccountList(cmd *cobra.Command, svc *service.Service, all bool) error {
 		return nil
 	}
 
+	baseCurrency, rates, err := svc.ListRates()
+	if err != nil {
+		return formatError(cmd, err)
+	}
+
 	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %-15s %s\n", "ID", "Name", "Type", "Currency", "Balance", "Status")
 	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %-15s %s\n", "----", "-------------------------", "------------", "--------", "---------------", "------")
 
 	var totalBalance int64
+	var missingRates []string
 	for _, acc := range accounts {
 		status := "active"
 		if acc.IsArchived == 1 {
@@ -148,11 +154,25 @@ func runAccountList(cmd *cobra.Command, svc *service.Service, all bool) error {
 		}
 		_, _ = fmt.Fprintf(stdout, "%-4d %-25s %-12s %-8s %-15s %s\n",
 			acc.ID, truncate(acc.Name, 25), acc.Type, acc.Currency, formatAmount(acc.Balance), status)
-		totalBalance += acc.Balance
+
+		if acc.Currency == baseCurrency {
+			totalBalance += acc.Balance
+		} else if rate, ok := rates[acc.Currency]; ok {
+			totalBalance += acc.Balance * rate
+		} else {
+			missingRates = append(missingRates, acc.Currency)
+		}
 	}
 
+	totalLabel := fmt.Sprintf("Total (%s):", baseCurrency)
 	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %-15s\n", "----", "-------------------------", "------------", "--------", "---------------")
-	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %s\n", "", "Total", "", "", formatAmount(totalBalance))
+	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %s\n", "", totalLabel, "", "", formatAmount(totalBalance))
+
+	if len(missingRates) > 0 {
+		_, _ = fmt.Fprintf(stderr, "Warning: no exchange rate configured for: %s\n", strings.Join(missingRates, ", "))
+		_, _ = fmt.Fprintf(stderr, "These accounts are excluded from the total.\n")
+	}
+
 	return nil
 }
 
