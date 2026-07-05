@@ -1,6 +1,6 @@
 ## 1. CI Workflow Update
 
-- [ ] 1.1 Add `if: github.ref == 'refs/heads/main'` to the `Upload coverage reports to Codecov` step in `.github/workflows/go-quality.yml`
+- [x] 1.1 Add `if: github.ref == 'refs/heads/main'` to the `Upload coverage reports to Codecov` step in `.github/workflows/go-quality.yml`
 
 ## 2. Verification
 
