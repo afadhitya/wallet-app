@@ -66,7 +66,7 @@ func TestSubcommandRegistration(t *testing.T) {
 	cmd := NewRootCmd()
 	expectedSubcommands := []string{
 		"init", "add", "list", "edit", "rm",
-		"category", "tag", "adjust",
+		"category", "tag", "account", "adjust",
 		"budget", "bill", "report", "forecast",
 		"rate",
 	}
@@ -171,7 +171,7 @@ func TestRootCmdHelpOutput(t *testing.T) {
 	}
 
 	output := buf.String()
-	for _, sub := range []string{"init", "add", "list", "category", "tag", "edit", "rm", "adjust", "budget", "bill", "rate", "report", "forecast"} {
+	for _, sub := range []string{"init", "add", "list", "category", "tag", "account", "edit", "rm", "adjust", "budget", "bill", "rate", "report", "forecast"} {
 		if !strings.Contains(output, sub) {
 			t.Errorf("expected help output to contain '%s'", sub)
 		}

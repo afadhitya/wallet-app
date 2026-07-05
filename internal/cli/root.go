@@ -17,6 +17,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newRmCmd())
 	cmd.AddCommand(newCategoryCmd())
 	cmd.AddCommand(newTagCmd())
+	cmd.AddCommand(newAccountCmd())
 	cmd.AddCommand(newAdjustCmd())
 	cmd.AddCommand(newBudgetCmd())
 	cmd.AddCommand(newBillCmd())
@@ -26,5 +27,3 @@ func NewRootCmd() *cobra.Command {
 
 	return cmd
 }
-
-
