@@ -166,7 +166,7 @@ func runAccountList(cmd *cobra.Command, svc *service.Service, all bool) error {
 		}
 
 		_, _ = fmt.Fprintf(stdout, "%-4d %-25s %-12s %-8s %-15s %-15s %s\n",
-			acc.ID, truncate(acc.Name, 25), acc.Type, acc.Currency, formatAmount(acc.Balance), convertedStr, status)
+			acc.ID, truncate(acc.Name, 25), acc.Type, acc.Currency, formatAmountWithCurrency(acc.Balance, acc.Currency), convertedStr, status)
 	}
 
 	totalLabel := fmt.Sprintf("Total (%s):", baseCurrency)
