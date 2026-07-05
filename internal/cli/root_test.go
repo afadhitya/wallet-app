@@ -68,7 +68,7 @@ func TestSubcommandRegistration(t *testing.T) {
 		"init", "add", "list", "edit", "rm",
 		"category", "tag", "account", "adjust",
 		"budget", "bill", "report", "forecast",
-		"rate",
+		"rate", "docs",
 	}
 
 	subcommands := cmd.Commands()
