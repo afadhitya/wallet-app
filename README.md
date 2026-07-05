@@ -43,6 +43,26 @@ Download the latest binary from the [releases page](https://github.com/afadhitya
 - Go 1.25+
 - [sqlc](https://sqlc.dev) (for development only: `brew install sqlc` or `go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest`)
 
+### Agent Skill (AI Tools)
+
+Register `skill/SKILL.md` with your AI agentic tool so it auto-detects wallet-related queries and uses the correct CLI commands.
+
+**Hermes Agent:** Copy the skill to your Hermes skills directory:
+
+```sh
+mkdir -p ~/.hermes/skills/wallet
+cp skill/SKILL.md ~/.hermes/skills/wallet/SKILL.md
+```
+
+**OpenClaw:** Copy the skill to your OpenClaw skills directory:
+
+```sh
+mkdir -p ~/.openclaw/skills/wallet
+cp skill/SKILL.md ~/.openclaw/skills/wallet/SKILL.md
+```
+
+Once registered, your AI agent will recognize wallet-related queries (expenses, income, budgets, bills, forecasts) and invoke the correct `wallet` CLI commands automatically.
+
 ## Quick Start
 
 ### 1. Initialize
