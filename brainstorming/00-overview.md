@@ -20,8 +20,9 @@
 | 08 | AI-Native Layer | Hermes skill, JSON output mode, all commands wrapped | ✅ design approved |
 | 09 | Reports & Export | Reports by category/account/tag, CSV export | ✅ design approved |
 | 10 | Documentation | README, LICENSE (MIT), CONTRIBUTING, AGENTS.md | ✅ design approved |
-| 11 | README Badges | Go Version, CI, Coverage, License, Release badges | 🔴 pending review |
-| 12 | Account Management | Account CLI commands (add/list/edit/archive) | 🔴 pending review |
+| 11 | README Badges | Go Version, CI, Coverage, License, Release badges | ✅ design approved |
+| 12 | Account Management | Account CLI commands (add/list/edit/archive) | ✅ design approved |
+| 13 | Multi-Currency Total & Negative Balance | Fix total conversion, allow negative balance | 🔴 pending review |
 
 ---
 
@@ -54,6 +55,8 @@
 | Badge count | **5** — Go Version, CI, Coverage, License, Release |
 | Badge style | **Flat** |
 | Account types | checking, savings, cash, credit_card, ewallet |
+| Multi-currency total | **Convert to base currency** using rates from config |
+| Negative balance | **Allow freely** — no blocking, no warning |
 
 ---
 
