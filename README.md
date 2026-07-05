@@ -164,6 +164,7 @@ Manage rates with `wallet rate {list,add,set,rm}`.
 | `wallet adjust <account> <target> <desc>` | Set account balance to a target value |
 | `wallet category {list,add,edit,rm}` | Manage categories |
 | `wallet tag {list,add,rm}` | Manage tags |
+| `wallet account {add,list,edit,archive}` | Manage accounts |
 | `wallet budget {set,list,check,edit,rm}` | Manage budgets |
 | `wallet bill {add,list,due,pay,skip,pause,resume,edit,rm}` | Manage planned payments |
 | `wallet report` | Generate financial reports |

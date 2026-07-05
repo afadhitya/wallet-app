@@ -14,7 +14,7 @@ SELECT * FROM accounts ORDER BY sort_order, name;
 INSERT INTO accounts (name, type, currency) VALUES (?, ?, ?) RETURNING *;
 
 -- name: UpdateAccount :one
-UPDATE accounts SET name = ?, type = ?, currency = ?, updated_at = datetime('now') WHERE id = ? RETURNING *;
+UPDATE accounts SET name = ?, type = ?, currency = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ? RETURNING *;
 
 -- name: UpdateAccountBalance :exec
 UPDATE accounts SET balance = ?, updated_at = datetime('now') WHERE id = ?;

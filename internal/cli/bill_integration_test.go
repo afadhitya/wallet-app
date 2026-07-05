@@ -242,7 +242,6 @@ func TestCLIBillSkipText(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "skip", fmt.Sprintf("%d", id))
@@ -262,7 +261,6 @@ func TestCLIBillSkipOneTime(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Flight", "3000000", "--from", "2026-08-15", "-c", "Travel", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	_, stderr, err := cli.run("bill", "skip", fmt.Sprintf("%d", id))
@@ -279,7 +277,6 @@ func TestCLIBillPauseText(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "pause", fmt.Sprintf("%d", id))
@@ -295,7 +292,6 @@ func TestCLIBillResumeText(t *testing.T) {
 	cli := newTestCLI(t)
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
-
 
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
@@ -315,7 +311,6 @@ func TestCLIBillEditText(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "--name", "Netflix Premium", "--amount", "169000")
@@ -331,7 +326,6 @@ func TestCLIBillRmText(t *testing.T) {
 	cli := newTestCLI(t)
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
-
 
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
@@ -410,7 +404,6 @@ func TestCLIBillPauseJSON(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	stdout, _, err := cli.run("--json", "bill", "pause", fmt.Sprintf("%d", id))
@@ -428,7 +421,6 @@ func TestCLIBillResumeJSON(t *testing.T) {
 	cli := newTestCLI(t)
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
-
 
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
@@ -450,7 +442,6 @@ func TestCLIBillSkipJSON(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	stdout, _, err := cli.run("--json", "bill", "skip", fmt.Sprintf("%d", id))
@@ -468,7 +459,6 @@ func TestCLIBillRmJSON(t *testing.T) {
 	cli := newTestCLI(t)
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
-
 
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
@@ -572,7 +562,6 @@ func TestCLIBillPayPaused(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	_, _, _ = cli.run("bill", "pause", fmt.Sprintf("%d", id))
@@ -590,7 +579,6 @@ func TestCLIBillEditJSON(t *testing.T) {
 	cli := newTestCLI(t)
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
-
 
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
@@ -610,7 +598,6 @@ func TestCLIBillEditAccountCategory(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "-a", "GoPay", "-c", "Internet")
@@ -626,7 +613,6 @@ func TestCLIBillEditRecurrence(t *testing.T) {
 	cli := newTestCLI(t)
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
-
 
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
@@ -644,7 +630,6 @@ func TestCLIBillEditRRULE(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "--rrule", "FREQ=MONTHLY;BYMONTHDAY=20")
@@ -661,7 +646,6 @@ func TestCLIBillEditDay(t *testing.T) {
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
 
-
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 
 	stdout, _, err := cli.run("bill", "edit", fmt.Sprintf("%d", id), "--day", "20")
@@ -677,7 +661,6 @@ func TestCLIBillEditFrom(t *testing.T) {
 	cli := newTestCLI(t)
 
 	stdout, _, _ := cli.run("--json", "bill", "add", "Netflix", "149000", "--monthly", "--day", "15", "-c", "Subscriptions", "-a", "BCA")
-
 
 	id := int64(extractJSONData(t, stdout)["id"].(float64))
 

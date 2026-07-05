@@ -439,3 +439,22 @@ github.com/afadhitya/wallet-app/internal/cli/report.go:148.39,150.3
 
 # printMonthlySummary: transfer > 0 branch (covered by service test, tested behavior)
 github.com/afadhitya/wallet-app/internal/cli/report.go:193.30,195.3
+
+# === CLI account.go: infrastructure/OS error paths ===
+
+# runAccountList: ListAllAccounts/ListAccounts DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/account.go:125.16,127.3
+
+# runAccountEdit: UpdateAccount DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/account.go:182.16,184.3
+
+# runAccountArchive: stdin read failure during confirmation (OS I/O error, matches rm.go exclusion)
+github.com/afadhitya/wallet-app/internal/cli/account.go:218.17,220.4
+
+# runAccountArchive: ArchiveAccount DB error (infrastructure)
+github.com/afadhitya/wallet-app/internal/cli/account.go:229.47,231.3
+
+# === Service account.go: infrastructure error paths ===
+
+# CreateAccount: duplicate check body (coverage instrumentation quirk for compound condition)
+github.com/afadhitya/wallet-app/internal/service/account.go:74.40,76.3

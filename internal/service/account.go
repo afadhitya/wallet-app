@@ -55,6 +55,10 @@ func (s *Service) ListAccounts() ([]*gen.Account, error) {
 	return s.q.ListAccounts(s.ctx())
 }
 
+func (s *Service) ListAllAccounts() ([]*gen.Account, error) {
+	return s.q.ListAllAccounts(s.ctx())
+}
+
 func (s *Service) CreateAccount(name, accountType, currency string) (*gen.Account, error) {
 	if name == "" {
 		return nil, &ValidationError{Field: "name", Message: "account name is required"}
@@ -66,6 +70,14 @@ func (s *Service) CreateAccount(name, accountType, currency string) (*gen.Accoun
 		currency = "IDR"
 	}
 
+	existing, checkErr := s.q.GetAccountByName(s.ctx(), name)
+	if checkErr == nil && existing != nil {
+		return nil, ErrDuplicateName
+	}
+	if checkErr != nil && !errors.Is(checkErr, sql.ErrNoRows) {
+		return nil, checkErr
+	}
+
 	return s.q.CreateAccount(s.ctx(), gen.CreateAccountParams{
 		Name:     name,
 		Type:     accountType,
@@ -73,7 +85,7 @@ func (s *Service) CreateAccount(name, accountType, currency string) (*gen.Accoun
 	})
 }
 
-func (s *Service) UpdateAccount(id int64, name, accountType, currency string) (*gen.Account, error) {
+func (s *Service) UpdateAccount(id int64, name, accountType, currency string, sortOrder int64) (*gen.Account, error) {
 	_, err := s.q.GetAccountByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -87,10 +99,11 @@ func (s *Service) UpdateAccount(id int64, name, accountType, currency string) (*
 	}
 
 	return s.q.UpdateAccount(s.ctx(), gen.UpdateAccountParams{
-		ID:       id,
-		Name:     name,
-		Type:     accountType,
-		Currency: currency,
+		ID:        id,
+		Name:      name,
+		Type:      accountType,
+		Currency:  currency,
+		SortOrder: sortOrder,
 	})
 }
 

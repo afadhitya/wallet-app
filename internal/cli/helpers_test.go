@@ -499,9 +499,9 @@ func TestClassifyErrorNotFound(t *testing.T) {
 
 func TestClassifyErrorValidation(t *testing.T) {
 	tests := []struct {
-		err      error
-		code     string
-		suggest  string
+		err     error
+		code    string
+		suggest string
 	}{
 		{&service.ValidationError{Field: "amount", Message: "invalid"}, ErrCodeInvalidAmount, "invalid"},
 		{&service.ValidationError{Field: "date", Message: "bad date"}, ErrCodeInvalidDate, "bad date"},

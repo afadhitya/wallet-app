@@ -65,19 +65,19 @@ type ReportExportRow struct {
 }
 
 type ReportResult struct {
-	BaseCurrency     string              `json:"base_currency"`
-	Period           string              `json:"period"`
-	IncomeTotal      int64               `json:"income_total"`
-	ExpenseTotal     int64               `json:"expense_total"`
-	Net              int64               `json:"net"`
-	TransferTotal    int64               `json:"transfer_total"`
-	TransactionCount int64               `json:"transaction_count"`
-	IncomeCategories []ReportCategoryRow `json:"income_categories,omitempty"`
+	BaseCurrency      string              `json:"base_currency"`
+	Period            string              `json:"period"`
+	IncomeTotal       int64               `json:"income_total"`
+	ExpenseTotal      int64               `json:"expense_total"`
+	Net               int64               `json:"net"`
+	TransferTotal     int64               `json:"transfer_total"`
+	TransactionCount  int64               `json:"transaction_count"`
+	IncomeCategories  []ReportCategoryRow `json:"income_categories,omitempty"`
 	ExpenseCategories []ReportCategoryRow `json:"expense_categories,omitempty"`
-	ByCategory       []ReportCategoryRow `json:"by_category,omitempty"`
-	ByAccount        []ReportAccountRow  `json:"by_account,omitempty"`
-	ByTag            []ReportTagRow      `json:"by_tag,omitempty"`
-	ExportRows       []ReportExportRow   `json:"export_rows,omitempty"`
+	ByCategory        []ReportCategoryRow `json:"by_category,omitempty"`
+	ByAccount         []ReportAccountRow  `json:"by_account,omitempty"`
+	ByTag             []ReportTagRow      `json:"by_tag,omitempty"`
+	ExportRows        []ReportExportRow   `json:"export_rows,omitempty"`
 }
 
 var (
