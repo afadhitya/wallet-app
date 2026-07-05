@@ -32,6 +32,9 @@ vendor/
 *.swo
 *~
 
+# Generated CLI documentation
+docs/cli/
+
 # OS
 .DS_Store
 Thumbs.db

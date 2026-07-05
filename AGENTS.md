@@ -2,22 +2,7 @@
 
 Guide for AI agents working on this codebase.
 
-## Build & Test Commands
-
-| Command | Purpose |
-|---------|---------|
-| `make build` | Build the wallet binary to `bin/wallet` |
-| `make run` | Build and run the wallet binary |
-| `make install` | Install the wallet binary to `$GOPATH/bin` |
-| `make test` | Run all unit tests |
-| `make test-cover` | Run tests with coverage profile and HTML report |
-| `make coverage-check` | Run tests and enforce 100% coverage (required for CI) |
-| `make lint` | Run `golangci-lint` across all packages |
-| `make fmt` | Format Go source files (`go fmt ./...`) |
-| `make tidy` | Clean up `go.mod` and `go.sum` |
-| `make verify-deps` | Verify module dependencies are unchanged |
-| `make sqlc-gen` | Generate Go code from SQL queries (`sqlc generate`) |
-| `make clean` | Remove `bin/`, `coverage.out`, `coverage.html` |
+For build commands, project structure, coding conventions, commit conventions, and code generation workflows, see [CONTRIBUTING.md](CONTRIBUTING.md). This file focuses on agent-specific domain knowledge.
 
 ## Architecture Overview
 
@@ -146,30 +131,6 @@ Rates represent 1 unit of foreign currency in base currency minor units.
 - **Rate config override**: `service.SetTestRateConfig()` swaps `LoadRates`/`SaveRates` for in-memory testing
 - **`coverignore.txt`** lists infrastructure-level branches (OS errors, data integrity guards) excluded from the coverage gate
 - Each domain has its own `_test.go` file alongside the implementation
-
-## Commit Conventions
-
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-- `feat:` — New feature
-- `fix:` — Bug fix
-- `docs:` — Documentation
-- `refactor:` — Code restructuring
-- `test:` — Tests
-- `chore:` — Maintenance
-
-## sqlc Code Generation
-
-Config: `sqlc.yaml`
-
-```yaml
-schema: internal/db/migrations
-queries: internal/query
-output: internal/gen (package "gen")
-options: json_tags, db_tags, empty_slices, result_struct_pointers, emit_interface
-```
-
-After modifying `.sql` files in `internal/query/` or `internal/db/migrations/`, run `make sqlc-gen`. Never edit `internal/gen/` files manually.
 
 ## Pre-Commit Hook
 

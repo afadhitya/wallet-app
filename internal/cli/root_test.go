@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"database/sql"
+	"os"
 	"strings"
 	"testing"
 
@@ -68,7 +69,7 @@ func TestSubcommandRegistration(t *testing.T) {
 		"init", "add", "list", "edit", "rm",
 		"category", "tag", "account", "adjust",
 		"budget", "bill", "report", "forecast",
-		"rate",
+		"rate", "docs",
 	}
 
 	subcommands := cmd.Commands()
@@ -256,6 +257,96 @@ func TestJSONFlagPersistsToSubcommand(t *testing.T) {
 	}
 	if !got {
 		t.Error("expected --json flag to be true on subcommand")
+	}
+}
+
+func TestDocsMarkdownGeneratesFiles(t *testing.T) {
+	root := NewRootCmd()
+
+	dir, err := os.MkdirTemp("", "wallet-docs-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+
+	buf := new(bytes.Buffer)
+	root.SetOut(buf)
+	root.SetErr(buf)
+	root.SetArgs([]string{"docs", "markdown", "--output", dir})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("docs markdown failed: %v", err)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("failed to read output dir: %v", err)
+	}
+
+	if len(entries) == 0 {
+		t.Fatal("expected generated markdown files, got none")
+	}
+
+	found := map[string]bool{}
+	for _, e := range entries {
+		found[e.Name()] = true
+	}
+
+	for _, name := range []string{"wallet.md", "wallet_add.md", "wallet_list.md"} {
+		if !found[name] {
+			t.Errorf("expected generated file %s not found", name)
+		}
+	}
+
+	hiddenFiles := []string{"wallet_docs.md", "wallet_docs_markdown.md"}
+	for _, name := range hiddenFiles {
+		if found[name] {
+			t.Errorf("hidden command file %s should not have been generated", name)
+		}
+	}
+}
+
+func TestDocsCommandHidden(t *testing.T) {
+	root := NewRootCmd()
+
+	buf := new(bytes.Buffer)
+	root.SetOut(buf)
+	root.SetArgs([]string{"--help"})
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("help command failed: %v", err)
+	}
+
+	output := buf.String()
+	if strings.Contains(output, "docs") {
+		t.Error("docs command should not appear in help output")
+	}
+}
+
+func TestDocsMarkdownDefaultOutput(t *testing.T) {
+	root := NewRootCmd()
+
+	dir, err := os.MkdirTemp("", "wallet-docs-default-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+
+	root.SetArgs([]string{"docs", "markdown", "--output", dir})
+	root.SetOut(new(bytes.Buffer))
+	root.SetErr(new(bytes.Buffer))
+
+	if err := root.Execute(); err != nil {
+		t.Fatalf("docs markdown failed: %v", err)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("failed to read output dir: %v", err)
+	}
+
+	if len(entries) == 0 {
+		t.Fatal("expected generated markdown files, got none")
 	}
 }
 

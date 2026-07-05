@@ -102,103 +102,33 @@ Parse stdout first. If `success` is false, parse stderr for `error.code`, `error
 | "Categories list" | `wallet category list --json` |
 | "Tags list" | `wallet tag list --json` |
 
-### Command Quick Reference
+### Documentation Files
 
-| Command | Key Flags | Response `data` |
-|---------|-----------|-----------------|
-| `add expense <amt> <desc>` | `-c -a` (required), `-t -d -n` | `id,type,amount,currency,description,date,tags,base_amount,base_currency` |
-| `add income <amt> <desc>` | `-c -a` (required), `-t -d -n` | same as expense, type="income" |
-| `add transfer <amt>` | `--from --to` (required), `-d -n` | `id,type,amount,from_account,to_account,date,warning` |
-| `list` | `-m -a -c -t --type --from --to -n` | `transactions[],total,count,base_total,base_currency` |
-| `edit <id>` | `--amount -c -a -d --desc -n --add-tag --remove-tag` | `id,type,amount,description,date,tags` |
-| `rm <id>` | `-f` (skip confirmation) | `status,id` |
-| `adjust <acct> <target> <desc>` | `-n` | `account,old_balance,new_balance,difference,description` |
-| `budget set <name> <amt>` | `-c -t --period --from --to --notify` | `id,name,amount,period,period_start,period_end,notify_at_pct,is_active,categories[],tags[]` |
-| `budget list` | `--all` | array of `id,name,amount,spent,remaining,period,period_start,period_end,is_active` |
-| `budget check` | `-b --all` | array of `id,name,limit,spent,remaining,percent_used,status` (ok/warning/over) |
-| `budget edit <id>` | `--amount --name --notify --add-category --remove-category --add-tag --remove-tag` | same as set |
-| `budget rm <id>` | none | `status,id` |
-| `bill add <name> <amt>` | `-c -a` (required), `--daily\|--weekly\|--monthly\|--yearly\|--custom --rrule --from --day` | PlannedPayment object |
-| `bill list` | `--paused --all` | `planned_payments[],count` |
-| `bill due` | `--overdue --week --next N` | `due[],total,count` |
-| `bill pay <id>` | `--date --amount` | `Transaction{},PlannedPayment{},NextDueDate` |
-| `bill skip <id>` | none | PlannedPayment object (updated next_due_date) |
-| `bill pause <id>` | none | PlannedPayment or `{status,id}` |
-| `bill resume <id>` | none | PlannedPayment or `{status,id}` |
-| `bill edit <id>` | `--name --amount -c -a --rrule --recurrence --from --day` | PlannedPayment object |
-| `bill rm <id>` | none | `status,id` |
-| `forecast` | `-n -a` | `horizon,forecast[],planned_payments[],category_breakdown[],warnings[],account` |
-| `forecast bills` | `-n` | `horizon,bills[],total_amount,count,warnings[]` |
-| `report` | `-m -a -c --from --to` | `base_currency,total_income,total_expense,net,by_category[],by_account[]` |
-| `category list` | none | array of `id,name,type,icon,parent_id` |
-| `category add <name>` | `-p --icon` | Category object |
-| `category edit <id>` | `-n` (required) `--icon` | Category object |
-| `category rm <id>` | none | `status,id` |
-| `tag list` | none | array of `id,name` |
-| `tag add <name>` | none | Tag object |
-| `tag rm <name>` | none | `status,name` |
-| `rate list` | none | `base_currency,rates{}` |
-| `rate add <cur> <rate>` | none | `status,currency,rate,base` |
-| `rate set <cur> <rate>` | none | `status,currency,rate,base` |
-| `rate rm <cur>` | none | `status,currency` |
-| `init` | none | `status,database,accounts,categories,message` |
+This skill is split into focused files for faster lookup:
 
-### Error Codes
+| File | Purpose |
+|------|---------|
+| `COMMANDS.md` | Concise command inventory — signatures only, grouped by domain. Use `wallet <command> --help` to discover flags and `--json` for output shapes |
+| `ERRORS.md` | All error codes with meaning, cause, recovery action, and common recovery patterns |
+| `EXAMPLES.md` | Ready-to-use command sequences for common multi-step workflows |
 
-| Code | Meaning | Recovery |
-|------|---------|----------|
-| `CATEGORY_NOT_FOUND` | Category doesn't exist | List categories, suggest `wallet category add` |
-| `ACCOUNT_NOT_FOUND` | Account doesn't exist | Check setup, suggest `wallet init` |
-| `TAG_NOT_FOUND` | Tag doesn't exist | Suggest `wallet tag add <name>` (do NOT auto-create) |
-| `TRANSACTION_NOT_FOUND` | Wrong transaction ID | List transactions to find the right ID |
-| `BUDGET_NOT_FOUND` | Wrong budget ID/name | List budgets |
-| `PLANNED_PAYMENT_NOT_FOUND` | Wrong bill ID | List bills |
-| `INVALID_AMOUNT` | Amount is zero/negative | Ask for a positive amount |
-| `INVALID_DATE` | Bad date format | Use YYYY-MM-DD |
-| `INVALID_INPUT` / `VALIDATION_ERROR` | Generic validation | Read the `message` field |
-| `BILL_PAUSED` | Bill is paused | User must `wallet bill resume <id>` first |
-| `EXCHANGE_RATE_NOT_FOUND` | No rate for currency | Suggest `wallet rate add <currency> <rate>` |
-| `EXCHANGE_RATE_CONFIG_MISSING` | No rate config | Run `wallet init` |
-| `EXCHANGE_RATE_INVALID` | Negative/zero rate | Rate must be positive integer |
-| `DB_ERROR` | Database failure | Suggest `wallet init` |
-| `INTERNAL_ERROR` | Unexpected error | Report the message to the user |
+Agents should consult these files for detailed command syntax, error handling, and workflow guidance.
 
 Always relay `error.suggestion` when present.
 
 ### Common Workflows
 
-**Monthly checkup:**
-```bash
-wallet report -m july --json
-wallet budget check --all --json
-wallet bill due --json
-```
-
-**Track subscriptions:**
-```bash
-wallet bill add "Netflix" 149000 -c Subscriptions -a bca --monthly --day 15 --json
-wallet bill add "Spotify" 54990 -c Subscriptions -a bca --monthly --day 1 --json
-wallet bill list --json
-wallet forecast bills -n 3 --json
-```
-
-**Trip spending with a tag:**
-```bash
-wallet tag add "japan-2026" --json
-wallet add expense 350000 "Shinkansen" -c Travel -a bca -t japan-2026 --json
-wallet add expense 120000 "Ramen" -c Restaurant -a gopay -t japan-2026 --json
-wallet list -t japan-2026 --json
-```
-
-**Payday routine:**
-```bash
-wallet add income 15000000 "Salary" -c Salary -a bca --json
-wallet budget check --all --json
-wallet bill due --next 30 --json
-wallet forecast -n 1 --json
-```
-
-**Pay all due bills:** Get IDs from `wallet bill due --json`, then `wallet bill pay N --json` for each.
+See `EXAMPLES.md` for ready-to-use command sequences covering:
+- Recording expenses, income, and transfers
+- Payday routine and monthly checkup
+- Subscription tracking (setup, review, pay)
+- Trip spending with tags
+- Budget management (setup, check, edit)
+- Multi-currency setup and transfers
+- Account setup and reconciliation
+- Transaction management (list, edit, archive)
+- Tag and category management
+- Forecasting and report export
 
 ### Data Model
 

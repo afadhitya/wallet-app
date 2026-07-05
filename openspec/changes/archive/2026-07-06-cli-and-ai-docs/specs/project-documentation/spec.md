@@ -1,51 +1,14 @@
-# project-documentation
-
-## Purpose
-
-TBD
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Project README
 The project SHALL have a README.md at the repo root that describes the project, its features, installation steps, quick start examples, configuration reference, and a pointer to CLI reference documentation.
-
-#### Scenario: User reads the README to understand the project
-- **WHEN** a user visits the repository
-- **THEN** the README shows the project name, a one-line description, a feature list, installation commands, and a quick start walkthrough
 
 #### Scenario: User wants to know available commands
 - **WHEN** a user reads the README
 - **THEN** the README SHALL direct users to run `wallet --help` or view the auto-generated docs at `docs/cli/` instead of listing all commands in a table
 
-#### Scenario: User needs to configure the tool
-- **WHEN** a user reads the README
-- **THEN** the configuration section shows the config file path, format (TOML), and example content
-
-### Requirement: MIT License
-The project SHALL include an MIT LICENSE file at the repo root with copyright attribution to "Achmad Fadhitya" and year 2026.
-
-#### Scenario: License file is present
-- **WHEN** anyone views the repo root
-- **THEN** a LICENSE file exists with standard MIT license text and proper copyright attribution
-
 ### Requirement: Contributing Guide
 The project SHALL have a CONTRIBUTING.md at the repo root covering development setup, project structure, coding conventions, PR process, code generation instructions, and CLI documentation generation instructions.
-
-#### Scenario: New contributor sets up locally
-- **WHEN** a contributor reads CONTRIBUTING.md
-- **THEN** they can follow clone, install, build, and test instructions to get a working development environment
-
-#### Scenario: Contributor wants to understand conventions
-- **WHEN** a contributor reads CONTRIBUTING.md
-- **THEN** they see Go version requirements, formatting/linting expectations, commit message conventions, and the "amounts in integer minor units" rule
-
-#### Scenario: Contributor wants to open a PR
-- **WHEN** a contributor reads CONTRIBUTING.md
-- **THEN** they see the PR process: feature branch, tests, coverage gate, review, squash merge
-
-#### Scenario: Contributor modifies SQL queries
-- **WHEN** a contributor modifies queries/*.sql files
-- **THEN** CONTRIBUTING.md instructs them to run `make sqlc-gen` to regenerate sqlc code
 
 #### Scenario: Contributor adds or modifies a CLI command
 - **WHEN** a contributor reads CONTRIBUTING.md after adding or modifying a Cobra command

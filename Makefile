@@ -1,4 +1,4 @@
-.PHONY: build run install test test-cover coverage-check lint fmt tidy verify-deps sqlc-gen clean
+.PHONY: build run install test test-cover coverage-check lint fmt tidy verify-deps sqlc-gen docs clean
 
 # Coverage notes:
 # - internal/gen (sqlc-generated) is excluded via package filter
@@ -48,5 +48,10 @@ verify-deps:
 sqlc-gen:
 	sqlc generate
 
+docs:
+	@mkdir -p docs/cli
+	@go run cmd/wallet/main.go docs markdown
+	@echo "Documentation generated in docs/cli/"
+
 clean:
-	rm -rf bin/ coverage.out coverage.html
+	rm -rf bin/ coverage.out coverage.html docs/cli/

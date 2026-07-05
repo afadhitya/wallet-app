@@ -25,5 +25,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newReportCmd())
 	cmd.AddCommand(newForecastCmd())
 
+	cmd.AddCommand(newDocsCmd(cmd))
+
 	return cmd
 }
