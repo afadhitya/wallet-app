@@ -100,8 +100,8 @@ func runReportExport(cmd *cobra.Command, svc *service.Service, params service.Re
 
 	if isJSON(cmd) {
 		result := struct {
-			FilePath string                  `json:"file_path"`
-			Format   string                  `json:"format"`
+			FilePath string                    `json:"file_path"`
+			Format   string                    `json:"format"`
 			Rows     []service.ReportExportRow `json:"rows"`
 		}{
 			FilePath: outputPath,
