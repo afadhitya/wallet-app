@@ -18,6 +18,6 @@
 
 ## 4. Tag and Publish
 
-- [ ] 4.1 Create and push `v1.0.0` annotated tag on main
+- [x] 4.1 Create and push `v1.0.0` annotated tag on main
 - [ ] 4.2 Verify CI runs and publishes release with binaries and checksums
 - [ ] 4.3 Verify README release badge resolves correctly
