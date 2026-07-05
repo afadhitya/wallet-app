@@ -177,26 +177,9 @@ Manage rates with `wallet rate {list,add,set,rm}`.
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `wallet init` | Initialize the wallet database and create config files |
-| `wallet add expense <amount> <desc>` | Record an expense |
-| `wallet add income <amount> <desc>` | Record income |
-| `wallet add transfer <amount>` | Transfer between accounts |
-| `wallet list` | List and filter transactions |
-| `wallet edit <id>` | Edit a transaction |
-| `wallet rm <id>` | Archive a transaction |
-| `wallet adjust <account> <target> <desc>` | Set account balance to a target value |
-| `wallet category {list,add,edit,rm}` | Manage categories |
-| `wallet tag {list,add,rm}` | Manage tags |
-| `wallet account {add,list,edit,archive}` | Manage accounts |
-| `wallet budget {set,list,check,edit,rm}` | Manage budgets |
-| `wallet bill {add,list,due,pay,skip,pause,resume,edit,rm}` | Manage planned payments |
-| `wallet report` | Generate financial reports |
-| `wallet forecast {bills}` | Forecast balances and bills |
-| `wallet rate {list,add,set,rm}` | Manage exchange rates |
+Run `wallet --help` for the full command list, or `wallet <command> --help` for details on a specific command. Add `--json` for structured machine-readable output.
 
-All commands support `--help` for detailed usage. Use `--json` for structured JSON output.
+Auto-generated CLI reference docs for every command are available in `docs/cli/` (run `make docs` to generate).
 
 ## Contributing
 

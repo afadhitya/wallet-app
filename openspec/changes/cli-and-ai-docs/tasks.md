@@ -13,7 +13,7 @@
 - [x] 2.2 Create `skill/ERRORS.md` — all error codes with meaning, cause, recovery action, and common recovery patterns table
 - [x] 2.3 Create `skill/EXAMPLES.md` — common multi-step workflows (recording expenses, payday routine, subscription tracking, trip spending, budget management, etc.)
 - [x] 2.4 Refactor `skill/SKILL.md` — remove "Command Quick Reference" table and "Error Codes" section, replace with references to `COMMANDS.md` and `ERRORS.md`, keep core principles, intent mapping, rules, common workflows, data model, and multi-currency sections
-- [x] 2.5 Update `README.md` — change "Agent Skill (AI Tools)" section to install the entire `skill/` directory (not just `SKILL.md`) for Hermes Agent and OpenClaw
+- [x] 2.5 Update `README.md` — change "Agent Skill (AI Tools)" section to install the entire `skill/` directory (not just `SKILL.md`); replace manual "Commands" table with pointer to `wallet --help` and auto-generated `docs/cli/`
 - [x] 2.6 Update `CONTRIBUTING.md` — add instruction that contributors who add or modify CLI commands must run `make docs` to regenerate CLI reference documentation
 - [x] 2.7 Refactor `AGENTS.md` — replace duplicated content (build commands table, project structure, coding conventions, commit conventions, code generation) with references to `CONTRIBUTING.md`; retain agent-specific sections (layer responsibilities, key patterns, database, transaction types, amounts, config, pre-commit hook)
 - [x] 2.8 Run `make lint` and `make test` to verify no regressions
