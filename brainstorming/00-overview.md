@@ -22,7 +22,8 @@
 | 10 | Documentation | README, LICENSE (MIT), CONTRIBUTING, AGENTS.md | ✅ design approved |
 | 11 | README Badges | Go Version, CI, Coverage, License, Release badges | ✅ design approved |
 | 12 | Account Management | Account CLI commands (add/list/edit/archive) | ✅ design approved |
-| 13 | Multi-Currency Total & Negative Balance | Fix total conversion, allow negative balance | 🔴 pending review |
+| 13 | Multi-Currency Total & Negative Balance | Fix total conversion, allow negative balance | ✅ design approved |
+| 14 | CLI Documentation Generation | Auto-generate CLI reference from Cobra | 🔴 pending review |
 
 ---
 
@@ -57,6 +58,8 @@
 | Account types | checking, savings, cash, credit_card, ewallet |
 | Multi-currency total | **Convert to base currency** using rates from config |
 | Negative balance | **Allow freely** — no blocking, no warning |
+| CLI doc format | **Markdown only** (no man pages) |
+| CLI doc trigger | **Makefile target** (`make docs`) |
 
 ---
 
