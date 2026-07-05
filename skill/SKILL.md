@@ -228,3 +228,14 @@ Missing rate → `EXCHANGE_RATE_NOT_FOUND`. Tell the user to add it.
 - **Paused bills block payment.** If `BILL_PAUSED`, tell user to `wallet bill resume <id>` first.
 - **One-time bills archive after payment** and won't appear in `bill due` again.
 - **Graceful degradation**: on failure, list available resources (categories, tags, bills) and suggest fixes. Don't give up on the first error.
+- **Flags before `--`, positional args after.** When passing negative amounts or other values that look like flags, use `--` to separate flags from positional args.
+
+  ```
+  wallet adjust "Bunga Bank" --json -- -3612 "Initial balance"
+  │─────────┬────────────│─┬──│ │──┬──│ │──────┬──────│
+       command + args    │ flags │ │  pos-1  │ │  pos-2  │
+                         │        │ │(amount) │ │(desc)   │
+                         │        │
+                    -- ends flag parsing
+  ```
+- **Never touch the database directly.** Do not open the SQLite file, write raw SQL, or create scripts that manipulate database data. Always use the `wallet` CLI for all data operations (inserts, queries, updates, deletes).
