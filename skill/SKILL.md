@@ -108,7 +108,7 @@ This skill is split into focused files for faster lookup:
 
 | File | Purpose |
 |------|---------|
-| `COMMANDS.md` | Complete command reference with flags, JSON output format, and response structures for every command, grouped by domain |
+| `COMMANDS.md` | Concise command inventory — signatures only, grouped by domain. Use `wallet <command> --help` to discover flags and `--json` for output shapes |
 | `ERRORS.md` | All error codes with meaning, cause, recovery action, and common recovery patterns |
 | `EXAMPLES.md` | Ready-to-use command sequences for common multi-step workflows |
 
