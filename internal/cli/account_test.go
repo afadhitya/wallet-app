@@ -108,6 +108,9 @@ func TestCLIAccountList(t *testing.T) {
 	if !strings.Contains(stdout, "GoPay") {
 		t.Errorf("expected GoPay in output, got: %s", stdout)
 	}
+	if !strings.Contains(stdout, "Converted") {
+		t.Errorf("expected Converted column in output, got: %s", stdout)
+	}
 	if !strings.Contains(stdout, "Total (IDR)") {
 		t.Errorf("expected Total (IDR) row in output, got: %s", stdout)
 	}
@@ -140,6 +143,9 @@ func TestCLIAccountListAll(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "BCA") {
 		t.Errorf("expected archived BCA in output with --all, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Converted") {
+		t.Errorf("expected Converted column in output, got: %s", stdout)
 	}
 	if !strings.Contains(stdout, "archived") {
 		t.Errorf("expected 'archived' status in output, got: %s", stdout)
@@ -435,6 +441,12 @@ func TestCLIAccountListMixedCurrencies(t *testing.T) {
 	if !strings.Contains(stdout, "Total (IDR)") {
 		t.Errorf("expected Total (IDR) row in output, got: %s", stdout)
 	}
+	if !strings.Contains(stdout, "Converted") {
+		t.Errorf("expected Converted column in output, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Rp 15.800.000") {
+		t.Errorf("expected converted amount Rp 15.800.000 for USD account, got: %s", stdout)
+	}
 	if !strings.Contains(stdout, "Rp 15.900.000") {
 		t.Errorf("expected total Rp 15.900.000 (100000 + 1000*15800), got: %s", stdout)
 	}
@@ -483,6 +495,9 @@ func TestCLIAccountListMissingRate(t *testing.T) {
 	if !strings.Contains(stdout, "Total (IDR)") {
 		t.Errorf("expected Total (IDR) row, got: %s", stdout)
 	}
+	if !strings.Contains(stdout, "Converted") {
+		t.Errorf("expected Converted column in output, got: %s", stdout)
+	}
 	if !strings.Contains(stdout, "Rp 50.000") {
 		t.Errorf("expected total Rp 50.000 (only IDR account), got: %s", stdout)
 	}
@@ -498,6 +513,14 @@ func TestCLIAccountListNegativeBalances(t *testing.T) {
 		t.Fatalf("update BCA balance to negative: %v", err)
 	}
 
+	_, err := svc.CreateAccount("USD Debt", "credit", "USD")
+	if err != nil {
+		t.Fatalf("create USD account: %v", err)
+	}
+	if err := svc.UpdateAccountBalance(3, -10000); err != nil {
+		t.Fatalf("update USD Debt balance to negative: %v", err)
+	}
+
 	stdout, _, err := runTestCmd("account", "list")
 	if err != nil {
 		t.Fatalf("account list: %v", err)
@@ -505,6 +528,12 @@ func TestCLIAccountListNegativeBalances(t *testing.T) {
 
 	if !strings.Contains(stdout, "-Rp 50.000") {
 		t.Errorf("expected negative balance display '-Rp 50.000', got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "-Rp 158.000.000") {
+		t.Errorf("expected negative converted amount '-Rp 158.000.000' for USD account, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Converted") {
+		t.Errorf("expected Converted column in output, got: %s", stdout)
 	}
 	if !strings.Contains(stdout, "Total (IDR)") {
 		t.Errorf("expected Total (IDR) row, got: %s", stdout)

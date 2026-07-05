@@ -142,8 +142,8 @@ func runAccountList(cmd *cobra.Command, svc *service.Service, all bool) error {
 		return formatError(cmd, err)
 	}
 
-	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %-15s %s\n", "ID", "Name", "Type", "Currency", "Balance", "Status")
-	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %-15s %s\n", "----", "-------------------------", "------------", "--------", "---------------", "------")
+	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %-15s %-15s %s\n", "ID", "Name", "Type", "Currency", "Balance", "Converted", "Status")
+	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %-15s %-15s %s\n", "----", "-------------------------", "------------", "--------", "---------------", "---------------", "------")
 
 	var totalBalance int64
 	var missingRates []string
@@ -152,20 +152,25 @@ func runAccountList(cmd *cobra.Command, svc *service.Service, all bool) error {
 		if acc.IsArchived == 1 {
 			status = "archived"
 		}
-		_, _ = fmt.Fprintf(stdout, "%-4d %-25s %-12s %-8s %-15s %s\n",
-			acc.ID, truncate(acc.Name, 25), acc.Type, acc.Currency, formatAmount(acc.Balance), status)
 
+		var convertedStr string
 		if acc.Currency == baseCurrency {
+			convertedStr = "-"
 			totalBalance += acc.Balance
 		} else if rate, ok := rates[acc.Currency]; ok {
+			convertedStr = formatAmount(acc.Balance * rate)
 			totalBalance += acc.Balance * rate
 		} else {
+			convertedStr = "-"
 			missingRates = append(missingRates, acc.Currency)
 		}
+
+		_, _ = fmt.Fprintf(stdout, "%-4d %-25s %-12s %-8s %-15s %-15s %s\n",
+			acc.ID, truncate(acc.Name, 25), acc.Type, acc.Currency, formatAmountWithCurrency(acc.Balance, acc.Currency), convertedStr, status)
 	}
 
 	totalLabel := fmt.Sprintf("Total (%s):", baseCurrency)
-	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %-15s\n", "----", "-------------------------", "------------", "--------", "---------------")
+	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %-15s %-15s\n", "----", "-------------------------", "------------", "--------", "---------------", "---------------")
 	_, _ = fmt.Fprintf(stdout, "%-4s %-25s %-12s %-8s %s\n", "", totalLabel, "", "", formatAmount(totalBalance))
 
 	if len(missingRates) > 0 {
