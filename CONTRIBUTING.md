@@ -84,6 +84,14 @@ make sqlc-gen
 
 This runs `sqlc generate` using the config in `sqlc.yaml`. The config reads schema from `internal/db/migrations/` and queries from `internal/query/`, then generates type-safe Go code into `internal/gen/`.
 
+### CLI documentation generation
+
+```sh
+make docs
+```
+
+This generates Markdown CLI reference documentation from the Cobra command tree into `docs/cli/` (git-ignored). Run this after adding or modifying any CLI commands to update the reference docs. The generated docs are not committed — CI may generate them on tagged releases for publishing.
+
 ### Commits
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
@@ -99,11 +107,12 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 1. Create a feature branch from `main`
 2. Make your changes with clear, conventional commits
-3. Ensure `make coverage-check` passes (100% coverage required)
-4. Ensure `make lint` passes with no warnings
-5. Open a pull request with a descriptive title and summary of changes
-6. All checks must pass before merge
-7. PRs are merged via squash merge to keep history clean
+3. If you added or modified CLI commands, run `make docs` to regenerate CLI reference documentation
+4. Ensure `make coverage-check` passes (100% coverage required)
+5. Ensure `make lint` passes with no warnings
+6. Open a pull request with a descriptive title and summary of changes
+7. All checks must pass before merge
+8. PRs are merged via squash merge to keep history clean
 
 ## Testing Guidance
 

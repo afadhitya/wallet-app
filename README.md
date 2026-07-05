@@ -45,20 +45,25 @@ Download the latest binary from the [releases page](https://github.com/afadhitya
 
 ### Agent Skill (AI Tools)
 
-Register `skill/SKILL.md` with your AI agentic tool so it auto-detects wallet-related queries and uses the correct CLI commands.
+Register the entire `skill/` directory with your AI agentic tool so it auto-detects wallet-related queries and uses the correct CLI commands. The directory contains:
 
-**Hermes Agent:** Copy the skill to your Hermes skills directory:
+- `SKILL.md` — Core principles, intent mapping, and behavioral rules
+- `COMMANDS.md` — Domain-grouped command reference with flags and JSON response structures
+- `ERRORS.md` — Error codes with meanings, causes, and recovery actions
+- `EXAMPLES.md` — Ready-to-use command sequences for common workflows
+
+**Hermes Agent:** Copy the skill directory to your Hermes skills directory:
 
 ```sh
 mkdir -p ~/.hermes/skills/wallet
-cp skill/SKILL.md ~/.hermes/skills/wallet/SKILL.md
+cp -r skill/* ~/.hermes/skills/wallet/
 ```
 
-**OpenClaw:** Copy the skill to your OpenClaw skills directory:
+**OpenClaw:** Copy the skill directory to your OpenClaw skills directory:
 
 ```sh
 mkdir -p ~/.openclaw/skills/wallet
-cp skill/SKILL.md ~/.openclaw/skills/wallet/SKILL.md
+cp -r skill/* ~/.openclaw/skills/wallet/
 ```
 
 Once registered, your AI agent will recognize wallet-related queries (expenses, income, budgets, bills, forecasts) and invoke the correct `wallet` CLI commands automatically.
