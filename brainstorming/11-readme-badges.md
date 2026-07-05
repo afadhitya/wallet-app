@@ -98,10 +98,13 @@ Add professional badges to README.md that show project health at a glance.
 
 ```yaml
 - name: Upload coverage
+  if: github.ref == 'refs/heads/main'
   uses: codecov/codecov-action@v4
   with:
     files: ./coverage.out
 ```
+
+**Note:** Upload coverage only on `main` branch commits, NOT on PRs. PRs still run tests for validation but don't upload to Codecov. This avoids duplicate uploads and keeps Codecov data clean.
 
 ---
 
