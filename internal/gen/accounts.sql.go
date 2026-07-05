@@ -162,14 +162,15 @@ func (q *Queries) ListAllAccounts(ctx context.Context) ([]*Account, error) {
 }
 
 const updateAccount = `-- name: UpdateAccount :one
-UPDATE accounts SET name = ?, type = ?, currency = ?, updated_at = datetime('now') WHERE id = ? RETURNING id, name, type, currency, balance, is_archived, sort_order, created_at, updated_at
+UPDATE accounts SET name = ?, type = ?, currency = ?, sort_order = ?, updated_at = datetime('now') WHERE id = ? RETURNING id, name, type, currency, balance, is_archived, sort_order, created_at, updated_at
 `
 
 type UpdateAccountParams struct {
-	Name     string `db:"name" json:"name"`
-	Type     string `db:"type" json:"type"`
-	Currency string `db:"currency" json:"currency"`
-	ID       int64  `db:"id" json:"id"`
+	Name      string `db:"name" json:"name"`
+	Type      string `db:"type" json:"type"`
+	Currency  string `db:"currency" json:"currency"`
+	SortOrder int64  `db:"sort_order" json:"sort_order"`
+	ID        int64  `db:"id" json:"id"`
 }
 
 func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (*Account, error) {
@@ -177,6 +178,7 @@ func (q *Queries) UpdateAccount(ctx context.Context, arg UpdateAccountParams) (*
 		arg.Name,
 		arg.Type,
 		arg.Currency,
+		arg.SortOrder,
 		arg.ID,
 	)
 	var i Account

@@ -938,6 +938,31 @@ func TestListAccounts(t *testing.T) {
 	}
 }
 
+func TestListAllAccounts(t *testing.T) {
+	svc := setupService(t)
+
+	accounts, err := svc.ListAllAccounts()
+	if err != nil {
+		t.Fatalf("ListAllAccounts: %v", err)
+	}
+	if len(accounts) != 0 {
+		t.Errorf("expected 0 accounts, got %d", len(accounts))
+	}
+
+	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = svc.CreateAccount("GoPay", "ewallet", "IDR")
+
+	_ = svc.ArchiveAccount(1)
+
+	accounts, err = svc.ListAllAccounts()
+	if err != nil {
+		t.Fatalf("ListAllAccounts: %v", err)
+	}
+	if len(accounts) != 2 {
+		t.Errorf("expected 2 accounts including archived, got %d", len(accounts))
+	}
+}
+
 func TestGetAccountByIDNotFound(t *testing.T) {
 	svc := setupService(t)
 
@@ -955,7 +980,7 @@ func TestUpdateAccount(t *testing.T) {
 	svc := setupService(t)
 
 	account, _ := svc.CreateAccount("BCA", "checking", "IDR")
-	updated, err := svc.UpdateAccount(account.ID, "BCA New", "savings", "USD")
+	updated, err := svc.UpdateAccount(account.ID, "BCA New", "savings", "USD", 0)
 	if err != nil {
 		t.Fatalf("UpdateAccount: %v", err)
 	}
@@ -973,7 +998,7 @@ func TestUpdateAccount(t *testing.T) {
 func TestUpdateAccountNotFound(t *testing.T) {
 	svc := setupService(t)
 
-	_, err := svc.UpdateAccount(9999, "Ghost", "", "")
+	_, err := svc.UpdateAccount(9999, "Ghost", "", "", 0)
 	if err == nil {
 		t.Fatal("expected error for non-existent account")
 	}
@@ -987,7 +1012,7 @@ func TestUpdateAccountEmptyName(t *testing.T) {
 	svc := setupService(t)
 
 	account, _ := svc.CreateAccount("BCA", "checking", "IDR")
-	_, err := svc.UpdateAccount(account.ID, "", "", "")
+	_, err := svc.UpdateAccount(account.ID, "", "", "", 0)
 	if err == nil {
 		t.Fatal("expected error for empty name")
 	}
@@ -2132,7 +2157,7 @@ func TestUpdateAccount_DBError(t *testing.T) {
 	svc := setupService(t)
 	_ = svc.DB().Close()
 
-	_, err := svc.UpdateAccount(1, "New", "", "")
+	_, err := svc.UpdateAccount(1, "New", "", "", 0)
 	if err == nil {
 		t.Fatal("expected error with closed DB")
 	}
