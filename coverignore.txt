@@ -445,14 +445,17 @@ github.com/afadhitya/wallet-app/internal/cli/report.go:193.30,195.3
 # runAccountList: ListAllAccounts/ListAccounts DB error (infrastructure)
 github.com/afadhitya/wallet-app/internal/cli/account.go:125.16,127.3
 
+# runAccountList: ListRates error (infrastructure — rate config load failure)
+github.com/afadhitya/wallet-app/internal/cli/account.go:141.16,143.3
+
 # runAccountEdit: UpdateAccount DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/account.go:182.16,184.3
+github.com/afadhitya/wallet-app/internal/cli/account.go:202.16,204.3
 
 # runAccountArchive: stdin read failure during confirmation (OS I/O error, matches rm.go exclusion)
-github.com/afadhitya/wallet-app/internal/cli/account.go:218.17,220.4
+github.com/afadhitya/wallet-app/internal/cli/account.go:238.17,240.4
 
 # runAccountArchive: ArchiveAccount DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/account.go:229.47,231.3
+github.com/afadhitya/wallet-app/internal/cli/account.go:249.47,251.3
 
 # === Service account.go: infrastructure error paths ===
 
