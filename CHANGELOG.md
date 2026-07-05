@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.1.0] - 2026-07-05
+
+### Added
+
+- **Account List Table** — New `converted_balance` column in account list showing balances converted to the base currency using configured exchange rates.
+- **Multi-Currency Total** — Account list now computes a total row across all accounts, converted to the base currency for a unified financial snapshot.
+
 ## [v1.0.0] - 2026-07-05
 
 ### Added
