@@ -14,6 +14,11 @@ import (
 
 func setupService(t *testing.T) *Service {
 	t.Helper()
+	SetTestRateConfig(TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates:        map[string]int64{},
+	})
+	t.Cleanup(ResetTestRateConfig)
 	return New(testdb.Open(t))
 }
 
