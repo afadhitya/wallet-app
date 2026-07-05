@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.2.0] - 2026-07-06
+
+### Added
+
+- **Auto-generated CLI docs** — CLI documentation is now auto-generated for all commands and subcommands.
+- **AI agent documentation split** — AGENTS.md and CONTRIBUTING.md now have clear separation of concerns for AI agents working on the codebase.
+- **CLI separator rule** — Added formatting rule for CLI help text separators.
+- **DB access boundary rule** — Documented the data access boundary constraint for the service layer.
+- **Skill installation docs** — Added documentation for installing and configuring OpenSpec skills.
+
+### Changed
+
+- Updated AGENTS.md and CONTRIBUTING.md with refined agent guidelines.
+
+### Fixed
+
+- Fixed in-memory rate config setup in service tests to use proper test configuration.
+
 ## [v1.1.0] - 2026-07-05
 
 ### Added
