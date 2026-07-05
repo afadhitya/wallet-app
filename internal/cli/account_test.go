@@ -3,6 +3,8 @@ package cli
 import (
 	"strings"
 	"testing"
+
+	"github.com/afadhitya/wallet-app/internal/service"
 )
 
 func setupAccountTest(t *testing.T) func() {
@@ -106,8 +108,8 @@ func TestCLIAccountList(t *testing.T) {
 	if !strings.Contains(stdout, "GoPay") {
 		t.Errorf("expected GoPay in output, got: %s", stdout)
 	}
-	if !strings.Contains(stdout, "Total") {
-		t.Errorf("expected Total row in output, got: %s", stdout)
+	if !strings.Contains(stdout, "Total (IDR)") {
+		t.Errorf("expected Total (IDR) row in output, got: %s", stdout)
 	}
 }
 
@@ -405,6 +407,107 @@ func TestCLIAccountArchiveBalanceWarningWithConfirmation(t *testing.T) {
 	}
 	if !strings.Contains(stdout, "Account 1 archived") {
 		t.Errorf("expected archive success message, got: %s", stdout)
+	}
+}
+
+func TestCLIAccountListMixedCurrencies(t *testing.T) {
+	cleanup := setupAccountTest(t)
+	defer cleanup()
+
+	svc, _, _ := getServiceOverride(nil)
+	_, err := svc.CreateAccount("Savings", "savings", "USD")
+	if err != nil {
+		t.Fatalf("create USD account: %v", err)
+	}
+
+	if err := svc.UpdateAccountBalance(1, 100000); err != nil {
+		t.Fatalf("update BCA balance: %v", err)
+	}
+	if err := svc.UpdateAccountBalance(3, 1000); err != nil {
+		t.Fatalf("update Savings balance: %v", err)
+	}
+
+	stdout, _, err := runTestCmd("account", "list")
+	if err != nil {
+		t.Fatalf("account list: %v", err)
+	}
+
+	if !strings.Contains(stdout, "Total (IDR)") {
+		t.Errorf("expected Total (IDR) row in output, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Rp 15.900.000") {
+		t.Errorf("expected total Rp 15.900.000 (100000 + 1000*15800), got: %s", stdout)
+	}
+}
+
+func TestCLIAccountListMissingRate(t *testing.T) {
+	cleanup := setupTestService()
+	defer cleanup()
+
+	svc, _, _ := getServiceOverride(nil)
+	_, err := svc.CreateAccount("BCA", "checking", "IDR")
+	if err != nil {
+		t.Fatalf("create BCA account: %v", err)
+	}
+	_, err = svc.CreateAccount("JPY Account", "savings", "JPY")
+	if err != nil {
+		t.Fatalf("create JPY account: %v", err)
+	}
+
+	if err := svc.UpdateAccountBalance(1, 50000); err != nil {
+		t.Fatalf("update BCA balance: %v", err)
+	}
+	if err := svc.UpdateAccountBalance(2, 10000); err != nil {
+		t.Fatalf("update JPY balance: %v", err)
+	}
+
+	service.SetTestRateConfig(service.TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates: map[string]int64{
+			"USD": 15800,
+		},
+	})
+	defer service.ResetTestRateConfig()
+
+	stdout, stderr, err := runTestCmd("account", "list")
+	if err != nil {
+		t.Fatalf("account list: %v", err)
+	}
+
+	if !strings.Contains(stderr, "Warning: no exchange rate configured for: JPY") {
+		t.Errorf("expected warning for missing JPY rate, got stderr: %s", stderr)
+	}
+	if !strings.Contains(stderr, "These accounts are excluded from the total.") {
+		t.Errorf("expected exclusion message, got stderr: %s", stderr)
+	}
+	if !strings.Contains(stdout, "Total (IDR)") {
+		t.Errorf("expected Total (IDR) row, got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Rp 50.000") {
+		t.Errorf("expected total Rp 50.000 (only IDR account), got: %s", stdout)
+	}
+}
+
+func TestCLIAccountListNegativeBalances(t *testing.T) {
+	cleanup := setupAccountTest(t)
+	defer cleanup()
+
+	svc, _, _ := getServiceOverride(nil)
+
+	if err := svc.UpdateAccountBalance(1, -50000); err != nil {
+		t.Fatalf("update BCA balance to negative: %v", err)
+	}
+
+	stdout, _, err := runTestCmd("account", "list")
+	if err != nil {
+		t.Fatalf("account list: %v", err)
+	}
+
+	if !strings.Contains(stdout, "-Rp 50.000") {
+		t.Errorf("expected negative balance display '-Rp 50.000', got: %s", stdout)
+	}
+	if !strings.Contains(stdout, "Total (IDR)") {
+		t.Errorf("expected Total (IDR) row, got: %s", stdout)
 	}
 }
 
