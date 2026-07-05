@@ -156,22 +156,17 @@ func runAccountList(cmd *cobra.Command, svc *service.Service, all bool) error {
 		var convertedStr string
 		if acc.Currency == baseCurrency {
 			convertedStr = "-"
+			totalBalance += acc.Balance
 		} else if rate, ok := rates[acc.Currency]; ok {
 			convertedStr = formatAmount(acc.Balance * rate)
+			totalBalance += acc.Balance * rate
 		} else {
 			convertedStr = "-"
+			missingRates = append(missingRates, acc.Currency)
 		}
 
 		_, _ = fmt.Fprintf(stdout, "%-4d %-25s %-12s %-8s %-15s %-15s %s\n",
 			acc.ID, truncate(acc.Name, 25), acc.Type, acc.Currency, formatAmount(acc.Balance), convertedStr, status)
-
-		if acc.Currency == baseCurrency {
-			totalBalance += acc.Balance
-		} else if rate, ok := rates[acc.Currency]; ok {
-			totalBalance += acc.Balance * rate
-		} else {
-			missingRates = append(missingRates, acc.Currency)
-		}
 	}
 
 	totalLabel := fmt.Sprintf("Total (%s):", baseCurrency)
