@@ -23,6 +23,9 @@ func TestCLIAccountIntegration_AddAndList(t *testing.T) {
 	if !strings.Contains(stdout, "Mandiri") {
 		t.Errorf("expected 'Mandiri' in list, got: %s", stdout)
 	}
+	if !strings.Contains(stdout, "Converted") {
+		t.Errorf("expected Converted column in list header, got: %s", stdout)
+	}
 	if !strings.Contains(stdout, "BCA") {
 		t.Errorf("expected 'BCA' in list, got: %s", stdout)
 	}

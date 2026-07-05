@@ -449,13 +449,13 @@ github.com/afadhitya/wallet-app/internal/cli/account.go:125.16,127.3
 github.com/afadhitya/wallet-app/internal/cli/account.go:141.16,143.3
 
 # runAccountEdit: UpdateAccount DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/account.go:202.16,204.3
+github.com/afadhitya/wallet-app/internal/cli/account.go:212.16,214.3
 
 # runAccountArchive: stdin read failure during confirmation (OS I/O error, matches rm.go exclusion)
-github.com/afadhitya/wallet-app/internal/cli/account.go:238.17,240.4
+github.com/afadhitya/wallet-app/internal/cli/account.go:248.17,250.4
 
 # runAccountArchive: ArchiveAccount DB error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/account.go:249.47,251.3
+github.com/afadhitya/wallet-app/internal/cli/account.go:259.47,261.3
 
 # === Service account.go: infrastructure error paths ===
 
