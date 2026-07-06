@@ -14,6 +14,7 @@ import (
 	"github.com/afadhitya/wallet-app/internal/db"
 	"github.com/afadhitya/wallet-app/internal/service"
 	"github.com/afadhitya/wallet-app/pkg/config"
+	"github.com/afadhitya/wallet-app/pkg/update"
 	"github.com/spf13/cobra"
 )
 
@@ -89,6 +90,11 @@ const (
 	ErrCodeExchangeRateInvalid    = "EXCHANGE_RATE_INVALID"
 	ErrCodeDBError                = "DB_ERROR"
 	ErrCodeInternal               = "INTERNAL_ERROR"
+	ErrCodeUpdateFailed           = "UPDATE_FAILED"
+	ErrCodeUpdateChecksumMismatch = "UPDATE_CHECKSUM_MISMATCH"
+	ErrCodeUpdateNetworkError     = "UPDATE_NETWORK_ERROR"
+	ErrCodeUpdatePermission       = "UPDATE_PERMISSION_ERROR"
+	ErrCodeUpdateAlreadyLatest    = "UPDATE_ALREADY_LATEST"
 )
 
 func classifyError(err error) (code string, suggestion string) {
@@ -169,6 +175,22 @@ func classifyError(err error) (code string, suggestion string) {
 
 	if strings.Contains(strings.ToLower(msg), "invalid") || strings.Contains(strings.ToLower(msg), "required") {
 		return ErrCodeInvalidInput, ""
+	}
+
+	if errors.Is(err, update.ErrChecksumMismatch) {
+		return ErrCodeUpdateChecksumMismatch, ""
+	}
+	if errors.Is(err, update.ErrNetworkError) {
+		return ErrCodeUpdateNetworkError, ""
+	}
+	if errors.Is(err, update.ErrPermission) {
+		return ErrCodeUpdatePermission, ""
+	}
+	if errors.Is(err, update.ErrAlreadyLatest) {
+		return ErrCodeUpdateAlreadyLatest, ""
+	}
+	if errors.Is(err, update.ErrUpdateFailed) {
+		return ErrCodeUpdateFailed, ""
 	}
 
 	return ErrCodeInternal, ""
