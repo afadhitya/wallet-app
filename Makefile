@@ -7,14 +7,17 @@
 #   These are branches that require OS-level failure injection to trigger (e.g. config load,
 #   MkdirAll, db.Open failures in CLI init). All business logic must still reach 100%.
 
+VERSION ?= dev
+LDFLAGS := -X github.com/afadhitya/wallet-app/pkg/update.Version=$(VERSION)
+
 build:
-	go build -o bin/wallet ./cmd/wallet
+	go build -ldflags "$(LDFLAGS)" -o bin/wallet ./cmd/wallet
 
 run: build
 	./bin/wallet
 
 install:
-	go install ./cmd/wallet
+	go install -ldflags "$(LDFLAGS)" ./cmd/wallet
 
 test:
 	go test ./...
