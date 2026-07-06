@@ -461,3 +461,43 @@ github.com/afadhitya/wallet-app/internal/cli/account.go:254.47,256.3
 
 # CreateAccount: duplicate check body (coverage instrumentation quirk for compound condition)
 github.com/afadhitya/wallet-app/internal/service/account.go:74.40,76.3
+
+# === Update Package: infrastructure/OS-level error branches ===
+
+# getHTTPClient: utility function, infrastructure
+github.com/afadhitya/wallet-app/pkg/update/updater.go:63.35,65.2
+
+# httpGet default: never called in tests (always overridden via SetHTTPGet)
+github.com/afadhitya/wallet-app/pkg/update/updater.go:67.56,69.16
+github.com/afadhitya/wallet-app/pkg/update/updater.go:69.16,71.3
+github.com/afadhitya/wallet-app/pkg/update/updater.go:72.2,74.32
+
+# downloadBytes: httpGet error (would require transport-level error injection)
+github.com/afadhitya/wallet-app/pkg/update/updater.go:136.16,138.3
+
+# downloadBytes: io.ReadAll error (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/update/updater.go:146.16,148.3
+
+# ExtractBinary: tar.Next error (OS/infrastructure — archive corruption)
+github.com/afadhitya/wallet-app/pkg/update/updater.go:198.17,200.4
+
+# ExtractBinary: io.ReadAll from tar reader error (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/update/updater.go:203.18,205.5
+
+# DownloadAndVerify: ExtractBinary error propagation (depends on OS-level errors above)
+github.com/afadhitya/wallet-app/pkg/update/updater.go:238.16,240.3
+
+# ReplaceBinary: executablePath error (OS/infrastructure)
+github.com/afadhitya/wallet-app/pkg/update/updater.go:249.16,251.3
+
+# ReplaceBinary: WriteFile error (OS/infrastructure — permission/disk error)
+github.com/afadhitya/wallet-app/pkg/update/updater.go:255.63,257.3
+
+# ReplaceBinary: Rename error (OS/infrastructure — permission/busy file error)
+github.com/afadhitya/wallet-app/pkg/update/updater.go:259.53,262.3
+
+# GetHTTPGet/SetHTTPGet/GetExecutablePath/SetExecutablePath: test plumbing only
+github.com/afadhitya/wallet-app/pkg/update/updater.go:275.56,277.2
+github.com/afadhitya/wallet-app/pkg/update/updater.go:279.58,281.2
+github.com/afadhitya/wallet-app/pkg/update/updater.go:283.49,285.2
+github.com/afadhitya/wallet-app/pkg/update/updater.go:287.51,289.2
