@@ -24,6 +24,8 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newRateCmd())
 	cmd.AddCommand(newReportCmd())
 	cmd.AddCommand(newForecastCmd())
+	cmd.AddCommand(newVersionCmd())
+	cmd.AddCommand(newUpdateCmd())
 
 	cmd.AddCommand(newDocsCmd(cmd))
 

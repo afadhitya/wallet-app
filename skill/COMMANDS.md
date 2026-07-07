@@ -71,3 +71,10 @@
 ## Init
 
 `wallet init`
+
+## System
+
+`wallet version` — Show the current wallet binary version
+`wallet version --check` — Compare against latest GitHub release
+`wallet update` — Download and install the latest version from GitHub
+`wallet update --force` — Force reinstall even if already at latest

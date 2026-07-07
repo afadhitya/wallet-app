@@ -21,7 +21,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w
+      - -s -w -X github.com/afadhitya/wallet-app/pkg/update.Version={{ .Version }}
 
 archives:
   - formats: ['tar.gz']
