@@ -179,6 +179,8 @@ Manage rates with `wallet rate {list,add,set,rm}`.
 
 Run `wallet --help` for the full command list, or `wallet <command> --help` for details on a specific command. Add `--json` for structured machine-readable output.
 
+Use `wallet version` to see the current version (or `wallet version --check` to compare against the latest release), and `wallet update` to download and install the latest binary.
+
 Auto-generated CLI reference docs for every command are available in `docs/cli/` (run `make docs` to generate).
 
 ## Contributing
