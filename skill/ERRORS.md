@@ -24,6 +24,11 @@
 | `EXCHANGE_RATE_NOT_FOUND` | No rate configured for a currency | Cross-currency operation without a configured rate | Suggest `wallet rate add <currency> <rate>` or tell user the rate is missing |
 | `EXCHANGE_RATE_CONFIG_MISSING` | No rate config file exists | First run, no rates.toml created yet | Run `wallet init` to create the config |
 | `EXCHANGE_RATE_INVALID` | Rate is negative or zero | Provided an invalid rate value | Rate must be a positive integer representing 1 unit in base currency minor units |
+| `UPDATE_NETWORK_ERROR` | Network failure during update | No internet connection or GitHub API unreachable | Check internet connection and retry |
+| `UPDATE_PERMISSION_ERROR` | Cannot write updated binary | No write permission for the binary path | Run with appropriate permissions or reinstall |
+| `UPDATE_ALREADY_LATEST` | Already running the latest version | Current version matches latest release | No action needed; force with `--force` if reinstall is desired |
+| `UPDATE_FAILED` | Update process failed | Download or extraction failed | Check the error message for details; may require manual reinstall |
+| `UPDATE_CHECKSUM_MISMATCH` | Binary checksum does not match | Corrupted download or malicious file | Retry update; checksum verification failed |
 | `DB_ERROR` | Database connection or query failure | Corrupted database, permission issue, or not initialized | Suggest `wallet init`; check file permissions |
 | `INTERNAL_ERROR` | Unexpected internal error | Bug or unhandled edge case | Report the `message` to the user; the specific error detail is included |
 
@@ -41,6 +46,11 @@
 | Wrong transaction ID | `wallet list -n 20 --json` → find correct ID → retry |
 | Database error | `wallet init --json` → retry (if fresh setup), otherwise report |
 | Duplicate name error | `VALIDATION_ERROR` with message — read `suggestion`, ask user for a different name |
+| Update network error | `wallet update --json` → check internet connection → retry |
+| Update permission error | `wallet update --json` → reinstall with `go install` or `make install` |
+| Update already latest | No action needed; use `wallet update --force` to reinstall |
+| Update failed | `wallet update --json` → read `message` for details → retry or manually reinstall |
+| Update checksum mismatch | `wallet update --json` → retry; if persistent, manually download from releases |
 
 ---
 
