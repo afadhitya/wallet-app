@@ -168,4 +168,5 @@ Missing rate → `EXCHANGE_RATE_NOT_FOUND`. Tell the user to add it.
                          │        │
                     -- ends flag parsing
   ```
+- **Confirm before destructive operations.** Deleting, archiving, or adjusting financial data is hard to undo. Before running destructive commands (`wallet rm`, `wallet adjust`, `wallet account archive`, `wallet budget rm`, `wallet bill rm`, `wallet category rm`, `wallet tag rm`, `wallet rate rm`), show the user a brief summary of what will be affected (name, amount, description) and ask for explicit confirmation. For batch operations, describe the scope. Read-only queries and data creation commands are exempt.
 - **Never touch the database directly.** Do not open the SQLite file, write raw SQL, or create scripts that manipulate database data. Always use the `wallet` CLI for all data operations (inserts, queries, updates, deletes).
