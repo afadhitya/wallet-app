@@ -99,6 +99,11 @@ The system SHALL present mixed-currency transaction and report output with base-
 - **WHEN** the user runs `wallet account list` and all accounts use the configured base currency
 - **THEN** the total is the direct sum of raw balances with a base-currency label
 
+#### Scenario: Forecast aggregated start balance in base currency
+- **WHEN** the user runs `wallet forecast` (without `--account`) and holds accounts in multiple currencies
+- **THEN** the starting balance equals the sum of each account's balance converted to the configured base currency using the configured exchange rates
+- **AND** accounts whose currency matches the base currency contribute their raw balance directly
+
 ### Requirement: Currency Service Behavior
 The system SHALL provide service-layer operations for rate lookup, conversion, listing, addition, update, removal, and base-currency access.
 

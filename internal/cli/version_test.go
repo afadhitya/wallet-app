@@ -83,11 +83,11 @@ func TestVersionCheckAlreadyLatest(t *testing.T) {
 
 	server, cleanup := mockReleaseServer(t, func(w http.ResponseWriter, r *http.Request) {
 		release := map[string]interface{}{
-			"tag_name":    "v1.2.0",
-			"prerelease":  false,
-			"html_url":    "https://github.com/test/release",
-			"assets":      []interface{}{},
-			"assets_url":  "",
+			"tag_name":   "v1.2.0",
+			"prerelease": false,
+			"html_url":   "https://github.com/test/release",
+			"assets":     []interface{}{},
+			"assets_url": "",
 		}
 		_ = json.NewEncoder(w).Encode(release)
 	})

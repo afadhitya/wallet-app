@@ -12,7 +12,8 @@ The system SHALL provide `wallet forecast` to project future balances from activ
 #### Scenario: Show default one-month forecast
 - **WHEN** the user runs `wallet forecast` without flags
 - **THEN** the system projects balances for the next 1 month
-- **AND** uses current non-archived account balances as starting balances
+- **AND** converts each non-base-currency account balance to the base currency using configured exchange rates before summing
+- **AND** uses the base-currency sum of all non-archived account balances as the starting balance
 - **AND** includes active, unpaused planned income and expense payments due within the forecast horizon
 - **AND** excludes paused, archived, and undated planned payments
 - **AND** prints projected income, projected expenses, net movement, ending balance, and the planned payments used for the projection
@@ -23,6 +24,12 @@ The system SHALL provide `wallet forecast` to project future balances from activ
 - **AND** each month starts from the previous month ending balance
 - **AND** each month includes projected income, projected expenses, net movement, and ending balance
 - **AND** recurring planned payments contribute each occurrence due in the requested horizon
+- **AND** monthly projected income and expenses aggregate planned payment amounts converted to the base currency
+
+#### Scenario: Skip planned payments with missing exchange rate
+- **WHEN** the user runs `wallet forecast` and a planned payment's account currency lacks a configured exchange rate
+- **THEN** the system excludes that planned payment from the projection
+- **AND** logs a warning identifying the skipped payment and missing currency
 
 #### Scenario: Reject invalid forecast horizon
 - **WHEN** the user runs `wallet forecast --months 0`

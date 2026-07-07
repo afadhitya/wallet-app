@@ -47,11 +47,11 @@ func IsNewer(current, latest string) bool {
 }
 
 type Release struct {
-	TagName     string  `json:"tag_name"`
-	Prerelease  bool    `json:"prerelease"`
-	HTMLURL     string  `json:"html_url"`
-	Assets      []Asset `json:"assets"`
-	AssetsURL   string  `json:"assets_url"`
+	TagName    string  `json:"tag_name"`
+	Prerelease bool    `json:"prerelease"`
+	HTMLURL    string  `json:"html_url"`
+	Assets     []Asset `json:"assets"`
+	AssetsURL  string  `json:"assets_url"`
 }
 
 type Asset struct {
