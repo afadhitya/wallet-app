@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"strings"
 	"testing"
 	"time"
 )
@@ -442,6 +443,214 @@ func TestExpandOccurrences_DailyMultiple(t *testing.T) {
 	occs := expandOccurrences(seed, "daily", sql.NullString{}, start, end)
 	if len(occs) != 5 {
 		t.Errorf("expected 5 occurrences, got %d", len(occs))
+	}
+}
+
+func TestForecastBalance_MultiCurrencyStartBalance(t *testing.T) {
+	svc := setupServiceForForecast(t)
+	SetTestRateConfig(TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates: map[string]int64{
+			"USD": 15800,
+			"JPY": 105,
+		},
+	})
+	originalToday := todayFunc
+	todayFunc = func() time.Time { return time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { todayFunc = originalToday })
+
+	if _, err := svc.CreateAccount("BCA IDR", "checking", "IDR"); err != nil {
+		t.Fatalf("create IDR account: %v", err)
+	}
+	if _, err := svc.CreateAccount("BCA USD", "checking", "USD"); err != nil {
+		t.Fatalf("create USD account: %v", err)
+	}
+	if _, err := svc.CreateAccount("BCA JPY", "checking", "JPY"); err != nil {
+		t.Fatalf("create JPY account: %v", err)
+	}
+
+	if _, err := svc.AdjustBalance(AdjustBalanceParams{Account: "BCA IDR", Target: 50000}); err != nil {
+		t.Fatalf("adjust IDR: %v", err)
+	}
+	if _, err := svc.AdjustBalance(AdjustBalanceParams{Account: "BCA USD", Target: 1000}); err != nil {
+		t.Fatalf("adjust USD: %v", err)
+	}
+	if _, err := svc.AdjustBalance(AdjustBalanceParams{Account: "BCA JPY", Target: 10000}); err != nil {
+		t.Fatalf("adjust JPY: %v", err)
+	}
+
+	result, err := svc.ForecastBalance(1, "")
+	if err != nil {
+		t.Fatalf("ForecastBalance: %v", err)
+	}
+	if len(result.MonthlyBalances) != 1 {
+		t.Fatalf("expected 1 monthly balance, got %d", len(result.MonthlyBalances))
+	}
+
+	mb := result.MonthlyBalances[0]
+	rawSum := int64(50000 + 1000 + 10000)
+	expectedConverted := int64(50000) + int64(1000)*int64(15800) + int64(10000)*int64(105)
+	if mb.StartBalance == rawSum {
+		t.Errorf("expected start balance to be converted sum %d, got raw sum %d", expectedConverted, rawSum)
+	}
+	if mb.StartBalance != expectedConverted {
+		t.Errorf("expected start balance %d, got %d", expectedConverted, mb.StartBalance)
+	}
+}
+
+func TestForecastBalance_MultiCurrencyMonthlyProjection(t *testing.T) {
+	svc := setupServiceForForecast(t)
+	SetTestRateConfig(TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates: map[string]int64{
+			"USD": 15800,
+		},
+	})
+	originalToday := todayFunc
+	todayFunc = func() time.Time { return time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { todayFunc = originalToday })
+
+	if _, err := svc.CreateAccount("BCA USD", "checking", "USD"); err != nil {
+		t.Fatalf("create USD account: %v", err)
+	}
+	if _, err := svc.AdjustBalance(AdjustBalanceParams{Account: "BCA USD", Target: 10000}); err != nil {
+		t.Fatalf("adjust USD: %v", err)
+	}
+
+	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+		Name:       "Netflix USD",
+		Amount:     10,
+		Currency:   "USD",
+		Type:       "expense",
+		Account:    "BCA USD",
+		Category:   "Subscriptions",
+		Recurrence: "monthly",
+		StartDate:  "2026-07-05",
+		DueDay:     5,
+	})
+	if err != nil {
+		t.Fatalf("create PP: %v", err)
+	}
+	_, err = svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+		Name:       "Salary USD",
+		Amount:     50,
+		Currency:   "USD",
+		Type:       "income",
+		Account:    "BCA USD",
+		Category:   "Salary",
+		Recurrence: "monthly",
+		StartDate:  "2026-07-01",
+		DueDay:     1,
+	})
+	if err != nil {
+		t.Fatalf("create income PP: %v", err)
+	}
+
+	result, err := svc.ForecastBalance(1, "")
+	if err != nil {
+		t.Fatalf("ForecastBalance: %v", err)
+	}
+	if len(result.MonthlyBalances) != 1 {
+		t.Fatalf("expected 1 monthly balance, got %d", len(result.MonthlyBalances))
+	}
+
+	mb := result.MonthlyBalances[0]
+	if mb.StartBalance != int64(10000)*int64(15800) {
+		t.Errorf("expected start balance %d, got %d", int64(10000)*int64(15800), mb.StartBalance)
+	}
+	expectedExpenses := int64(10) * int64(15800)
+	if mb.ProjectedExpenses != expectedExpenses {
+		t.Errorf("expected expenses %d, got %d (raw would be 10)", expectedExpenses, mb.ProjectedExpenses)
+	}
+	expectedIncome := int64(50) * int64(15800)
+	if mb.ProjectedIncome != expectedIncome {
+		t.Errorf("expected income %d, got %d (raw would be 50)", expectedIncome, mb.ProjectedIncome)
+	}
+}
+
+func TestForecastBalance_MissingRateSkipsPayment(t *testing.T) {
+	svc := setupServiceForForecast(t)
+	SetTestRateConfig(TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates:        map[string]int64{},
+	})
+	originalToday := todayFunc
+	todayFunc = func() time.Time { return time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { todayFunc = originalToday })
+
+	if _, err := svc.CreateAccount("BCA EUR", "checking", "EUR"); err != nil {
+		t.Fatalf("create EUR account: %v", err)
+	}
+	if _, err := svc.AdjustBalance(AdjustBalanceParams{Account: "BCA EUR", Target: 50000}); err != nil {
+		t.Fatalf("adjust EUR: %v", err)
+	}
+
+	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+		Name:       "Netflix EUR",
+		Amount:     10,
+		Currency:   "EUR",
+		Type:       "expense",
+		Account:    "BCA EUR",
+		Category:   "Subscriptions",
+		Recurrence: "monthly",
+		StartDate:  "2026-07-05",
+		DueDay:     5,
+	})
+	if err != nil {
+		t.Fatalf("create PP: %v", err)
+	}
+
+	result, err := svc.ForecastBalance(1, "")
+	if err != nil {
+		t.Fatalf("ForecastBalance: %v", err)
+	}
+	if len(result.MonthlyBalances) != 1 {
+		t.Fatalf("expected 1 monthly balance, got %d", len(result.MonthlyBalances))
+	}
+
+	mb := result.MonthlyBalances[0]
+	if mb.ProjectedExpenses != 0 {
+		t.Errorf("expected expenses 0 (payment skipped), got %d", mb.ProjectedExpenses)
+	}
+
+	foundWarning := false
+	for _, w := range result.Warnings {
+		if strings.Contains(w, "Netflix EUR") && strings.Contains(w, "missing exchange rate") {
+			foundWarning = true
+			break
+		}
+	}
+	if !foundWarning {
+		t.Errorf("expected warning about skipped payment with missing rate, got warnings: %v", result.Warnings)
+	}
+}
+
+func TestForecastBalance_MissingRateAccountFilter(t *testing.T) {
+	svc := setupServiceForForecast(t)
+	SetTestRateConfig(TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates:        map[string]int64{},
+	})
+	originalToday := todayFunc
+	todayFunc = func() time.Time { return time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { todayFunc = originalToday })
+
+	if _, err := svc.CreateAccount("BCA EUR", "checking", "EUR"); err != nil {
+		t.Fatalf("create EUR account: %v", err)
+	}
+	if _, err := svc.AdjustBalance(AdjustBalanceParams{Account: "BCA EUR", Target: 50000}); err != nil {
+		t.Fatalf("adjust EUR: %v", err)
+	}
+
+	result, err := svc.ForecastBalance(1, "BCA EUR")
+	if err != nil {
+		t.Fatalf("ForecastBalance: %v", err)
+	}
+	if len(result.MonthlyBalances) != 1 {
+		t.Fatalf("expected 1 monthly balance, got %d", len(result.MonthlyBalances))
+	}
+	if result.AccountName != "BCA EUR" {
+		t.Errorf("expected account BCA EUR, got %s", result.AccountName)
 	}
 }
 

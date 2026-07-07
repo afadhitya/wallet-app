@@ -380,7 +380,7 @@ func TestDownloadAndVerify(t *testing.T) {
 func TestDownloadAndVerifyNoAsset(t *testing.T) {
 	release := &Release{
 		TagName: "v1.0.0",
-		Assets: []Asset{},
+		Assets:  []Asset{},
 	}
 	_, err := DownloadAndVerify(release)
 	if err == nil {

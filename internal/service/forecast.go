@@ -172,13 +172,24 @@ func (s *Service) ForecastBalance(months int, accountFilter string) (*ForecastBa
 		}
 	}
 
+	var warnings []string
+	missingRateWarned := make(map[string]bool)
+
 	for i := 0; i < months; i++ {
 		var startBalance int64
 		if accountFilter != "" && resolvedAccount != nil {
-			startBalance = resolvedAccount.Balance
+			converted, err := s.Convert(resolvedAccount.Balance, resolvedAccount.Currency)
+			if err != nil {
+				converted = resolvedAccount.Balance
+			}
+			startBalance = converted
 		} else {
 			for _, acc := range accounts {
-				startBalance += acc.Balance
+				converted, err := s.Convert(acc.Balance, acc.Currency)
+				if err != nil {
+					converted = acc.Balance
+				}
+				startBalance += converted
 			}
 		}
 		if i > 0 {
@@ -189,10 +200,19 @@ func (s *Service) ForecastBalance(months int, accountFilter string) (*ForecastBa
 		var income, expenses int64
 		for _, mo := range allOccurrences {
 			if mo.monthIndex == i {
+				convertedAmt, err := s.Convert(mo.occ.Amount, mo.occ.Currency)
+				if err != nil {
+					warnKey := mo.occ.PlannedPaymentName + ":" + mo.occ.Currency
+					if !missingRateWarned[warnKey] {
+						missingRateWarned[warnKey] = true
+						warnings = append(warnings, "Skipped planned payment \""+mo.occ.PlannedPaymentName+"\": missing exchange rate for "+mo.occ.Currency)
+					}
+					continue
+				}
 				if mo.occ.Type == "income" {
-					income += mo.occ.Amount
+					income += convertedAmt
 				} else {
-					expenses += mo.occ.Amount
+					expenses += convertedAmt
 				}
 			}
 		}
@@ -205,7 +225,6 @@ func (s *Service) ForecastBalance(months int, accountFilter string) (*ForecastBa
 		}
 	}
 
-	var warnings []string
 	for _, mb := range monthlyBalances {
 		if mb.IsNegative {
 			monthLabel := time.Date(mb.Year, mb.Month, 1, 0, 0, 0, 0, time.UTC).Format("January 2006")
@@ -225,7 +244,11 @@ func (s *Service) ForecastBalance(months int, accountFilter string) (*ForecastBa
 	categoryExpenses := make(map[string]int64)
 	for _, mo := range allOccurrences {
 		if mo.occ.Type == "expense" {
-			categoryExpenses[mo.occ.CategoryName] += mo.occ.Amount
+			convertedAmt, err := s.Convert(mo.occ.Amount, mo.occ.Currency)
+			if err != nil {
+				convertedAmt = mo.occ.Amount
+			}
+			categoryExpenses[mo.occ.CategoryName] += convertedAmt
 		}
 	}
 	var categoryBreakdown []CategoryBreakdown
