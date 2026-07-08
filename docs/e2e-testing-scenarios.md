@@ -152,13 +152,13 @@ Isolated feature tests covering edge cases and error paths.
 
 ### D5: Tags
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D5.1 | Wallet initialized | `wallet tag list` | Empty list (no tags) |
-| D5.2 | Wallet initialized | `wallet tag add "groceries"` | Tag created |
-| D5.3 | Tag exists | `wallet tag add "groceries"` | Error: duplicate name |
-| D5.4 | Tag exists with transactions | `wallet tag rm "groceries"` | Tag deleted, junction rows removed |
-| D5.5 | Nonexistent tag | `wallet tag rm "fake"` | Error: not found |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D5.1 | Wallet initialized | `wallet tag list` | Empty list (no tags) | ✅ PASSED | Returns empty array `[]` as expected. No tags pre-seeded. |
+| D5.2 | Wallet initialized | `wallet tag add "groceries"` | Tag created | ✅ PASSED | Tag "groceries" created successfully. Tags use name-based access (no numeric IDs needed). |
+| D5.3 | Tag exists | `wallet tag add "groceries"` | Error: duplicate name | ✅ PASSED | Returns `VALIDATION_ERROR` with "name already exists". Correct duplicate detection. |
+| D5.4 | Tag exists with transactions | `wallet tag rm "groceries"` | Tag deleted, junction rows removed | ✅ PASSED | Tag removed successfully. Note: deletion succeeds even when transactions reference the tag (junction rows in `transaction_tags` are cleaned up). |
+| D5.5 | Nonexistent tag | `wallet tag rm "fake"` | Error: not found | ✅ PASSED | Returns `TAG_NOT_FOUND` with message "tag 'fake' not found". Correct validation. |
 
 ### D6: Budgets
 
