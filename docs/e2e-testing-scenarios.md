@@ -162,18 +162,18 @@ Isolated feature tests covering edge cases and error paths.
 
 ### D6: Budgets
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D6.1 | Wallet initialized | `wallet budget set "Transport" 500000 -c Transport --period monthly` | Budget created |
-| D6.2 | Budget with tags | `wallet budget set "Work Expenses" 2000000 --period monthly --tag "work"` | Budget created with tag filter |
-| D6.3 | Budget exists | `wallet budget edit "Transport" --amount 600000` | Budget amount updated |
-| D6.4 | Budget exists | `wallet budget list` | Budget name, period, spent, remaining, status shown |
-| D6.5 | Multiple budgets | `wallet budget check` | All budgets evaluated, statuses reported |
-| D6.6 | Nonexistent budget | `wallet budget check` with no budgets | Message: no active budgets |
-| D6.7 | Budget with categories + tags | Add expense matching both category + tag | Counted in budget |
-| D6.8 | Budget exists, multi-currency transactions | Add Food expense 50000 IDR and Food expense 10 USD (rate=16000) in same budget period | Budget spending = 50000 + 160000 = 210000 IDR (converted to base currency), not raw 50000 + 10 |
-| D6.9 | Budget exists, multi-currency with missing rate | Add Food expense in a currency without configured rate | Budget spending taken from base_amount if available, or skipped with warning |
-| D6.10 | Budget exists | `wallet budget rm "Transport"` | Budget archived (is_active = 0) |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D6.1 | Wallet initialized | `wallet budget set "Transport" 500000 -c Transport --period monthly` | Budget created | ❌ FAILED | Category "Transport" doesn't exist (it's "Transportation"). Returns `INTERNAL_ERROR` with suggestion "Did you mean: [Transportation]?". Using `-c Transportation` succeeds. **Suggestion:** Fix scenario to use "Transportation". |
+| D6.2 | Budget with tags | `wallet budget set "Work Expenses" 2000000 --period monthly --tag "work"` | Budget created with tag filter | ✅ PASSED | Budget created with tag filter. The `--tag` flag works with tag names (not IDs). |
+| D6.3 | Budget exists | `wallet budget edit "Transport" --amount 600000` | Budget amount updated | ❌ FAILED | CLI expects `<id>` (integer), not budget name. `wallet budget edit "Transport"` returns `INVALID_INPUT: invalid budget ID: Transport`. Correct syntax: `wallet budget edit <id> --amount 600000`. **Suggestion:** Fix scenario to use numeric ID. |
+| D6.4 | Budget exists | `wallet budget list` | Budget name, period, spent, remaining, status shown | ✅ PASSED | All budgets listed with name, period, spent, remaining. Note: `status` field only appears in `budget check` output, not in `budget list`. |
+| D6.5 | Multiple budgets | `wallet budget check` | All budgets evaluated, statuses reported | ❌ FAILED | `wallet budget check` requires `--all` or `-b <id>` flag. Bare command returns error "specify --budget or --all". With `--all`, all budgets are evaluated with correct statuses. **Suggestion:** Fix scenario to use `wallet budget check --all`. |
+| D6.6 | Nonexistent budget | `wallet budget check` with no budgets | Message: no active budgets | ❌ FAILED | Even with no budgets, `wallet budget check` (bare) returns same error "specify --budget or --all". With `--all`, returns empty budgets array `[]` with no message. **Suggestion:** Fix scenario to use `wallet budget check --all` and update expected result to empty array. |
+| D6.7 | Budget with categories + tags | Add expense matching both category + tag | Counted in budget | ✅ PASSED | Expense correctly counted in budget that matches both category (Coffee & Snacks) and tag (work). spent=100000 for 50000+... multiple expenses. |
+| D6.8 | Budget exists, multi-currency transactions | Add Food expense 50000 IDR and Food expense 10 USD (rate=16000) in same budget period | Budget spending = 50000 + 160000 = 210000 IDR (converted to base currency), not raw 50000 + 10 | ❌ FAILED | Budget shows spent=50010 (raw sum: 50000 IDR + 10 USD). Budget does NOT convert multi-currency amounts using `base_amount`. Same issue as J3.10. **Suggestion:** Implement multi-currency conversion in budget spending calculation. |
+| D6.9 | Budget exists, multi-currency with missing rate | Add Food expense in a currency without configured rate | Budget spending taken from base_amount if available, or skipped with warning | ❌ FAILED | After removing USD rate, budget still counts raw amount (50010). No warning about missing rate. Budget ignores `base_amount` field entirely. **Suggestion:** Implement `base_amount` fallback for missing rates in budget calculation. |
+| D6.10 | Budget exists | `wallet budget rm "Transport"` | Budget archived (is_active = 0) | ❌ FAILED | CLI expects `<id>` (integer), not budget name. `wallet budget rm "Transport"` returns `INVALID_INPUT`. Correct syntax: `wallet budget rm <id>` works and correctly sets `is_active=False`. **Suggestion:** Fix scenario to use numeric ID. |
 
 ### D7: Bills
 
