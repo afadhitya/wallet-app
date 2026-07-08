@@ -1,0 +1,216 @@
+# Wallet App — E2E Testing Scenarios
+
+> **Purpose:** Define end-to-end testing scenarios for manual execution (via agent or human tester).
+> **Scope:** All features — accounts, transactions, categories, tags, budgets, bills, multi-currency, reports, forecasts, init/config, JSON output, self-update.
+> **Format:** Each scenario is a table row with ID, preconditions, action, and expected result.
+> **Note:** Test steps are not included — only scenario definitions.
+
+---
+
+## Part A: User Journeys
+
+End-to-end workflows that simulate real user behavior across multiple features.
+
+### J1: Fresh Start — Init, Accounts, Transactions
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| J1.1 | `~/.config/wallet/` does not exist | Run `wallet init` | DB created at default path, config file created, 32 categories seeded |
+| J1.2 | Wallet is initialized | Run `wallet init` again | Error: already initialized (non-destructive) |
+| J1.3 | Wallet initialized | `wallet account add "Checking" --type checking --currency IDR` | Account created with 0 balance |
+| J1.4 | Wallet initialized | `wallet account add "Savings" --type savings --currency IDR` | Account created |
+| J1.5 | Checking account exists | `wallet add expense 50000 "Lunch" -c Food -a Checking` | Transaction created, Checking balance = -50000 |
+| J1.6 | Accounts exist | `wallet add income 2000000 "Salary" -c Income -a Checking` | Income created, Checking balance = 1950000 |
+| J1.7 | Two accounts exist | `wallet add transfer 500000 --from Checking --to Savings` | Transfer created, Checking -500000, Savings +500000 |
+| J1.8 | Transactions exist | `wallet list` | All transactions listed with correct amounts, descriptions, categories |
+| J1.9 | Transactions exist | `wallet list --month 2026-07` | Only July transactions shown |
+| J1.10 | Transactions exist | `wallet edit 1 --amount 55000 --desc "Lunch upgraded"` | Transaction updated, reflected in list |
+| J1.11 | A transaction exists | `wallet rm 1` (confirm) | Transaction archived, removed from default list |
+| J1.12 | An archived transaction | `wallet list --archived` | Archived transaction visible with archive flag |
+
+### J2: Budget & Bills
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| J2.1 | Wallet initialized, accounts exist | `wallet budget set "Monthly Food" 1000000 -c Food --period monthly --notify 80` | Budget created with current month period |
+| J2.2 | Budget exists | `wallet budget list` | Budget shown with spent = 0, remaining = 1000000, status = ok |
+| J2.3 | Budget exists, no spending | `wallet budget check` | Budget status = ok, spending = 0 |
+| J2.4 | Budget exists | Add expenses in Food category totaling 850000 | `wallet budget check` shows spent = 850000, status = warning (at 85%, above 80% notify threshold) |
+| J2.5 | Budget overspent | Add another expense of 200000 in Food (total = 1050000) | `wallet budget check` shows spent = 1050000, status = over (105%) |
+| J2.6 | Budget with period = one_time | `wallet budget check` in next month | No new period created, original budget unchanged |
+| J2.7 | Budget with period = monthly | Period rolls over | `wallet budget check` auto-creates new period for current month |
+| J2.8 | Budget exists | `wallet bill add "Internet" 300000 --account Checking --recurrence monthly --due-date 2026-07-15` | Bill created with next_due = 2026-07-15 |
+| J2.9 | Bills exist | `wallet bill list` | All bills listed with next due dates and status |
+| J2.10 | Bill is due | `wallet bill due --overdue` | Internet bill shown as due |
+| J2.11 | Bill is due | `wallet bill pay 1 --amount 300000` | Expense transaction created for Internet, next_due advanced to next month |
+| J2.12 | Bill is active | `wallet bill pause 1` | Bill status = paused |
+| J2.13 | Bill is paused | `wallet bill pay 1` | Error: bill is paused |
+| J2.14 | Bill is paused | `wallet bill resume 1` | Bill status = active |
+| J2.15 | Bill is active, one-time | `wallet bill add "Test One-Time" 50000 -a Checking --recurrence one_time --due-date 2026-07-20` | One-time bill created |
+| J2.16 | One-time bill is paid | `wallet bill pay <id>` | Bill hard-deleted after payment |
+| J2.17 | Bill is active | `wallet bill skip 1` | Next due date advanced, no transaction created |
+| J2.18 | Bill exists | `wallet bill edit 1 --amount 350000` | Bill amount updated |
+| J2.19 | Bill exists | `wallet bill rm 1` | Bill archived (is_active = 0) |
+
+### J3: Multi-Currency
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| J3.1 | Wallet initialized, IDR is base currency | `wallet rate list` | No rates configured |
+| J3.2 | No rates configured | `wallet rate add USD 15800` | USD rate = 15800 (1 USD = 15800 IDR) |
+| J3.3 | Rate exists | `wallet rate set USD 16000` | USD rate updated to 16000 |
+| J3.4 | IDR & USD accounts exist | `wallet rate list` | Rates displayed correctly |
+| J3.5 | USD account exists with 0 balance | `wallet add income 500 "Freelance" -c Income -a USD-Account` | Transaction created, base_amount = 500 × 16000 = 8000000 IDR |
+| J3.6 | Transactions in multiple currencies | `wallet list` | All transactions shown with original amounts + base currency conversion |
+| J3.7 | Transactions in multiple currencies | `wallet account list` | Accounts listed with converted balance total |
+| J3.8 | USD rate missing | `wallet rate rm USD`, then list transactions | Graceful handling — error or warning about missing rate |
+| J3.9 | Transactions in multiple currencies | `wallet report --month 2026-07` | Report totals in base currency (IDR), all conversions applied correctly |
+
+### J4: Period End — Reports & Forecast
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| J4.1 | Transactions across multiple months/categories | `wallet report --month 2026-07` | Report shows total income, expenses, net, transfers — all in base currency |
+| J4.2 | Multiple categories with transactions | `wallet report --month 2026-07 --by category` | Breakdown by category hierarchy (parent → child), correct subtotals |
+| J4.3 | Multiple accounts with transactions | `wallet report --month 2026-07 --by account` | Breakdown by account, correct per-account totals |
+| J4.4 | Transactions with tags | `wallet report --month 2026-07 --by tag` | Breakdown by tag, correct totals per tag |
+| J4.5 | Report data exists | `wallet report --month 2026-07 --export csv --output /tmp/report.csv` | CSV file created with correct headers and data matching the text report |
+| J4.6 | Transactions exist, base currency configured | `wallet forecast` | Shows projected balance for next 6 months based on past patterns |
+| J4.7 | Bills exist with due dates | `wallet forecast bills` | Shows upcoming bills with dates and running total |
+| J4.8 | Invalid month specified | `wallet report --month invalid` | Error: invalid month format |
+| J4.9 | No transactions in month | `wallet report --month 2025-01` | Report shows all zeros (no income/expense) |
+
+---
+
+## Part B: Domain-Specific Scenarios
+
+Isolated feature tests covering edge cases and error paths.
+
+### D1: Init & Config
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D1.1 | No config exists | `wallet init` | DB + config created, categories seeded |
+| D1.2 | Already initialized | `wallet init` | Error, no destructive action |
+| D1.3 | Config exists | `wallet add expense 10000 "test" -c Food -a Unknown` | Error: account not found |
+| D1.4 | DB file deleted manually | Run any command | Error: unable to open database |
+
+### D2: Accounts
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D2.1 | Wallet initialized | `wallet account add "Credit Card" --type credit --currency IDR` | Account created with type=credit, balance=0 |
+| D2.2 | Account exists | `wallet account list` | Account listed with name, type, currency, balance, sort_order |
+| D2.3 | Account exists | `wallet account edit "Checking" --name "Main Checking"` | Account name updated |
+| D2.4 | Account has transactions | `wallet account archive "Main Checking"` | Account archived, not shown in default list |
+| D2.5 | Archived account | `wallet account list --archived` | Archived accounts shown |
+| D2.6 | Nonexistent account | `wallet account edit "Fake" --name "X"` | Error: account not found |
+| D2.7 | Duplicate name | Create account with name that already exists | Error: account name already exists |
+
+### D3: Transactions
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D3.1 | Account exists | `wallet add expense 0 "zero" -c Food -a Checking` | Error: invalid amount (must be > 0) |
+| D3.2 | Account exists | `wallet add expense -1000 "negative" -c Food -a Checking` | Error: invalid amount |
+| D3.3 | Account exists | `wallet add income abc "invalid" -c Income -a Checking` | Error: invalid amount |
+| D3.4 | Category required for expense | `wallet add expense 10000 "no-cat" -a Checking` | Error: category required |
+| D3.5 | Account exists | `wallet add expense 10000 "test" -c NonExistent -a Checking` | Error: category not found (with suggestions) |
+| D3.6 | Expense exists | `wallet edit 1 --category Food` | Category updated |
+| D3.7 | Transaction exists | `wallet edit 1 --add-tag "urgent" --add-tag "work"` | Tags added to transaction |
+| D3.8 | Transaction has tags | `wallet edit 1 --remove-tag "urgent"` | Tag removed from transaction |
+| D3.9 | Invalid transaction ID | `wallet edit 999` | Error: transaction not found |
+| D3.10 | Transfer without `--from` | `wallet add transfer 100000 --to Savings` | Error: --from required |
+| D3.11 | Transfer without `--to` | `wallet add transfer 100000 --from Checking` | Error: --to required |
+| D3.12 | Adjustment | `wallet adjust Checking 1000000 "Correction"` | Adjustment transaction created, Checking balance = 1000000 |
+| D3.13 | Filter with `--account` | `wallet list --account Checking` | Only Checking account transactions shown |
+| D3.14 | Filter with `--category` | `wallet list --category Food` | Only Food category transactions shown |
+| D3.15 | Filter with `--tag` | `wallet list --tag urgent` | Only transactions with tag "urgent" shown |
+| D3.16 | Filter with `--from`/`--to` | `wallet list --from 2026-07-01 --to 2026-07-31` | Only July transactions shown |
+| D3.17 | Adjustment transaction | `wallet list --type adjustment` | Only adjustment transactions shown |
+| D3.18 | Adjustment transaction | `wallet list` (default) | Adjustments excluded from default list |
+
+### D4: Categories
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D4.1 | Wallet initialized | `wallet category list` | 32 categories listed (8 parents + 24 children) |
+| D4.2 | Wallet initialized | `wallet category add "Freelance" --parent Income` | Custom category created under Income |
+| D4.3 | Category exists | `wallet category edit "Freelance" --name "Side Hustle"` | Category renamed |
+| D4.4 | Category exists, no usage | `wallet category rm "Side Hustle"` | Category archived |
+| D4.5 | System category | `wallet category rm Food` | Error: cannot delete system category |
+| D4.6 | Category has transactions | `wallet category rm Freelance` with transactions | Error: category has transactions |
+| D4.7 | Empty name | `wallet category add ""` | Error: name required |
+
+### D5: Tags
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D5.1 | Wallet initialized | `wallet tag list` | Empty list (no tags) |
+| D5.2 | Wallet initialized | `wallet tag add "groceries"` | Tag created |
+| D5.3 | Tag exists | `wallet tag add "groceries"` | Error: duplicate name |
+| D5.4 | Tag exists with transactions | `wallet tag rm "groceries"` | Tag deleted, junction rows removed |
+| D5.5 | Nonexistent tag | `wallet tag rm "fake"` | Error: not found |
+
+### D6: Budgets
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D6.1 | Wallet initialized | `wallet budget set "Transport" 500000 -c Transport --period monthly` | Budget created |
+| D6.2 | Budget with tags | `wallet budget set "Work Expenses" 2000000 --period monthly --tag "work"` | Budget created with tag filter |
+| D6.3 | Budget exists | `wallet budget edit "Transport" --amount 600000` | Budget amount updated |
+| D6.4 | Budget exists | `wallet budget list` | Budget name, period, spent, remaining, status shown |
+| D6.5 | Multiple budgets | `wallet budget check` | All budgets evaluated, statuses reported |
+| D6.6 | Nonexistent budget | `wallet budget check` with no budgets | Message: no active budgets |
+| D6.7 | Budget with categories + tags | Add expense matching both category + tag | Counted in budget |
+| D6.8 | Budget exists | `wallet budget rm "Transport"` | Budget archived (is_active = 0) |
+
+### D7: Bills
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D7.1 | Wallet initialized | `wallet bill add "Rent" 5000000 -a Checking --recurrence monthly --due-date 2026-08-01` | Bill created |
+| D7.2 | Bill with RRULE | `wallet bill add "Gym" 200000 -a Checking --recurrence "FREQ=WEEKLY;BYDAY=MO"` | Bill created with weekly recurrence |
+| D7.3 | Bill exists | `wallet bill due --next 30` | Bills due within 30 days shown |
+| D7.4 | Bill is paused | `wallet bill due` | Paused bills excluded from due list |
+| D7.5 | Bill pay with amount override | `wallet bill pay 1 --amount 5200000` | Transaction created with custom amount |
+| D7.6 | Invalid recurrence | `wallet bill add "Bad" 1000 -a Checking --recurrence "invalid"` | Error: invalid recurrence |
+| D7.7 | Bill with missing account | `wallet bill add "Test" 1000 -a NonExistent` | Error: account not found |
+| D7.8 | Bill edited with `--recurrence` | `wallet bill edit 1 --recurrence yearly` | Recurrence updated |
+
+### D8: Exchange Rates
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D8.1 | Wallet initialized, no rates | `wallet rate list` | Empty list or message: no rates |
+| D8.2 | No rates exist | `wallet rate add USD 15800` | Rate added |
+| D8.3 | Invalid amount | `wallet rate add EUR 0` | Error: rate must be > 0 |
+| D8.4 | Rate exists | `wallet rate set USD 16000` | Rate updated |
+| D8.5 | Rate exists | `wallet rate list` | Rate shown with currency code and value |
+| D8.6 | Rate exists | `wallet rate rm USD` | Rate removed |
+| D8.7 | Rate assigned to an active account | `wallet rate rm USD` while USD account has transactions | Rate removed (accounts become unconvertible gracefully) |
+
+### D9: Forecast
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D9.1 | Accounts with balance + bills | `wallet forecast -n 3` | 3-month projection table |
+| D9.2 | Specific account | `wallet forecast -a Checking` | Only Checking account forecasted |
+| D9.3 | Bills exist | `wallet forecast bills -n 3` | Upcoming bills schedule with running total |
+| D9.4 | Unknown account | `wallet forecast -a Nonexistent` | Error: account not found |
+| D9.5 | Invalid months | `wallet forecast -n 0` | Error: months must be > 0 |
+
+### D10: JSON Output
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D10.1 | Any successful command | `wallet account list --json` | JSON: `{"success": true, "data": [...]}` |
+| D10.2 | Any error command | `wallet add expense abc -a Fake -c Food --json` | JSON: `{"success": false, "error": {...}}` with error code |
+
+### D11: Self-Update
+
+| ID | Preconditions | Scenario | Expected Result |
+|----|---------------|----------|-----------------|
+| D11.1 | Internet available | `wallet version --check` | Shows current version vs latest (or message if up to date) |
+| D11.2 | Internet available | `wallet version` | Shows installed version only |
+| D11.3 | Internet available | `wallet update` | Downloads latest binary and updates |
