@@ -140,15 +140,15 @@ Isolated feature tests covering edge cases and error paths.
 
 ### D4: Categories
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D4.1 | Wallet initialized | `wallet category list` | 32 categories listed (8 parents + 24 children) |
-| D4.2 | Wallet initialized | `wallet category add "Freelance" --parent Income` | Custom category created under Income |
-| D4.3 | Category exists | `wallet category edit "Freelance" --name "Side Hustle"` | Category renamed |
-| D4.4 | Category exists, no usage | `wallet category rm "Side Hustle"` | Category archived |
-| D4.5 | System category | `wallet category rm Food` | Error: cannot delete system category |
-| D4.6 | Category has transactions | `wallet category rm Freelance` with transactions | Error: category has transactions |
-| D4.7 | Empty name | `wallet category add ""` | Error: name required |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D4.1 | Wallet initialized | `wallet category list` | 32 categories listed (8 parents + 24 children) | ✅ PASSED | Exactly 32 categories: 8 parent categories and 24 child categories as expected. |
+| D4.2 | Wallet initialized | `wallet category add "Freelance" --parent Income` | Custom category created under Income | ❌ FAILED | `--parent` expects a numeric ID, not a category name. `--parent Income` returns VALIDATION_ERROR "invalid parent category ID". Correct syntax: `--parent 8` (Income's ID). **Suggestion:** Fix scenario to use `--parent 8` or implement name-based parent lookup. |
+| D4.3 | Category exists | `wallet category edit "Freelance" --name "Side Hustle"` | Category renamed | ❌ FAILED | CLI expects `<id>` (integer), not category name. `wallet category edit "SideJob"` returns error. Correct syntax: `wallet category edit 33 --name "Side Hustle"`. **Suggestion:** Fix scenario to use numeric ID. |
+| D4.4 | Category exists, no usage | `wallet category rm "Side Hustle"` | Category archived | ❌ FAILED | CLI expects `<id>` (integer), not category name. `wallet category rm "Side Hustle"` returns error. Correct syntax: `wallet category rm 33`. **Suggestion:** Fix scenario to use numeric ID. |
+| D4.5 | System category | `wallet category rm Food` | Error: cannot delete system category | ❌ FAILED | System category (Food & Dining, id=1) was deleted successfully with `status: "removed"`. The app does NOT protect system categories from deletion. `is_system=1` flag exists but is not enforced. **Suggestion:** Add validation to prevent deletion of system categories, or archive instead of hard delete. |
+| D4.6 | Category has transactions | `wallet category rm Freelance` with transactions | Error: category has transactions | ❌ FAILED | Category with existing transactions was deleted successfully with `status: "removed"`. No protection against deleting categories that have transactions. This breaks referential integrity. **Suggestion:** Add validation to block deletion of categories referenced by active transactions. |
+| D4.7 | Empty name | `wallet category add ""` | Error: name required | ✅ PASSED | Returns VALIDATION_ERROR with "category name is required". Correct validation. |
 
 ### D5: Tags
 
