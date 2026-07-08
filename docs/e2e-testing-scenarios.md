@@ -65,6 +65,9 @@ End-to-end workflows that simulate real user behavior across multiple features.
 | J3.7 | Transactions in multiple currencies | `wallet account list` | Accounts listed with converted balance total |
 | J3.8 | USD rate missing | `wallet rate rm USD`, then list transactions | Graceful handling — error or warning about missing rate |
 | J3.9 | Transactions in multiple currencies | `wallet report --month 2026-07` | Report totals in base currency (IDR), all conversions applied correctly |
+| J3.10 | Transactions in IDR + USD in same category | Add expense 50000 IDR and 10 USD (rate=16000) in Food category | Budget check shows spent in base currency (50000 + 160000 = 210000 IDR) |
+| J3.11 | Bills in multiple currencies | Create bill "Hosting" 10 USD monthly with USD account, and "Internet" 300000 IDR monthly with IDR account | `wallet forecast bills` shows all amounts converted to base currency, running total and total_amount in base currency |
+| J3.12 | Multi-currency forecast | Accounts with balances in IDR and USD + bills in both currencies | `wallet forecast` shows all projected balances in base currency, totals correctly converted |
 
 ### J4: Period End — Reports & Forecast
 
@@ -79,6 +82,8 @@ End-to-end workflows that simulate real user behavior across multiple features.
 | J4.7 | Bills exist with due dates | `wallet forecast bills` | Shows upcoming bills with dates and running total |
 | J4.8 | Invalid month specified | `wallet report --month invalid` | Error: invalid month format |
 | J4.9 | No transactions in month | `wallet report --month 2025-01` | Report shows all zeros (no income/expense) |
+| J4.10 | Multi-currency transactions across accounts | Expenses in IDR account + USD account in same month | `wallet report --month 2026-07 --by account` shows each account income/expense in base currency |
+| J4.11 | Multi-currency expense in budget category | Expense 50000 IDR + 10 USD (rate=16000) in Food category same month | `wallet report --month 2026-07` expense total = 50000 + 160000 = 210000 IDR |
 
 ---
 
@@ -106,12 +111,15 @@ Isolated feature tests covering edge cases and error paths.
 | D2.5 | Archived account | `wallet account list --archived` | Archived accounts shown |
 | D2.6 | Nonexistent account | `wallet account edit "Fake" --name "X"` | Error: account not found |
 | D2.7 | Duplicate name | Create account with name that already exists | Error: account name already exists |
+| D2.8 | Multiple accounts with different currencies | IDR account (balance 1000000) + USD account (balance 500, rate=16000) | Account list shows total converted = 1000000 + (500×16000) = 9000000 IDR |
+| D2.9 | Multi-currency with missing rate | USD account exists, no rate configured | Account list shows USD balance raw, total excludes USD, warning about missing rate |
 
 ### D3: Transactions
 
 | ID | Preconditions | Scenario | Expected Result |
 |----|---------------|----------|-----------------|
 | D3.1 | Account exists | `wallet add expense 0 "zero" -c Food -a Checking` | Error: invalid amount (must be > 0) |
+| D3.1a | Account exists in non-base currency | Add expense 10 USD -c Food -a USD-Account | Transaction created with amount=10, currency=USD, base_amount=160000 (at rate 16000), base_currency=IDR |
 | D3.2 | Account exists | `wallet add expense -1000 "negative" -c Food -a Checking` | Error: invalid amount |
 | D3.3 | Account exists | `wallet add income abc "invalid" -c Income -a Checking` | Error: invalid amount |
 | D3.4 | Category required for expense | `wallet add expense 10000 "no-cat" -a Checking` | Error: category required |
@@ -163,7 +171,9 @@ Isolated feature tests covering edge cases and error paths.
 | D6.5 | Multiple budgets | `wallet budget check` | All budgets evaluated, statuses reported |
 | D6.6 | Nonexistent budget | `wallet budget check` with no budgets | Message: no active budgets |
 | D6.7 | Budget with categories + tags | Add expense matching both category + tag | Counted in budget |
-| D6.8 | Budget exists | `wallet budget rm "Transport"` | Budget archived (is_active = 0) |
+| D6.8 | Budget exists, multi-currency transactions | Add Food expense 50000 IDR and Food expense 10 USD (rate=16000) in same budget period | Budget spending = 50000 + 160000 = 210000 IDR (converted to base currency), not raw 50000 + 10 |
+| D6.9 | Budget exists, multi-currency with missing rate | Add Food expense in a currency without configured rate | Budget spending taken from base_amount if available, or skipped with warning |
+| D6.10 | Budget exists | `wallet budget rm "Transport"` | Budget archived (is_active = 0) |
 
 ### D7: Bills
 
@@ -197,8 +207,11 @@ Isolated feature tests covering edge cases and error paths.
 | D9.1 | Accounts with balance + bills | `wallet forecast -n 3` | 3-month projection table |
 | D9.2 | Specific account | `wallet forecast -a Checking` | Only Checking account forecasted |
 | D9.3 | Bills exist | `wallet forecast bills -n 3` | Upcoming bills schedule with running total |
-| D9.4 | Unknown account | `wallet forecast -a Nonexistent` | Error: account not found |
-| D9.5 | Invalid months | `wallet forecast -n 0` | Error: months must be > 0 |
+| D9.4 | Bills in multiple currencies | Bills in IDR (300000) + USD (10 USD = 160000 IDR at rate 16000) | `wallet forecast bills` total_amount = 460000 IDR, running total also in base currency |
+| D9.5 | Multi-currency with USD and IDR accounts + bills in both currencies | `wallet forecast -n 3` | All monthly start/ending balances in base currency, all bill amounts converted, negative balance detection accurate |
+| D9.6 | Multi-currency forecast with missing rate | USD has transactions but no rate configured | `wallet forecast` includes warning about missing rate for USD |
+| D9.7 | Unknown account | `wallet forecast -a Nonexistent` | Error: account not found |
+| D9.8 | Invalid months | `wallet forecast -n 0` | Error: months must be > 0 |
 
 ### D10: JSON Output
 
