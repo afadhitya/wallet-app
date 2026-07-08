@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.3.0] - 2026-07-08
+
+### Added
+
+- **Self-update commands** — `wallet version` displays current version with optional `--check` flag to query the latest GitHub release. `wallet update` downloads, verifies SHA256 checksums, and atomically replaces the binary.
+- **Destructive operation confirmation** — AI agents must now confirm before running destructive commands (delete, archive, adjust) with a summary of affected resources.
+
+### Fixed
+
+- **Multi-currency forecast** — Fixed account balance and planned payment amount conversion to base currency in `ForecastBalance`. Payments with unconfigured exchange rates are skipped with a warning.
+
 ## [v1.2.0] - 2026-07-06
 
 ### Added
