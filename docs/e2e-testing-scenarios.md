@@ -116,27 +116,27 @@ Isolated feature tests covering edge cases and error paths.
 
 ### D3: Transactions
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D3.1 | Account exists | `wallet add expense 0 "zero" -c Food -a Checking` | Error: invalid amount (must be > 0) |
-| D3.1a | Account exists in non-base currency | Add expense 10 USD -c Food -a USD-Account | Transaction created with amount=10, currency=USD, base_amount=160000 (at rate 16000), base_currency=IDR |
-| D3.2 | Account exists | `wallet add expense -1000 "negative" -c Food -a Checking` | Error: invalid amount |
-| D3.3 | Account exists | `wallet add income abc "invalid" -c Income -a Checking` | Error: invalid amount |
-| D3.4 | Category required for expense | `wallet add expense 10000 "no-cat" -a Checking` | Error: category required |
-| D3.5 | Account exists | `wallet add expense 10000 "test" -c NonExistent -a Checking` | Error: category not found (with suggestions) |
-| D3.6 | Expense exists | `wallet edit 1 --category Food` | Category updated |
-| D3.7 | Transaction exists | `wallet edit 1 --add-tag "urgent" --add-tag "work"` | Tags added to transaction |
-| D3.8 | Transaction has tags | `wallet edit 1 --remove-tag "urgent"` | Tag removed from transaction |
-| D3.9 | Invalid transaction ID | `wallet edit 999` | Error: transaction not found |
-| D3.10 | Transfer without `--from` | `wallet add transfer 100000 --to Savings` | Error: --from required |
-| D3.11 | Transfer without `--to` | `wallet add transfer 100000 --from Checking` | Error: --to required |
-| D3.12 | Adjustment | `wallet adjust Checking 1000000 "Correction"` | Adjustment transaction created, Checking balance = 1000000 |
-| D3.13 | Filter with `--account` | `wallet list --account Checking` | Only Checking account transactions shown |
-| D3.14 | Filter with `--category` | `wallet list --category Food` | Only Food category transactions shown |
-| D3.15 | Filter with `--tag` | `wallet list --tag urgent` | Only transactions with tag "urgent" shown |
-| D3.16 | Filter with `--from`/`--to` | `wallet list --from 2026-07-01 --to 2026-07-31` | Only July transactions shown |
-| D3.17 | Adjustment transaction | `wallet list --type adjustment` | Only adjustment transactions shown |
-| D3.18 | Adjustment transaction | `wallet list` (default) | Adjustments excluded from default list |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D3.1 | Account exists | `wallet add expense 0 "zero" -c Food -a Checking` | Error: invalid amount (must be > 0) | ✅ PASSED | Returns `INVALID_AMOUNT` with "amount must be positive". Amount validation occurs before category lookup, so `-c Food` does not interfere. Correct behavior. |
+| D3.1a | Account exists in non-base currency | Add expense 10 USD -c Food -a USD-Account | Transaction created with amount=10, currency=USD, base_amount=160000 (at rate 16000), base_currency=IDR | ❌ FAILED | Category "Food" doesn't exist, so fails with `INTERNAL_ERROR` before reaching account. With correct category `-c "Food & Dining"` and rate USD=16000, transaction is created correctly: amount=10 USD, base_amount=160000 IDR. **Suggestion:** Fix test scenario to use "Food & Dining". |
+| D3.2 | Account exists | `wallet add expense -1000 "negative" -c Food -a Checking` | Error: invalid amount | ❌ FAILED | Cobra parses `-1000` as flags (`-1`, `-0`, `-0`, `-0`), not as a positional argument. Returns "unknown shorthand flag: '1' in -1000". This is a known Cobra limitation with negative numbers. Needs `--` separator before the negative value. **Suggestion:** Fix scenario to use `wallet add expense -- -1000 "negative" -c Food -a Checking --json` or note the flag parsing limitation. |
+| D3.3 | Account exists | `wallet add income abc "invalid" -c Income -a Checking` | Error: invalid amount | ✅ PASSED | Returns `INVALID_INPUT` with message "invalid amount: abc". CLI correctly rejects non-numeric input. |
+| D3.4 | Category required for expense | `wallet add expense 10000 "no-cat" -a Checking` | Error: category required | ✅ PASSED | Returns error "required flag(s) \"category\" not set". CLI correctly enforces required category flag. |
+| D3.5 | Account exists | `wallet add expense 10000 "test" -c NonExistent -a Checking` | Error: category not found (with suggestions) | ✅ PASSED | Returns `CATEGORY_NOT_FOUND` with clear error message. Category lookup works correctly for non-existent names. |
+| D3.6 | Expense exists | `wallet edit 1 --category Food` | Category updated | ❌ FAILED | Category "Food" doesn't exist, returns `INTERNAL_ERROR`. Using `--category "Food & Dining"` works. **Suggestion:** Fix scenario to use existing category name. |
+| D3.7 | Transaction exists | `wallet edit 1 --add-tag "urgent" --add-tag "work"` | Tags added to transaction | ✅ PASSED | Tags "urgent" and "work" added successfully. Edit flags `--add-tag` work correctly with multiple tags. |
+| D3.8 | Transaction has tags | `wallet edit 1 --remove-tag "urgent"` | Tag removed from transaction | ✅ PASSED | Tag "urgent" removed successfully via `--remove-tag` flag. |
+| D3.9 | Invalid transaction ID | `wallet edit 999` | Error: transaction not found | ✅ PASSED | Returns `TRANSACTION_NOT_FOUND` with appropriate message. |
+| D3.10 | Transfer without `--from` | `wallet add transfer 100000 --to Savings` | Error: --from required | ✅ PASSED | Returns error "required flag(s) \"from\" not set". Correct validation. |
+| D3.11 | Transfer without `--to` | `wallet add transfer 100000 --from Checking` | Error: --to required | ✅ PASSED | Returns error "required flag(s) \"to\" not set". Correct validation. |
+| D3.12 | Adjustment | `wallet adjust Checking 1000000 "Correction"` | Adjustment transaction created, Checking balance = 1000000 | ✅ PASSED | Adjustment created successfully. Checking balance corrected to 1000000. |
+| D3.13 | Filter with `--account` | `wallet list --account Checking` | Only Checking account transactions shown | ✅ PASSED | Filter by account works, returns transactions only for the specified account. |
+| D3.14 | Filter with `--category` | `wallet list --category Food` | Only Food category transactions shown | ❌ FAILED | Category "Food" doesn't exist, returns `INTERNAL_ERROR`. With correct `--category "Food & Dining"`, returns 0 results (parent category filter doesn't include children). **Suggestion:** Fix scenario to use a child category name like "Restaurant" or "Coffee & Snacks". |
+| D3.15 | Filter with `--tag` | `wallet list --tag urgent` | Only transactions with tag "urgent" shown | ✅ PASSED | Tag filter works correctly. After D3.8 removed "urgent", 0 results for "urgent" (correct). Verified with "work" tag showing 3 transactions. |
+| D3.16 | Filter with `--from`/`--to` | `wallet list --from 2026-07-01 --to 2026-07-31` | Only July transactions shown | ✅ PASSED | Date range filter works correctly. |
+| D3.17 | Adjustment transaction | `wallet list --type adjustment` | Only adjustment transactions shown | ✅ PASSED | Type filter works, returns 2 adjustment transactions. |
+| D3.18 | Adjustment transaction | `wallet list` (default) | Adjustments excluded from default list | ❌ FAILED | 2 adjustment transactions appear in the default list alongside regular expenses and income. AGENTS.md says adjustments are "Excluded from all reports" but they are not excluded from `wallet list`. **Suggestion:** Either exclude adjustments from default `wallet list` (add `WHERE is_adjustment = 0` filter) or update expected result. |
 
 ### D4: Categories
 
