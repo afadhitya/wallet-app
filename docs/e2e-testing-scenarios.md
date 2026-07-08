@@ -54,20 +54,20 @@ End-to-end workflows that simulate real user behavior across multiple features.
 
 ### J3: Multi-Currency
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| J3.1 | Wallet initialized, IDR is base currency | `wallet rate list` | No rates configured |
-| J3.2 | No rates configured | `wallet rate add USD 15800` | USD rate = 15800 (1 USD = 15800 IDR) |
-| J3.3 | Rate exists | `wallet rate set USD 16000` | USD rate updated to 16000 |
-| J3.4 | IDR & USD accounts exist | `wallet rate list` | Rates displayed correctly |
-| J3.5 | USD account exists with 0 balance | `wallet add income 500 "Freelance" -c Income -a USD-Account` | Transaction created, base_amount = 500 × 16000 = 8000000 IDR |
-| J3.6 | Transactions in multiple currencies | `wallet list` | All transactions shown with original amounts + base currency conversion |
-| J3.7 | Transactions in multiple currencies | `wallet account list` | Accounts listed with converted balance total |
-| J3.8 | USD rate missing | `wallet rate rm USD`, then list transactions | Graceful handling — error or warning about missing rate |
-| J3.9 | Transactions in multiple currencies | `wallet report --month 2026-07` | Report totals in base currency (IDR), all conversions applied correctly |
-| J3.10 | Transactions in IDR + USD in same category | Add expense 50000 IDR and 10 USD (rate=16000) in Food category | Budget check shows spent in base currency (50000 + 160000 = 210000 IDR) |
-| J3.11 | Bills in multiple currencies | Create bill "Hosting" 10 USD monthly with USD account, and "Internet" 300000 IDR monthly with IDR account | `wallet forecast bills` shows all amounts converted to base currency, running total and total_amount in base currency |
-| J3.12 | Multi-currency forecast | Accounts with balances in IDR and USD + bills in both currencies | `wallet forecast` shows all projected balances in base currency, totals correctly converted |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| J3.1 | Wallet initialized, IDR is base currency | `wallet rate list` | No rates configured | ❌ FAILED | App has built-in default exchange rates (EUR, JPY, MYR, SGD, USD) seeded at init. "No rates configured" precondition is never true. Output shows 5 default rates. **Suggestion:** Update expected result to acknowledge built-in default rates. |
+| J3.2 | No rates configured | `wallet rate add USD 15800` | USD rate = 15800 (1 USD = 15800 IDR) | ❌ FAILED | USD rate already exists as built-in default (15800). `rate add` returns `INTERNAL_ERROR`: "rate for USD already exists". Use `wallet rate set USD <rate>` instead to update. **Suggestion:** Fix scenario to use `wallet rate set USD 15800` or note that default rates exist. |
+| J3.3 | Rate exists | `wallet rate set USD 16000` | USD rate updated to 16000 | ✅ PASSED | USD rate successfully updated from 15800 to 16000. Returns `status: "updated"`. |
+| J3.4 | IDR & USD accounts exist | `wallet rate list` | Rates displayed correctly | ✅ PASSED | All 5 rates listed correctly, USD shows updated value of 16000. |
+| J3.5 | USD account exists with 0 balance | `wallet add income 500 "Freelance" -c Income -a USD-Account` | Transaction created, base_amount = 500 × 16000 = 8000000 IDR | ✅ PASSED | Transaction created: amount=500 USD, base_amount=8000000 IDR. Conversion correct at time of creation. |
+| J3.6 | Transactions in multiple currencies | `wallet list` | All transactions shown with original amounts + base currency conversion | ✅ PASSED | Transactions listed with original amounts (500 USD) and base_amount/base_currency fields (8000000 IDR). |
+| J3.7 | Transactions in multiple currencies | `wallet account list` | Accounts listed with converted balance total | ❌ FAILED | Accounts listed with individual raw balances only (Checking: 0 IDR, USD-Account: 500 USD). No converted balance total or aggregate net worth shown in the output. **Suggestion:** Add a total/converted balance field to account list, or update expected result. |
+| J3.8 | USD rate missing | `wallet rate rm USD`, then list transactions | Graceful handling — error or warning about missing rate | ❌ FAILED | `wallet rate rm USD` reports success (removes from config file), but built-in default rate (USD=15800) persists in the binary. Transaction list still works without error/warning because the default rate is used. **Suggestion:** If the intent is to test missing rate handling, the built-in fallback makes this scenario impossible to trigger via CLI alone. Update expected result to reflect graceful fallback to default rates. |
+| J3.9 | Transactions in multiple currencies | `wallet report --month 2026-07` | Report totals in base currency (IDR), all conversions applied correctly | ✅ PASSED | Report shows income_total=8000000, expense_total=408000 (includes converted USD expense), net=7592000, all in IDR. Category breakdown shows correct converted amounts. |
+| J3.10 | Transactions in IDR + USD in same category | Add expense 50000 IDR and 10 USD (rate=16000) in Food category | Budget check shows spent in base currency (50000 + 160000 = 210000 IDR) | ❌ FAILED | Budget check shows spent=50010 (raw sum: 50000 IDR + 10 USD), NOT converted to base currency. The budget system does not perform multi-currency conversion when computing spending. The USD 10 expense has `base_amount=158000` stored, but budget ignores it. **Suggestion:** Implement multi-currency conversion in budget spending calculation using stored `base_amount`. |
+| J3.11 | Bills in multiple currencies | Create bill "Hosting" 10 USD monthly with USD account, and "Internet" 300000 IDR monthly with IDR account | `wallet forecast bills` shows all amounts converted to base currency, running total and total_amount in base currency | ❌ FAILED | Forecast bills shows raw amounts without conversion: total_amount=900030 (300000×3 + 10×3). The Hosting bill amount (10) is treated as raw IDR even though it's on a USD account. No multi-currency conversion applied. **Suggestion:** Implement currency conversion in forecast/bills using account currency and configured exchange rates. |
+| J3.12 | Multi-currency forecast | Accounts with balances in IDR and USD + bills in both currencies | `wallet forecast` shows all projected balances in base currency, totals correctly converted | ❌ FAILED | Forecast start_balance is correct (7,590,000 IDR, includes converted USD balance). However, projected expenses use raw bill amounts (Hosting 10 treated as IDR). Monthly expenses show July=300000, Aug/Sep=300010. No warnings about missing conversion. **Suggestion:** Convert bill amounts using account currency and rates before computing forecast projections. |
 
 ### J4: Period End — Reports & Forecast
 
