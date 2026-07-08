@@ -30,27 +30,27 @@ End-to-end workflows that simulate real user behavior across multiple features.
 
 ### J2: Budget & Bills
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| J2.1 | Wallet initialized, accounts exist | `wallet budget set "Monthly Food" 1000000 -c Food --period monthly --notify 80` | Budget created with current month period |
-| J2.2 | Budget exists | `wallet budget list` | Budget shown with spent = 0, remaining = 1000000, status = ok |
-| J2.3 | Budget exists, no spending | `wallet budget check` | Budget status = ok, spending = 0 |
-| J2.4 | Budget exists | Add expenses in Food category totaling 850000 | `wallet budget check` shows spent = 850000, status = warning (at 85%, above 80% notify threshold) |
-| J2.5 | Budget overspent | Add another expense of 200000 in Food (total = 1050000) | `wallet budget check` shows spent = 1050000, status = over (105%) |
-| J2.6 | Budget with period = one_time | `wallet budget check` in next month | No new period created, original budget unchanged |
-| J2.7 | Budget with period = monthly | Period rolls over | `wallet budget check` auto-creates new period for current month |
-| J2.8 | Budget exists | `wallet bill add "Internet" 300000 --account Checking --recurrence monthly --due-date 2026-07-15` | Bill created with next_due = 2026-07-15 |
-| J2.9 | Bills exist | `wallet bill list` | All bills listed with next due dates and status |
-| J2.10 | Bill is due | `wallet bill due --overdue` | Internet bill shown as due |
-| J2.11 | Bill is due | `wallet bill pay 1 --amount 300000` | Expense transaction created for Internet, next_due advanced to next month |
-| J2.12 | Bill is active | `wallet bill pause 1` | Bill status = paused |
-| J2.13 | Bill is paused | `wallet bill pay 1` | Error: bill is paused |
-| J2.14 | Bill is paused | `wallet bill resume 1` | Bill status = active |
-| J2.15 | Bill is active, one-time | `wallet bill add "Test One-Time" 50000 -a Checking --recurrence one_time --due-date 2026-07-20` | One-time bill created |
-| J2.16 | One-time bill is paid | `wallet bill pay <id>` | Bill hard-deleted after payment |
-| J2.17 | Bill is active | `wallet bill skip 1` | Next due date advanced, no transaction created |
-| J2.18 | Bill exists | `wallet bill edit 1 --amount 350000` | Bill amount updated |
-| J2.19 | Bill exists | `wallet bill rm 1` | Bill archived (is_active = 0) |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| J2.1 | Wallet initialized, accounts exist | `wallet budget set "Monthly Food" 1000000 -c Food --period monthly --notify 80` | Budget created with current month period | ❌ FAILED | Category "Food" does not exist (only "Food & Dining"). CLI returns `INTERNAL_ERROR` with suggestion. Using `-c "Food & Dining"` succeeds. **Suggestion:** Fix test scenario to use "Food & Dining". |
+| J2.2 | Budget exists | `wallet budget list` | Budget shown with spent = 0, remaining = 1000000, status = ok | ✅ PASSED | Budget listed with spent=0, remaining=1000000. Status implied by data; no explicit `status` field in list output (status field is in `budget check` output). Functional result matches expectations. |
+| J2.3 | Budget exists, no spending | `wallet budget check` | Budget status = ok, spending = 0 | ⚠️ PARTIAL | `wallet budget check` requires `--all` or `-b <id>` flag; bare command returns error. With `--all` flag, shows status="ok", spent=0 as expected. **Suggestion:** Fix test scenario to use `wallet budget check --all`. |
+| J2.4 | Budget exists | Add expenses in Food category totaling 850000 | `wallet budget check` shows spent = 850000, status = warning (at 85%, above 80% notify threshold) | ✅ PASSED | After adding 850000 in expenses (Food & Dining category), `wallet budget check --all` shows spent=850000, percent_used=85, status="warning". |
+| J2.5 | Budget overspent | Add another expense of 200000 in Food (total = 1050000) | `wallet budget check` shows spent = 1050000, status = over (105%) | ✅ PASSED | After adding 200000 more, `wallet budget check --all` shows spent=1050000, percent_used=105, status="over". |
+| J2.6 | Budget with period = one_time | `wallet budget check` in next month | No new period created, original budget unchanged | ⏭️ SKIPPED | Requires waiting until next month. Cannot test in current session (time constraint). |
+| J2.7 | Budget with period = monthly | Period rolls over | `wallet budget check` auto-creates new period for current month | ⏭️ SKIPPED | Requires period rollover. Cannot test in current session (time constraint). |
+| J2.8 | Budget exists | `wallet bill add "Internet" 300000 --account Checking --recurrence monthly --due-date 2026-07-15` | Bill created with next_due = 2026-07-15 | ❌ FAILED | CLI does not have `--recurrence` or `--due-date` flags. Actual CLI uses `--monthly` (or `--daily`/`--weekly`/`--yearly`) and `--day N` flags; also requires `-c` (category) flag. With correct syntax `-a Checking -c Internet --monthly --day 15`, bill created with next_due=2026-07-15. **Suggestion:** Update test scenario to use actual CLI flags: `--monthly --day 15 -c Internet`. |
+| J2.9 | Bills exist | `wallet bill list` | All bills listed with next due dates and status | ✅ PASSED | Bills listed with next due dates and status fields correctly. |
+| J2.10 | Bill is due | `wallet bill due --overdue` | Internet bill shown as due | ❌ FAILED | `--overdue` only shows bills past their due date. Since next_due=2026-07-15 is in the future (today is 2026-07-08), it's not overdue. Bill appears with `wallet bill due` (no flags) or `--next 30`. **Suggestion:** Fix test scenario to use `wallet bill due` (no flags) or adjust the due date precondition. |
+| J2.11 | Bill is due | `wallet bill pay 1 --amount 300000` | Expense transaction created for Internet, next_due advanced to next month | ✅ PASSED | Transaction created with id=5, amount=300000, category=Internet. next_due_date advanced to 2026-08-15. |
+| J2.12 | Bill is active | `wallet bill pause 1` | Bill status = paused | ✅ PASSED | Bill paused (is_paused=1), status reflects correctly in list output. |
+| J2.13 | Bill is paused | `wallet bill pay 1` | Error: bill is paused | ✅ PASSED | Correct `BILL_PAUSED` error returned with suggestion "unpause the planned payment first". |
+| J2.14 | Bill is paused | `wallet bill resume 1` | Bill status = active | ✅ PASSED | Bill resumed (is_paused=0), back to active status. |
+| J2.15 | Bill is active, one-time | `wallet bill add "Test One-Time" 50000 -a Checking --recurrence one_time --due-date 2026-07-20` | One-time bill created | ❌ FAILED | CLI does not have `--recurrence` or `--due-date` flags. One-time bill can be created by omitting recurrence flags (defaults to recurrence="none") and using `--from`/`--day`. With `-a Checking -c Internet --from 2026-07-20 --day 20`, a one-time bill with next_due=2026-07-20 is created. **Suggestion:** Update test scenario to use `--from 2026-07-20 --day 20` (omit recurrence flags for one-time). |
+| J2.16 | One-time bill is paid | `wallet bill pay <id>` | Bill hard-deleted after payment | ❌ FAILED | Bill is archived (is_active=0), not hard-deleted. The PlannedPayment record remains with is_active=0. **Suggestion:** Update expected result to "Bill archived (is_active=0)" or implement actual hard-delete for one-time bills. |
+| J2.17 | Bill is active | `wallet bill skip 1` | Next due date advanced, no transaction created | ✅ PASSED | Next due date advanced from 2026-08-15 to 2026-09-15. No transaction created. |
+| J2.18 | Bill exists | `wallet bill edit 1 --amount 350000` | Bill amount updated | ✅ PASSED | Bill amount updated from 300000 to 350000 successfully. |
+| J2.19 | Bill exists | `wallet bill rm 1` | Bill archived (is_active = 0) | ❌ FAILED | Returned `INTERNAL_ERROR` with raw SQL error: "FOREIGN KEY constraint failed (787)". The bill has existing payment transactions (via planned_payment_id FK), so hard-delete fails. **Suggestion:** Change `rm` to soft-delete (set is_active=0) instead of hard DELETE, or handle FK constraint gracefully. |
 
 ### J3: Multi-Currency
 
