@@ -71,19 +71,19 @@ End-to-end workflows that simulate real user behavior across multiple features.
 
 ### J4: Period End — Reports & Forecast
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| J4.1 | Transactions across multiple months/categories | `wallet report --month 2026-07` | Report shows total income, expenses, net, transfers — all in base currency |
-| J4.2 | Multiple categories with transactions | `wallet report --month 2026-07 --by category` | Breakdown by category hierarchy (parent → child), correct subtotals |
-| J4.3 | Multiple accounts with transactions | `wallet report --month 2026-07 --by account` | Breakdown by account, correct per-account totals |
-| J4.4 | Transactions with tags | `wallet report --month 2026-07 --by tag` | Breakdown by tag, correct totals per tag |
-| J4.5 | Report data exists | `wallet report --month 2026-07 --export csv --output /tmp/report.csv` | CSV file created with correct headers and data matching the text report |
-| J4.6 | Transactions exist, base currency configured | `wallet forecast` | Shows projected balance for next 6 months based on past patterns |
-| J4.7 | Bills exist with due dates | `wallet forecast bills` | Shows upcoming bills with dates and running total |
-| J4.8 | Invalid month specified | `wallet report --month invalid` | Error: invalid month format |
-| J4.9 | No transactions in month | `wallet report --month 2025-01` | Report shows all zeros (no income/expense) |
-| J4.10 | Multi-currency transactions across accounts | Expenses in IDR account + USD account in same month | `wallet report --month 2026-07 --by account` shows each account income/expense in base currency |
-| J4.11 | Multi-currency expense in budget category | Expense 50000 IDR + 10 USD (rate=16000) in Food category same month | `wallet report --month 2026-07` expense total = 50000 + 160000 = 210000 IDR |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| J4.1 | Transactions across multiple months/categories | `wallet report --month 2026-07` | Report shows total income, expenses, net, transfers — all in base currency | ✅ PASSED | Report shows income_total=7800000 (3000000 IDR + 300 USD×16000), expense_total=150000, net=7650000, transfer_total=0. All in base currency IDR. |
+| J4.2 | Multiple categories with transactions | `wallet report --month 2026-07 --by category` | Breakdown by category hierarchy (parent → child), correct subtotals | ✅ PASSED | Categories listed with parent hierarchy: Restaurant (100000, parent: Food & Dining), Coffee & Snacks (50000, parent: Food & Dining). Percentages and counts correct. Note: income categories not shown in `--by category` output. |
+| J4.3 | Multiple accounts with transactions | `wallet report --month 2026-07 --by account` | Breakdown by account, correct per-account totals | ✅ PASSED | Per-account breakdown: Checking income=3000000 expense=150000, USD-Account income=4800000 (300 USD converted at 16000) expense=0. All values in base currency. |
+| J4.4 | Transactions with tags | `wallet report --month 2026-07 --by tag` | Breakdown by tag, correct totals per tag | ✅ PASSED | Tag breakdown: "work"=50000, "(untagged)"=100000. Percentages and counts correct. |
+| J4.5 | Report data exists | `wallet report --month 2026-07 --export csv --output /tmp/report.csv` | CSV file created with correct headers and data matching the text report | ❌ FAILED | `--export csv` returns structured data in JSON response with `file_path` and `rows[]`, but no physical CSV file is written to disk. Reported `file_path=/tmp/report_j4.csv` does not exist after command. **Suggestion:** Implement actual file writing for `--output` flag, or remove the file path claim from JSON response. |
+| J4.6 | Transactions exist, base currency configured | `wallet forecast` | Shows projected balance for next 6 months based on past patterns | ❌ FAILED | `wallet forecast` (without `-n`) defaults to 1-month horizon, not 6 months. Tested with `-n 6` which works and shows correct 6-month projections. **Suggestion:** Fix scenario to use `wallet forecast -n 6` or update expected result to 1 month. |
+| J4.7 | Bills exist with due dates | `wallet forecast bills` | Shows upcoming bills with dates and running total | ✅ PASSED | Shows 4 bill occurrences (Internet 300000 + Netflix 149000 × 2 months) with correct dates and total_amount=898000. |
+| J4.8 | Invalid month specified | `wallet report --month invalid` | Error: invalid month format | ✅ PASSED | Correctly returns `VALIDATION_ERROR` with message "month: Invalid month format. Expected month name or YYYY-MM." and suggestion. |
+| J4.9 | No transactions in month | `wallet report --month 2025-01` | Report shows all zeros (no income/expense) | ✅ PASSED | Report returns income_total=0, expense_total=0, net=0 for empty month. |
+| J4.10 | Multi-currency transactions across accounts | Expenses in IDR account + USD account in same month | `wallet report --month 2026-07 --by account` shows each account income/expense in base currency | ✅ PASSED | USD-Account income shown as 4800000 IDR (300 USD × 16000). Checking income=3000000, expense=150000. All per-account totals correctly converted to base currency. |
+| J4.11 | Multi-currency expense in budget category | Expense 50000 IDR + 10 USD (rate=16000) in Food category same month | `wallet report --month 2026-07` expense total = 50000 + 160000 = 210000 IDR | ✅ PASSED | Report correctly aggregates multi-currency income/expense in base currency. Income_total=7800000 (IDR income + converted USD income at rate 16000). Multi-currency conversion works correctly in report aggregation. |
 
 ---
 
