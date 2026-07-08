@@ -93,26 +93,26 @@ Isolated feature tests covering edge cases and error paths.
 
 ### D1: Init & Config
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D1.1 | No config exists | `wallet init` | DB + config created, categories seeded |
-| D1.2 | Already initialized | `wallet init` | Error, no destructive action |
-| D1.3 | Config exists | `wallet add expense 10000 "test" -c Food -a Unknown` | Error: account not found |
-| D1.4 | DB file deleted manually | Run any command | Error: unable to open database |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D1.1 | No config exists | `wallet init` | DB + config created, categories seeded | ⚠️ PARTIAL | DB created and 32 categories seeded. However, `config.toml` was NOT created (only `rates.toml` was auto-generated). **Suggestion:** Verify if config.toml creation is intended; if so, implement it. |
+| D1.2 | Already initialized | `wallet init` | Error, no destructive action | ❌ FAILED | CLI returns `success: true` with message "Wallet database initialized successfully". No error is returned. Same issue as J1.2. **Suggestion:** Add re-init detection to return an error/warning. |
+| D1.3 | Config exists | `wallet add expense 10000 "test" -c Food -a Unknown` | Error: account not found | ❌ FAILED | Category "Food" doesn't exist, so it fails with `INTERNAL_ERROR` before reaching account validation. Using `-c "Food & Dining"` correctly returns `ACCOUNT_NOT_FOUND`. **Suggestion:** Fix test scenario to use existing category name, or the CLI validates category before account (change expectation order). |
+| D1.4 | DB file deleted manually | Run any command | Error: unable to open database | ❌ FAILED | App auto-recreates the DB silently when missing. `wallet account list` returns `success: true` with empty data. No error is raised. **Suggestion:** If the intent is to test missing DB handling, the app's auto-init behavior prevents this scenario. Either disable auto-init or update expected result. |
 
 ### D2: Accounts
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D2.1 | Wallet initialized | `wallet account add "Credit Card" --type credit --currency IDR` | Account created with type=credit, balance=0 |
-| D2.2 | Account exists | `wallet account list` | Account listed with name, type, currency, balance, sort_order |
-| D2.3 | Account exists | `wallet account edit "Checking" --name "Main Checking"` | Account name updated |
-| D2.4 | Account has transactions | `wallet account archive "Main Checking"` | Account archived, not shown in default list |
-| D2.5 | Archived account | `wallet account list --archived` | Archived accounts shown |
-| D2.6 | Nonexistent account | `wallet account edit "Fake" --name "X"` | Error: account not found |
-| D2.7 | Duplicate name | Create account with name that already exists | Error: account name already exists |
-| D2.8 | Multiple accounts with different currencies | IDR account (balance 1000000) + USD account (balance 500, rate=16000) | Account list shows total converted = 1000000 + (500×16000) = 9000000 IDR |
-| D2.9 | Multi-currency with missing rate | USD account exists, no rate configured | Account list shows USD balance raw, total excludes USD, warning about missing rate |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D2.1 | Wallet initialized | `wallet account add "Credit Card" --type credit --currency IDR` | Account created with type=credit, balance=0 | ✅ PASSED | Credit Card account created with type=credit, balance=0 as expected. |
+| D2.2 | Account exists | `wallet account list` | Account listed with name, type, currency, balance, sort_order | ✅ PASSED | Accounts listed with all fields: name, type, currency, balance, sort_order. |
+| D2.3 | Account exists | `wallet account edit "Checking" --name "Main Checking"` | Account name updated | ❌ FAILED | CLI expects `<id>` (integer), not account name. `wallet account edit "Checking"` returns `INVALID_INPUT: invalid account ID: Checking`. Correct syntax: `wallet account edit 1 --name "Main Checking"` works. **Suggestion:** Fix scenario to use `wallet account edit 1 --name "Main Checking"` or add name-based lookup to CLI. |
+| D2.4 | Account has transactions | `wallet account archive "Main Checking"` | Account archived, not shown in default list | ❌ FAILED | CLI expects `<id>` (integer), not account name. `wallet account archive "Main Checking"` returns `INVALID_INPUT`. Correct syntax: `wallet account archive 1 --force` works, and the account is correctly excluded from default list. **Suggestion:** Fix scenario to use `wallet account archive 1 --force`. |
+| D2.5 | Archived account | `wallet account list --archived` | Archived accounts shown | ❌ FAILED | `--archived` flag does not exist. The CLI uses `--all` to include archived accounts. With `--all`, archived accounts are shown with `is_archived=1`. **Suggestion:** Fix scenario to use `wallet account list --all`. |
+| D2.6 | Nonexistent account | `wallet account edit "Fake" --name "X"` | Error: account not found | ❌ FAILED | CLI expects `<id>` (integer), not account name. `wallet account edit "Fake"` returns `INVALID_INPUT: invalid account ID: Fake`. Correct syntax: `wallet account edit 999 --name "X"` returns `ACCOUNT_NOT_FOUND`. **Suggestion:** Fix scenario to use a numeric ID, or implement name-based lookup. |
+| D2.7 | Duplicate name | Create account with name that already exists | Error: account name already exists | ✅ PASSED | Correctly returns `VALIDATION_ERROR` with message "name already exists". |
+| D2.8 | Multiple accounts with different currencies | IDR account (balance 1000000) + USD account (balance 500, rate=16000) | Account list shows total converted = 1000000 + (500×16000) = 9000000 IDR | ❌ FAILED | Account list shows individual raw balances only (BCA: 1000000 IDR, USD-Account: 500 USD). No converted total or aggregate shown. Same issue as J3.7. **Suggestion:** Add a converted total/summary row to account list output, or update expected result. |
+| D2.9 | Multi-currency with missing rate | USD account exists, no rate configured | Account list shows USD balance raw, total excludes USD, warning about missing rate | ❌ FAILED | Account list shows USD balance (500 USD) without any warning. There is no total field to "exclude" from. The built-in default rates also make this scenario unreachable via CLI alone (same as J3.8). **Suggestion:** Implement rate-missing warnings in account list, or update expected result. |
 
 ### D3: Transactions
 
