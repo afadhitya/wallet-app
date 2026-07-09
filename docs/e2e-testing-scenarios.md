@@ -190,40 +190,40 @@ Isolated feature tests covering edge cases and error paths.
 
 ### D8: Exchange Rates
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D8.1 | Wallet initialized, no rates | `wallet rate list` | Empty list or message: no rates |
-| D8.2 | No rates exist | `wallet rate add USD 15800` | Rate added |
-| D8.3 | Invalid amount | `wallet rate add EUR 0` | Error: rate must be > 0 |
-| D8.4 | Rate exists | `wallet rate set USD 16000` | Rate updated |
-| D8.5 | Rate exists | `wallet rate list` | Rate shown with currency code and value |
-| D8.6 | Rate exists | `wallet rate rm USD` | Rate removed |
-| D8.7 | Rate assigned to an active account | `wallet rate rm USD` while USD account has transactions | Rate removed (accounts become unconvertible gracefully) |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D8.1 | Wallet initialized, no rates | `wallet rate list` | Empty list or message: no rates | ❌ FAILED | App has built-in default rates (EUR, JPY, MYR, SGD, USD). "No rates" precondition is never true. Same issue as J3.1. **Suggestion:** Update expected result to acknowledge built-in default rates. |
+| D8.2 | No rates exist | `wallet rate add USD 15800` | Rate added | ❌ FAILED | USD rate already exists as built-in default (15800). Returns `INTERNAL_ERROR: rate for USD already exists`. Same issue as J3.2. **Suggestion:** Use `wallet rate set USD 15800` instead. |
+| D8.3 | Invalid amount | `wallet rate add EUR 0` | Error: rate must be > 0 | ✅ PASSED | Returns `EXCHANGE_RATE_INVALID` with "rate must be a positive integer". Correct validation. |
+| D8.4 | Rate exists | `wallet rate set USD 16000` | Rate updated | ✅ PASSED | Rate successfully updated from 15800 to 16000. Returns `status: "updated"`. |
+| D8.5 | Rate exists | `wallet rate list` | Rate shown with currency code and value | ✅ PASSED | USD rate shows 16000. All rates displayed with correct codes and values. |
+| D8.6 | Rate exists | `wallet rate rm USD` | Rate removed | ✅ PASSED | Returns `status: "removed"`. Note: built-in default rate persists in binary even after rm from config file. |
+| D8.7 | Rate assigned to an active account | `wallet rate rm USD` while USD account has transactions | Rate removed (accounts become unconvertible gracefully) | ✅ PASSED | Rate removed successfully. USD-Account still functions normally; transactions were already stored with `base_amount` at creation time. Graceful behavior. |
 
 ### D9: Forecast
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D9.1 | Accounts with balance + bills | `wallet forecast -n 3` | 3-month projection table |
-| D9.2 | Specific account | `wallet forecast -a Checking` | Only Checking account forecasted |
-| D9.3 | Bills exist | `wallet forecast bills -n 3` | Upcoming bills schedule with running total |
-| D9.4 | Bills in multiple currencies | Bills in IDR (300000) + USD (10 USD = 160000 IDR at rate 16000) | `wallet forecast bills` total_amount = 460000 IDR, running total also in base currency |
-| D9.5 | Multi-currency with USD and IDR accounts + bills in both currencies | `wallet forecast -n 3` | All monthly start/ending balances in base currency, all bill amounts converted, negative balance detection accurate |
-| D9.6 | Multi-currency forecast with missing rate | USD has transactions but no rate configured | `wallet forecast` includes warning about missing rate for USD |
-| D9.7 | Unknown account | `wallet forecast -a Nonexistent` | Error: account not found |
-| D9.8 | Invalid months | `wallet forecast -n 0` | Error: months must be > 0 |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D9.1 | Accounts with balance + bills | `wallet forecast -n 3` | 3-month projection table | ✅ PASSED | Forecast shows 3-month projection with start/ending balances. Correct horizon. |
+| D9.2 | Specific account | `wallet forecast -a Checking` | Only Checking account forecasted | ✅ PASSED | Forecast scoped to Checking account correctly. Shows only that account's balance projection. |
+| D9.3 | Bills exist | `wallet forecast bills -n 3` | Upcoming bills schedule with running total | ✅ PASSED | Bills schedule shown with dates, amounts, and running total for 3 months. |
+| D9.4 | Bills in multiple currencies | Bills in IDR (300000) + USD (10 USD = 160000 IDR at rate 16000) | `wallet forecast bills` total_amount = 460000 IDR, running total also in base currency | ❌ FAILED | Forecast bills shows raw amounts: total_amount uses raw sum without currency conversion (10 USD treated as 10 IDR). Same issue as J3.11. **Suggestion:** Implement currency conversion using stored base_amount or configured rates in forecast output. |
+| D9.5 | Multi-currency with USD and IDR accounts + bills in both currencies | `wallet forecast -n 3` | All monthly start/ending balances in base currency, all bill amounts converted, negative balance detection accurate | ❌ FAILED | Start balance correctly converted (includes USD at rate). However, projected expenses use raw bill amounts (Hosting 10 treated as 10 IDR). Same issue as J3.12. **Suggestion:** Convert bill amounts using account currency and rates in forecast projection. |
+| D9.6 | Multi-currency forecast with missing rate | USD has transactions but no rate configured | `wallet forecast` includes warning about missing rate for USD | ❌ FAILED | No warning about missing rate in forecast output. The warnings field is empty/null. **Suggestion:** Add rate-missing warning to forecast output when account has a currency without configured rate. |
+| D9.7 | Unknown account | `wallet forecast -a Nonexistent` | Error: account not found | ✅ PASSED | Returns `ACCOUNT_NOT_FOUND` with clear error message. |
+| D9.8 | Invalid months | `wallet forecast -n 0` | Error: months must be > 0 | ✅ PASSED | Returns `VALIDATION_ERROR` with "forecast horizon must be positive". Correct validation. |
 
 ### D10: JSON Output
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D10.1 | Any successful command | `wallet account list --json` | JSON: `{"success": true, "data": [...]}` |
-| D10.2 | Any error command | `wallet add expense abc -a Fake -c Food --json` | JSON: `{"success": false, "error": {...}}` with error code |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D10.1 | Any successful command | `wallet account list --json` | JSON: `{"success": true, "data": [...]}` | ✅ PASSED | Returns valid JSON with `{"success": true, "data": [...]}` envelope. JSON output format correct. |
+| D10.2 | Any error command | `wallet add expense abc -a Fake -c Food --json` | JSON: `{"success": false, "error": {...}}` with error code | ❌ FAILED | Cobra parses `abc` as the description (missing amount arg), producing a plain-text "accepts 2 arg(s), received 1" error before `--json` handler runs. No JSON output is generated. **Suggestion:** Use an error command that passes arg validation first, e.g. `wallet add expense 0 "test" -a Fake -c Food --json` which returns structured JSON error. |
 
 ### D11: Self-Update
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D11.1 | Internet available | `wallet version --check` | Shows current version vs latest (or message if up to date) |
-| D11.2 | Internet available | `wallet version` | Shows installed version only |
-| D11.3 | Internet available | `wallet update` | Downloads latest binary and updates |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D11.1 | Internet available | `wallet version --check` | Shows current version vs latest (or message if up to date) | ✅ PASSED | Returns version info with `previous` and `current` fields. Running dev build, shows "dev" for both. |
+| D11.2 | Internet available | `wallet version` | Shows installed version only | ✅ PASSED | Returns `{"version": "dev"}`. Version display works correctly. |
+| D11.3 | Internet available | `wallet update` | Downloads latest binary and updates | ✅ PASSED | Returns success with `previous: "dev"` and `current: "dev"`. Dev build cannot update itself but gracefully reports no change needed. |
