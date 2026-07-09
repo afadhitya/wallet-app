@@ -79,6 +79,24 @@ func TestSetBudgetMixedTargets(t *testing.T) {
 	}
 }
 
+func TestSetBudgetAllCategories(t *testing.T) {
+	svc := setupService(t)
+
+	result, err := svc.SetBudget(SetBudgetParams{
+		Name:          "Monthly Food",
+		Amount:        2000000,
+		Period:        "monthly",
+		AllCategories: true,
+		NotifyPct:     80,
+	})
+	if err != nil {
+		t.Fatalf("SetBudget: %v", err)
+	}
+	if result.Budget.AllCategories != 1 {
+		t.Errorf("expected all categories = 1, got %d", result.Budget.AllCategories)
+	}
+}
+
 func TestSetBudgetUpsertSameNameAndPeriod(t *testing.T) {
 	svc := setupService(t)
 
@@ -372,6 +390,110 @@ func TestListBudgetsWithSpent(t *testing.T) {
 	expectedRemaining := budget.Budget.Amount - int64(200000)
 	if items[0].Remaining != expectedRemaining {
 		t.Errorf("expected remaining %d, got %d", expectedRemaining, items[0].Remaining)
+	}
+}
+
+func mustAddExpense(t *testing.T, svc *Service, params CreateExpenseParams) {
+	if _, err := svc.AddExpense(params); err != nil {
+		t.Fatalf("AddExpense: %v", err)
+	}
+}
+
+func TestListBudgetsAllCategoriesSumsAcrossCategories(t *testing.T) {
+	svc := setupService(t)
+
+	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+
+	budget, err := svc.SetBudget(SetBudgetParams{
+		Name:          "All my money",
+		Amount:        5000000,
+		Period:        "monthly",
+		AllCategories: true,
+	})
+	if err != nil {
+		t.Fatalf("SetBudget: %v", err)
+	}
+
+	mustAddExpense(t, svc, CreateExpenseParams{
+		Amount:      100000,
+		Description: "Lunch",
+		Category:    "Restaurant",
+		Account:     "BCA",
+	})
+	mustAddExpense(t, svc, CreateExpenseParams{
+		Amount:      200000,
+		Description: "Lunch",
+		Category:    "Subscriptions",
+		Account:     "BCA",
+	})
+	mustAddExpense(t, svc, CreateExpenseParams{
+		Amount:      300000,
+		Description: "Lunch",
+		Category:    "Coffee & Snacks",
+		Account:     "BCA",
+	})
+
+	items, err := svc.ListBudgets(ListBudgetsParams{All: false})
+	if err != nil {
+		t.Fatalf("ListBudgets: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 budget, got %d", len(items))
+	}
+
+	if items[0].Spent != 600000 {
+		t.Fatalf("expected spent 600000, got %d", items[0].Spent)
+	}
+	expectedRemaining := budget.Budget.Amount - int64(600000)
+	if items[0].Remaining != expectedRemaining {
+		t.Fatalf("expected remaining %d, got %d", expectedRemaining, items[0].Remaining)
+	}
+}
+
+func TestListBudgetsAllCategoriesArchivedCategoryStillCounted(t *testing.T) {
+	svc := setupService(t)
+
+	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+
+	budget, err := svc.SetBudget(SetBudgetParams{
+		Name:          "All my money",
+		Amount:        5000000,
+		Period:        "monthly",
+		AllCategories: true,
+	})
+	if err != nil {
+		t.Fatalf("SetBudget: %v", err)
+	}
+
+	category, err := svc.CreateCategory("Hobbies", "", "🎨")
+	if err != nil {
+		t.Fatalf("CreateCategory: %v", err)
+	}
+	mustAddExpense(t, svc, CreateExpenseParams{
+		Amount:      300000,
+		Description: "Paints",
+		Category:    category.Name,
+		Account:     "BCA",
+	})
+
+	if err := svc.ArchiveCategory(category.ID); err != nil {
+		t.Fatalf("ArchiveCategory: %v", err)
+	}
+
+	items, err := svc.ListBudgets(ListBudgetsParams{All: false})
+	if err != nil {
+		t.Fatalf("ListBudgets: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 budget, got %d", len(items))
+	}
+
+	if items[0].Spent != 300000 {
+		t.Fatalf("expected spent 300000, got %d", items[0].Spent)
+	}
+	expectedRemaining := budget.Budget.Amount - int64(300000)
+	if items[0].Remaining != expectedRemaining {
+		t.Fatalf("expected remaining %d, got %d", expectedRemaining, items[0].Remaining)
 	}
 }
 
@@ -972,13 +1094,21 @@ func (q *budgetListFailQuerier) ListActiveBudgets(ctx context.Context) ([]*gen.B
 
 type budgetSpendingFailQuerier struct {
 	gen.Querier
-	catFail bool
-	tagOnly bool
+	catFail    bool
+	tagOnly    bool
+	allCatFail bool
 }
 
 func (q *budgetSpendingFailQuerier) SumCategoryExpenses(ctx context.Context, arg gen.SumCategoryExpensesParams) (interface{}, error) {
 	if q.catFail {
 		return nil, fmt.Errorf("mock spending failure")
+	}
+	return int64(0), nil
+}
+
+func (q *budgetSpendingFailQuerier) SumAllCategoryExpenses(ctx context.Context, arg gen.SumAllCategoryExpensesParams) (interface{}, error) {
+	if q.allCatFail {
+		return nil, fmt.Errorf("mock all-category spending failure")
 	}
 	return int64(0), nil
 }
@@ -1966,9 +2096,33 @@ func TestCalculateSpendingTagError(t *testing.T) {
 	})
 	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, tagOnly: true})
 
-	_, err := svc.calculateSpending(1, "2026-07-01", "2026-07-31")
+	_, err := svc.calculateSpending(&gen.Budget{ID: 1, PeriodStart: "2026-07-01", PeriodEnd: "2026-07-31"})
 	if err == nil {
 		t.Fatal("expected tag spending error")
+	}
+}
+
+func TestCalculateSpendingAllCategoriesError(t *testing.T) {
+	dbase := testdb.Open(t)
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, allCatFail: true})
+
+	_, err := svc.calculateSpending(&gen.Budget{
+		ID:            1,
+		PeriodStart:   "2026-07-01",
+		PeriodEnd:     "2026-07-31",
+		AllCategories: 1,
+	})
+	if err == nil {
+		t.Fatal("expected all-category spending error")
 	}
 }
 

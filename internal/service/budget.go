@@ -11,14 +11,15 @@ import (
 )
 
 type SetBudgetParams struct {
-	Name       string
-	Amount     int64
-	Period     string
-	From       string
-	To         string
-	NotifyPct  int64
-	Categories []string
-	Tags       []string
+	Name          string
+	Amount        int64
+	Period        string
+	From          string
+	To            string
+	NotifyPct     int64
+	Categories    []string
+	AllCategories bool
+	Tags          []string
 }
 
 type BudgetResult struct {
@@ -118,7 +119,7 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 		return nil, ErrInvalidAmount
 	}
 
-	if len(params.Categories) == 0 && len(params.Tags) == 0 {
+	if len(params.Categories) == 0 && len(params.Tags) == 0 && !params.AllCategories {
 		return nil, &ValidationError{Field: "targets", Message: "budget must have at least one category or tag target"}
 	}
 
@@ -176,13 +177,14 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 	notifyPct := sql.NullInt64{Int64: params.NotifyPct, Valid: true}
 
 	budget, err := s.q.CreateBudget(s.ctx(), gen.CreateBudgetParams{
-		Name:        name,
-		Amount:      params.Amount,
-		Currency:    "IDR",
-		Type:        periodTypeForDB(params.Period),
-		PeriodStart: periodStart,
-		PeriodEnd:   periodEnd,
-		NotifyAtPct: notifyPct,
+		Name:          name,
+		Amount:        params.Amount,
+		Currency:      "IDR",
+		Type:          periodTypeForDB(params.Period),
+		PeriodStart:   periodStart,
+		PeriodEnd:     periodEnd,
+		NotifyAtPct:   notifyPct,
+		AllCategories: boolToInt64(params.AllCategories),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create budget: %w", err)
@@ -220,15 +222,17 @@ func (s *Service) updateExistingBudget(id int64, params SetBudgetParams, periodT
 	}
 	amountVal := sql.NullInt64{Int64: params.Amount, Valid: true}
 	notifyVal := sql.NullInt64{Int64: params.NotifyPct, Valid: true}
+	allCategoriesVal := sql.NullInt64{Int64: boolToInt64(params.AllCategories), Valid: true}
 
 	budget, err := s.q.UpdateBudget(s.ctx(), gen.UpdateBudgetParams{
-		ID:          id,
-		Name:        name,
-		Amount:      amountVal,
-		NotifyAtPct: notifyVal,
-		PeriodStart: sql.NullString{String: periodStart, Valid: true},
-		PeriodEnd:   sql.NullString{String: periodEnd, Valid: true},
-		Type:        sql.NullString{String: periodType, Valid: true},
+		ID:            id,
+		Name:          name,
+		Amount:        amountVal,
+		NotifyAtPct:   notifyVal,
+		PeriodStart:   sql.NullString{String: periodStart, Valid: true},
+		PeriodEnd:     sql.NullString{String: periodEnd, Valid: true},
+		Type:          sql.NullString{String: periodType, Valid: true},
+		AllCategories: allCategoriesVal,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("update budget: %w", err)
@@ -288,7 +292,7 @@ func (s *Service) ListBudgets(params ListBudgetsParams) ([]*BudgetListItem, erro
 
 	items := make([]*BudgetListItem, 0, len(budgets))
 	for _, b := range budgets {
-		spent, err := s.calculateSpending(b.ID, b.PeriodStart, b.PeriodEnd)
+		spent, err := s.calculateSpending(b)
 		if err != nil {
 			return nil, fmt.Errorf("calculate spending for budget %d: %w", b.ID, err)
 		}
@@ -471,7 +475,7 @@ func (s *Service) ensureCurrentPeriod(budget *gen.Budget) (*gen.Budget, error) {
 }
 
 func (s *Service) buildCheckResult(budget *gen.Budget) (*CheckBudgetResult, error) {
-	spent, err := s.calculateSpending(budget.ID, budget.PeriodStart, budget.PeriodEnd)
+	spent, err := s.calculateSpending(budget)
 	if err != nil {
 		return nil, err
 	}
@@ -508,22 +512,33 @@ func (s *Service) buildCheckResult(budget *gen.Budget) (*CheckBudgetResult, erro
 	}, nil
 }
 
-func (s *Service) calculateSpending(budgetID int64, periodStart, periodEnd string) (int64, error) {
-	params := gen.SumCategoryExpensesParams{
-		BudgetID:    budgetID,
-		PeriodStart: periodStart,
-		PeriodEnd:   periodEnd,
+func (s *Service) calculateSpending(budget *gen.Budget) (int64, error) {
+	var catAmount int64
+	if budget.AllCategories == 1 {
+		total, err := s.q.SumAllCategoryExpenses(s.ctx(), gen.SumAllCategoryExpensesParams{
+			PeriodStart: budget.PeriodStart,
+			PeriodEnd:   budget.PeriodEnd,
+		})
+		if err != nil {
+			return 0, err
+		}
+		catAmount = toInt64(total)
+	} else {
+		total, err := s.q.SumCategoryExpenses(s.ctx(), gen.SumCategoryExpensesParams{
+			BudgetID:    budget.ID,
+			PeriodStart: budget.PeriodStart,
+			PeriodEnd:   budget.PeriodEnd,
+		})
+		if err != nil {
+			return 0, err
+		}
+		catAmount = toInt64(total)
 	}
-	catTotal, err := s.q.SumCategoryExpenses(s.ctx(), params)
-	if err != nil {
-		return 0, err
-	}
-	catAmount := toInt64(catTotal)
 
 	tagParams := gen.SumTagExpensesParams{
-		BudgetID:    budgetID,
-		PeriodStart: periodStart,
-		PeriodEnd:   periodEnd,
+		BudgetID:    budget.ID,
+		PeriodStart: budget.PeriodStart,
+		PeriodEnd:   budget.PeriodEnd,
 	}
 	tagTotal, err := s.q.SumTagExpenses(s.ctx(), tagParams)
 	if err != nil {
@@ -537,6 +552,13 @@ func (s *Service) calculateSpending(budgetID int64, periodStart, periodEnd strin
 func toInt64(v interface{}) int64 {
 	if b, ok := v.(int64); ok {
 		return b
+	}
+	return 0
+}
+
+func boolToInt64(b bool) int64 {
+	if b {
+		return 1
 	}
 	return 0
 }
