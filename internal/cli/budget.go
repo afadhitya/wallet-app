@@ -27,6 +27,7 @@ func newBudgetCmd() *cobra.Command {
 
 func newBudgetSetCmd() *cobra.Command {
 	var categories, tags []string
+	var allCategories bool
 	var period, from, to string
 	var notifyPct int64
 
@@ -35,16 +36,19 @@ func newBudgetSetCmd() *cobra.Command {
 		Short: "Create or update a budget",
 		Args:  cobra.ExactArgs(2),
 		RunE: withService(func(cmd *cobra.Command, args []string, svc *service.Service, db *sql.DB) error {
-			return runBudgetSet(cmd, args[0], args[1], svc, categories, tags, period, from, to, notifyPct)
+			return runBudgetSet(cmd, args[0], args[1], svc, categories, tags, period, from, to, notifyPct, allCategories)
 		}),
 	}
 
 	cmd.Flags().StringSliceVarP(&categories, "category", "c", nil, "Category name or ID (can be repeated)")
+	cmd.Flags().BoolVarP(&allCategories, "all-categories", "A", false, "Include all expense categories")
 	cmd.Flags().StringSliceVarP(&tags, "tag", "t", nil, "Tag name or ID (can be repeated)")
 	cmd.Flags().StringVar(&period, "period", "monthly", "Budget period: monthly, weekly, yearly, one_time")
 	cmd.Flags().StringVar(&from, "from", "", "Period start date (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&to, "to", "", "Period end date (YYYY-MM-DD)")
 	cmd.Flags().Int64Var(&notifyPct, "notify", 80, "Notification threshold percentage (1-100)")
+
+	cmd.MarkFlagsMutuallyExclusive("category", "all-categories")
 
 	return cmd
 }
@@ -121,21 +125,22 @@ func newBudgetRmCmd() *cobra.Command {
 	}
 }
 
-func runBudgetSet(cmd *cobra.Command, name, amountStr string, svc *service.Service, categories, tags []string, period, from, to string, notifyPct int64) error {
+func runBudgetSet(cmd *cobra.Command, name, amountStr string, svc *service.Service, categories, tags []string, period, from, to string, notifyPct int64, allCategories bool) error {
 	amount, err := strconv.ParseInt(amountStr, 10, 64)
 	if err != nil {
 		return formatError(cmd, fmt.Errorf("invalid amount: %s", amountStr))
 	}
 
 	params := service.SetBudgetParams{
-		Name:       name,
-		Amount:     amount,
-		Period:     period,
-		From:       from,
-		To:         to,
-		NotifyPct:  notifyPct,
-		Categories: categories,
-		Tags:       tags,
+		Name:          name,
+		Amount:        amount,
+		Period:        period,
+		From:          from,
+		To:            to,
+		NotifyPct:     notifyPct,
+		Categories:    categories,
+		AllCategories: allCategories,
+		Tags:          tags,
 	}
 
 	result, err := svc.SetBudget(params)
@@ -147,17 +152,18 @@ func runBudgetSet(cmd *cobra.Command, name, amountStr string, svc *service.Servi
 
 	if isJSON(cmd) {
 		return printSuccessJSON(stdout, map[string]interface{}{
-			"id":            result.Budget.ID,
-			"name":          budgetDisplayName(result.Budget),
-			"amount":        result.Budget.Amount,
-			"currency":      result.Budget.Currency,
-			"period":        result.Budget.Type,
-			"period_start":  result.Budget.PeriodStart,
-			"period_end":    result.Budget.PeriodEnd,
-			"notify_at_pct": budgetNotifyPct(result.Budget),
-			"is_active":     result.Budget.IsActive == 1,
-			"categories":    categoryNames(result.Categories),
-			"tags":          tagNames(result.Tags),
+			"id":             result.Budget.ID,
+			"name":           budgetDisplayName(result.Budget),
+			"amount":         result.Budget.Amount,
+			"currency":       result.Budget.Currency,
+			"period":         result.Budget.Type,
+			"period_start":   result.Budget.PeriodStart,
+			"period_end":     result.Budget.PeriodEnd,
+			"notify_at_pct":  budgetNotifyPct(result.Budget),
+			"is_active":      result.Budget.IsActive == 1,
+			"all_categories": result.Budget.AllCategories == 1,
+			"categories":     categoryNames(result.Categories),
+			"tags":           tagNames(result.Tags),
 		}, cmd)
 	}
 
@@ -178,18 +184,19 @@ func runBudgetList(cmd *cobra.Command, svc *service.Service, all bool) error {
 		output := make([]map[string]interface{}, 0, len(items))
 		for _, item := range items {
 			output = append(output, map[string]interface{}{
-				"id":            item.Budget.ID,
-				"name":          budgetDisplayName(item.Budget),
-				"amount":        item.Budget.Amount,
-				"spent":         item.Spent,
-				"remaining":     item.Remaining,
-				"period":        item.Budget.Type,
-				"period_start":  item.Budget.PeriodStart,
-				"period_end":    item.Budget.PeriodEnd,
-				"notify_at_pct": budgetNotifyPct(item.Budget),
-				"is_active":     item.Budget.IsActive == 1,
-				"categories":    categoryNames(item.Categories),
-				"tags":          tagNames(item.Tags),
+				"id":             item.Budget.ID,
+				"name":           budgetDisplayName(item.Budget),
+				"amount":         item.Budget.Amount,
+				"spent":          item.Spent,
+				"remaining":      item.Remaining,
+				"period":         item.Budget.Type,
+				"period_start":   item.Budget.PeriodStart,
+				"period_end":     item.Budget.PeriodEnd,
+				"notify_at_pct":  budgetNotifyPct(item.Budget),
+				"is_active":      item.Budget.IsActive == 1,
+				"all_categories": item.Budget.AllCategories == 1,
+				"categories":     categoryNames(item.Categories),
+				"tags":           tagNames(item.Tags),
 			})
 		}
 		return printSuccessJSON(stdout, map[string]interface{}{"budgets": output}, cmd)
@@ -311,16 +318,17 @@ func runBudgetEdit(cmd *cobra.Command, idStr string, svc *service.Service, amoun
 
 	if isJSON(cmd) {
 		return printSuccessJSON(stdout, map[string]interface{}{
-			"id":            result.Budget.ID,
-			"name":          budgetDisplayName(result.Budget),
-			"amount":        result.Budget.Amount,
-			"period":        result.Budget.Type,
-			"period_start":  result.Budget.PeriodStart,
-			"period_end":    result.Budget.PeriodEnd,
-			"notify_at_pct": budgetNotifyPct(result.Budget),
-			"is_active":     result.Budget.IsActive == 1,
-			"categories":    categoryNames(result.Categories),
-			"tags":          tagNames(result.Tags),
+			"id":             result.Budget.ID,
+			"name":           budgetDisplayName(result.Budget),
+			"amount":         result.Budget.Amount,
+			"period":         result.Budget.Type,
+			"period_start":   result.Budget.PeriodStart,
+			"period_end":     result.Budget.PeriodEnd,
+			"notify_at_pct":  budgetNotifyPct(result.Budget),
+			"is_active":      result.Budget.IsActive == 1,
+			"all_categories": result.Budget.AllCategories == 1,
+			"categories":     categoryNames(result.Categories),
+			"tags":           tagNames(result.Tags),
 		}, cmd)
 	}
 
