@@ -8,8 +8,8 @@ AND period_start = sqlc.arg('period_start')
 AND period_end = sqlc.arg('period_end');
 
 -- name: CreateBudget :one
-INSERT INTO budgets (name, amount, currency, type, period_start, period_end, notify_at_pct)
-VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *;
+INSERT INTO budgets (name, amount, currency, type, period_start, period_end, notify_at_pct, all_categories)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
 
 -- name: ListActiveBudgets :many
 SELECT * FROM budgets WHERE is_active = 1 ORDER BY created_at DESC;
@@ -25,6 +25,7 @@ UPDATE budgets SET
     period_start = COALESCE(sqlc.narg('period_start'), period_start),
     period_end = COALESCE(sqlc.narg('period_end'), period_end),
     type = COALESCE(sqlc.narg('type'), type),
+    all_categories = COALESCE(sqlc.narg('all_categories'), all_categories),
     updated_at = datetime('now')
 WHERE id = sqlc.arg('id') RETURNING *;
 
@@ -71,6 +72,16 @@ SELECT COALESCE(SUM(t.amount), 0)
 FROM transactions t
 JOIN budget_categories bc ON bc.category_id = t.category_id
 WHERE bc.budget_id = sqlc.arg('budget_id')
+AND t.type = 'expense'
+AND t.is_archived = 0
+AND t.date >= sqlc.arg('period_start')
+AND t.date <= sqlc.arg('period_end');
+
+-- name: SumAllCategoryExpenses :one
+SELECT COALESCE(SUM(t.amount), 0)
+FROM transactions t
+JOIN categories c ON c.id = t.category_id
+WHERE c.type = 'expense'
 AND t.type = 'expense'
 AND t.is_archived = 0
 AND t.date >= sqlc.arg('period_start')
