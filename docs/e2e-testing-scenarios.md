@@ -177,16 +177,16 @@ Isolated feature tests covering edge cases and error paths.
 
 ### D7: Bills
 
-| ID | Preconditions | Scenario | Expected Result |
-|----|---------------|----------|-----------------|
-| D7.1 | Wallet initialized | `wallet bill add "Rent" 5000000 -a Checking --recurrence monthly --due-date 2026-08-01` | Bill created |
-| D7.2 | Bill with RRULE | `wallet bill add "Gym" 200000 -a Checking --recurrence "FREQ=WEEKLY;BYDAY=MO"` | Bill created with weekly recurrence |
-| D7.3 | Bill exists | `wallet bill due --next 30` | Bills due within 30 days shown |
-| D7.4 | Bill is paused | `wallet bill due` | Paused bills excluded from due list |
-| D7.5 | Bill pay with amount override | `wallet bill pay 1 --amount 5200000` | Transaction created with custom amount |
-| D7.6 | Invalid recurrence | `wallet bill add "Bad" 1000 -a Checking --recurrence "invalid"` | Error: invalid recurrence |
-| D7.7 | Bill with missing account | `wallet bill add "Test" 1000 -a NonExistent` | Error: account not found |
-| D7.8 | Bill edited with `--recurrence` | `wallet bill edit 1 --recurrence yearly` | Recurrence updated |
+| ID | Preconditions | Scenario | Expected Result | Result | Reason / Suggestion |
+|----|---------------|----------|-----------------|--------|---------------------|
+| D7.1 | Wallet initialized | `wallet bill add "Rent" 5000000 -a Checking --recurrence monthly --due-date 2026-08-01` | Bill created | ❌ FAILED | CLI does not have `--recurrence` or `--due-date` flags. Also missing `-c` (category) flag. Actual CLI uses `--monthly --day 1 -c <category>`. With correct syntax `-c "Bills & Utilities" --monthly --day 1`, bill is created successfully. **Suggestion:** Fix scenario to use `--monthly --day 1 -c "Bills & Utilities"`. |
+| D7.2 | Bill with RRULE | `wallet bill add "Gym" 200000 -a Checking --recurrence "FREQ=WEEKLY;BYDAY=MO"` | Bill created with weekly recurrence | ❌ FAILED | `--recurrence` flag doesn't exist in `bill add`. Correct syntax: `--custom --rrule "FREQ=WEEKLY;BYDAY=MO" -c <category>`. With correct syntax, bill is created with recurrence_rule set. **Suggestion:** Fix scenario to use `--custom --rrule "FREQ=WEEKLY;BYDAY=MO"`. |
+| D7.3 | Bill exists | `wallet bill due --next 30` | Bills due within 30 days shown | ✅ PASSED | Shows due bills correctly (Gym: 200000 due 2026-07-09). Count and total_due correct. |
+| D7.4 | Bill is paused | `wallet bill due` | Paused bills excluded from due list | ✅ PASSED | After pausing Rent (id=1), `wallet bill due` only shows Gym. Paused bill correctly excluded. |
+| D7.5 | Bill pay with amount override | `wallet bill pay 1 --amount 5200000` | Transaction created with custom amount | ✅ PASSED | Transaction created with amount=5200000 (overridden from 5000000). Next due date advanced. |
+| D7.6 | Invalid recurrence | `wallet bill add "Bad" 1000 -a Checking --recurrence "invalid"` | Error: invalid recurrence | ❌ FAILED | `--recurrence` flag doesn't exist in `bill add`. With `bill add` correct syntax (`--custom --rrule "INVALID"`), returns `VALIDATION_ERROR: "RRULE must start with FREQ="`. **Suggestion:** Fix scenario to use `--custom --rrule "INVALID"`. Note: `bill edit` does have `--recurrence` flag but `bill add` uses `--monthly/--daily/--weekly/--yearly/--custom --rrule`. |
+| D7.7 | Bill with missing account | `wallet bill add "Test" 1000 -a NonExistent` | Error: account not found | ❌ FAILED | Missing `-c` (category) flag validates first: returns VALIDATION_ERROR "category is required". With valid category + monthly flag, correct `ACCOUNT_NOT_FOUND` is returned. **Suggestion:** Fix scenario to include `-c <category>` flag. |
+| D7.8 | Bill edited with `--recurrence` | `wallet bill edit 1 --recurrence yearly` | Recurrence updated | ✅ PASSED | `bill edit` does have `--recurrence` flag. Recurrence successfully updated to "yearly". |
 
 ### D8: Exchange Rates
 
