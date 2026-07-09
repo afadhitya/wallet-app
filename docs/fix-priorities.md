@@ -10,11 +10,12 @@
 
 Data integrity or core functionality issues that can corrupt or lose data.
 
-| # | Test ID | Issue | Impact | Suggested Fix |
-|---|---------|-------|--------|---------------|
-| 1 | **D4.5** | System categories (Food & Dining, etc.) can be **deleted** without error. `is_system=1` flag exists but is never enforced. | User can permanently delete base categories. All child categories become orphaned. | Add validation in `service/category.go` to block deletion when `is_system=1`. Return `VALIDATION_ERROR`. |
-| 2 | **D4.6** | Categories with active transactions can be **deleted** without error. No FK constraint check. | Referential integrity broken. Transactions reference non-existent categories. | Add `has_transactions` check before deletion. Block or warn when transactions reference the category. |
-| 3 | **J2.19** | `wallet bill rm <id>` crashes with raw SQL FK error when bill has been paid: `"FOREIGN KEY constraint failed (787)"`. | Exposes internal SQL error to user. Bill cannot be removed if it has payments. | Change `rm` to soft-delete (`is_active=0`) like other resources, or handle FK gracefully with a user-friendly message. |
+| # | Part | Test ID | Issue | Suggested Fix |
+|---|------|---------|-------|---------------|
+| 1 | B | **D4.5** | System categories (Food & Dining, etc.) can be **deleted** without error. `is_system=1` flag exists but is never enforced. | Add validation in `service/category.go` to block deletion when `is_system=1`. Return `VALIDATION_ERROR`. |
+| 2 | B | **D4.6** | Categories with active transactions can be **deleted** without error. No FK constraint check. | Add `has_transactions` check before deletion. Block or warn when transactions reference the category. |
+| 3 | A | **J2.19** | `wallet bill rm <id>` crashes with raw SQL FK error when bill has been paid: `"FOREIGN KEY constraint failed (787)"`. | Change `rm` to soft-delete (`is_active=0`) like other resources, or handle FK gracefully. |
+| 4 | A | **J2.16** | One-time bill is archived (`is_active=0`) instead of hard-deleted after payment. `PlannedPayment` record remains. | Either implement true hard-delete for one-time bills, or update expected behavior to match soft-delete pattern. |
 
 ---
 
@@ -22,78 +23,91 @@ Data integrity or core functionality issues that can corrupt or lose data.
 
 Core features don't work as documented/expected.
 
-| # | Test ID | Issue | Impact | Suggested Fix |
-|---|---------|-------|--------|---------------|
-| 4 | **D3.18** | Adjustment transactions appear in default `wallet list`. AGENTS.md says adjustments are "Excluded from all reports". | Users see balance corrections mixed with real transactions. Confusing. | Add `WHERE is_adjustment=0` filter to the default list query. Only show adjustments with `--type adjustment`. |
-| 5 | **J1.12 / D2.5** | `--archived` flag doesn't exist on `wallet list` or `wallet account list`. CLI uses `--all` instead. | Users can't view archived items via the documented flag name. | Add `--archived` as an alias for `--all` on list commands, or update docs. |
-| 6 | **J4.5** | `wallet report --export csv --output <file>` returns JSON with `file_path` claim but **no file is written** to disk. | CSV export is non-functional. Users get JSON instead of a real CSV file. | Implement actual file writing in `--output` path, or remove `file_path` from JSON response. |
-| 7 | **D3.2** | `wallet add expense -1000` fails with Cobra flag parsing error (`-1` as unknown flag). | Users cannot enter negative amounts naturally. Requires workaround (`--` separator). | Accept negative amounts as positional args after `--`. Document the required syntax for negative values. |
-| 8 | **D10.2** | Some error paths (Cobra arg validation) don't produce JSON output even with `--json` flag. | Inconsistent error handling — machine consumers can't parse all errors. | Catch arg validation errors and wrap them in the standard JSON error envelope. |
+| # | Part | Test ID | Issue | Suggested Fix |
+|---|------|---------|-------|---------------|
+| 5 | B | **D3.18** | Adjustment transactions appear in default `wallet list`. AGENTS.md says adjustments are "Excluded from all reports". | Add `WHERE is_adjustment=0` filter to the default list query. Show adjustments only with `--type adjustment`. |
+| 6 | A | **J1.12** | `--archived` flag doesn't exist on `wallet list` or `wallet account list`. CLI uses `--all` instead. D2.5 same issue for accounts. | Add `--archived` as an alias for `--all` on list commands, or update docs. |
+| 7 | A | **J4.5** | `wallet report --export csv --output <file>` returns JSON with `file_path` claim but **no file is written** to disk. | Implement actual file writing in `--output` path, or remove `file_path` from JSON response. |
+| 8 | B | **D3.2** | `wallet add expense -1000` fails with Cobra flag parsing error (`-1` as unknown flag). | Accept negative amounts as positional args after `--`. Document the required syntax for negative values. |
+| 9 | B | **D10.2** | Some error paths (Cobra arg validation) don't produce JSON output even with `--json` flag. | Catch arg validation errors and wrap them in the standard JSON error envelope. |
 
 ---
 
 ## 🟡 P3 — Multi-Currency Gaps (Medium Priority)
 
-Multi-currency support is partially implemented — conversion works at transaction creation and in reports, but not in derived features.
+Multi-currency conversion works at transaction creation and in reports, but not in derived features.
 
-| # | Test ID | Issue | Impact | Suggested Fix |
-|---|---------|-------|--------|---------------|
-| 9 | **J3.10 / D6.8** | Budget `check` uses raw amounts for multi-currency spending (50000 IDR + 10 USD = 50010) instead of converted values (50000 + 160000 = 210000 IDR). | Budget tracking is wrong for users with foreign currency accounts. | Use `COALESCE(base_amount, amount)` when summing budget spending, falling back to raw amount only when `base_amount` is null. |
-| 10 | **J3.11-12 / D9.4-5** | Forecast and forecast bills don't convert bill amounts. Hosting 10 USD is treated as 10 IDR. | Forecast projections are incorrect for multi-currency users. | Convert bill amounts using account's configured exchange rate before adding to forecast totals. |
-| 11 | **J3.7 / D2.8** | `wallet account list` shows only individual raw balances. No converted total or aggregate net worth. | Users with multiple currencies can't see their total net worth in one place. | Add a summary row with converted total (using stored rates) at the bottom of account list. |
-| 12 | **D3.14** | `wallet list --category <parent>` shows 0 results. Parent category filter doesn't include child categories. | Users filtering by e.g. "Food & Dining" miss transactions in Restaurant, Groceries, etc. | Expand category filter to include all descendants when a parent is specified. |
-| 13 | **J3.8 / D2.9 / D9.6** | No warnings when exchange rates are missing. Built-in defaults mask rate removal. | Users don't know when their configured rates are removed or fallback rates are used. | Compare against config file (not built-in defaults) to detect missing rates. Surface warnings in account list, forecast, and budget check. |
-
----
-
-## 🔵 P4 — CLI Flag Inconsistencies (Medium Priority)
-
-CLI commands use different accessor patterns — some by name, others by numeric ID — creating a confusing UX.
-
-| # | Test ID | Issue | Impact | Suggested Fix |
-|---|---------|-------|--------|---------------|
-| 14 | **D2.3 / D2.4 / D2.6** | `wallet account edit/archive` expects `<id>` (integer) but users naturally use account names. | Users get `INVALID_INPUT: invalid account ID: Checking` instead of a helpful error. | Add name-based lookup to `account edit` and `account archive`, or add a clear error with available names. |
-| 15 | **D4.3 / D4.4** | `wallet category edit/rm` expects `<id>` but categories have names. Same as accounts. | Users can't use category names directly for edit/delete operations. | Add name-based lookup or suggest correct numeric ID with category list on error. |
-| 16 | **D6.3 / D6.10** | `wallet budget edit/rm` expects `<id>` but budgets have names. | Users expect to reference budgets by name. | Same fix: add name-based lookup or improve error message. |
-| 17 | **D4.2** | `wallet category add --parent` expects numeric ID (e.g. `--parent 8`) not category name (`--parent Income`). | Users get `VALIDATION_ERROR: invalid parent category ID`. | Implement name-based parent lookup: search categories by name when `--parent` receives a non-numeric value. |
+| # | Part | Test ID | Issue | Suggested Fix |
+|---|------|---------|-------|---------------|
+| 10 | A | **J3.10 / D6.8** | Budget `check` uses raw amounts (50000 IDR + 10 USD = 50010) instead of converted (50000 + 160000 = 210000 IDR). | Use `COALESCE(base_amount, amount)` when summing budget spending. |
+| 11 | A | **J3.11-12 / D9.4-5** | Forecast and forecast bills don't convert bill amounts. Hosting 10 USD treated as 10 IDR. | Convert bill amounts using account's exchange rate before forecast totals. |
+| 12 | A | **J3.7 / D2.8** | `wallet account list` shows only individual raw balances. No converted total or aggregate net worth. | Add a summary row with converted total (using stored rates) at the bottom of account list. |
+| 13 | B | **D3.14** | `wallet list --category <parent>` shows 0 results. Parent filter doesn't include child categories. | Expand category filter to include all descendants when a parent is specified. |
+| 14 | A | **J3.8 / D2.9 / D9.6** | No warnings when exchange rates are missing. Built-in defaults mask rate removal. | Compare against config file (not built-in defaults) to detect missing rates. |
 
 ---
 
-## ⚪ P5 — Flag Mismatches in Test Scenarios (Low Priority)
+## 🔵 P4 — CLI ID vs Name Inconsistencies (Medium Priority)
 
-These failures are in the test document, not in the app. The CLI works correctly; the scenarios use wrong flags or category names. They should be corrected in the test document.
+Some commands accept names, others require numeric IDs. Creates confusing UX.
 
-| # | Test IDs | Issue | Fix |
-|---|----------|-------|-----|
-| 18 | **J1.5, J2.1, D1.3, D3.1a, D3.6, D3.14, D6.1** | `-c Food` / `-c Transport` — wrong category name. Should be "Food & Dining" / "Transportation". | Update test scenarios |
-| 19 | **J2.8, J2.15, D7.1, D7.2, D7.6** | `--recurrence monthly` / `--due-date` — flags don't exist in `bill add`. Should be `--monthly --day N -c <cat>`. | Update test scenarios |
-| 20 | **J2.3, D6.5, D6.6** | `wallet budget check` requires `--all` or `-b <id>`. Bare command returns error. | Add `--all` to scenarios |
-| 21 | **J2.10** | `wallet bill due --overdue` — bill not overdue yet. Should use bare `wallet bill due`. | Fix flag or precondition |
-| 22 | **J4.6** | `wallet forecast` defaults to 1 month. Expected 6. Should use `-n 6`. | Add `-n 6` to scenario |
-| 23 | **J1.2, D1.2** | `wallet init` on existing DB returns success, not error. App is idempotent. | Update expected result to reflect idempotent behavior |
-| 24 | **J3.1-2, D8.1-2** | App has built-in default rates. "No rates" precondition impossible. | Update expected results |
-| 25 | **D1.4** | App auto-recreates missing DB. No error possible. | Update expected result |
-| 26 | **D1.1** | `config.toml` not created during init. Only `rates.toml` is. | Either implement config.toml creation or update expected result |
+| # | Part | Test ID | Issue | Suggested Fix |
+|---|------|---------|-------|---------------|
+| 15 | B | **D2.3 / D2.4 / D2.6** | `wallet account edit/archive` expects `<id>` (integer) not name. User gets `INVALID_INPUT: invalid account ID: Checking`. | Add name-based lookup, or show available names on error. |
+| 16 | B | **D4.3 / D4.4** | `wallet category edit/rm` expects `<id>` not name. | Add name-based lookup, or show available names on error. |
+| 17 | B | **D6.3 / D6.10** | `wallet budget edit/rm` expects `<id>` not name. | Add name-based lookup, or show available names on error. |
+| 18 | B | **D4.2** | `wallet category add --parent` expects numeric ID (`--parent 8`) not name (`--parent Income`). | Implement name-based parent lookup. |
+
+---
+
+## ⚪ P5 — Test Scenario Flag Mismatches (Low Priority)
+
+The CLI works correctly; the scenarios use wrong flags or category names. Fix the test document.
+
+| # | Part | Test IDs | Issue | Fix |
+|---|------|----------|-------|-----|
+| 19 | A+B | **J1.5, J2.1, D1.3, D3.1a, D3.6, D3.14, D6.1** | `-c Food` / `-c Transport` — wrong category name. Should be "Food & Dining" / "Transportation". | Update test scenarios |
+| 20 | A+B | **J2.8, J2.15, D7.1, D7.2, D7.6** | `--recurrence monthly` / `--due-date` — flags don't exist in `bill add`. Should be `--monthly --day N -c <cat>`. | Update test scenarios |
+| 21 | A+B | **J2.3, D6.5, D6.6** | `wallet budget check` requires `--all` or `-b <id>`. Bare command returns error. | Add `--all` to scenarios |
+| 22 | A | **J2.10** | `wallet bill due --overdue` — bill not overdue yet. Should use bare `wallet bill due`. | Fix flag or precondition in scenario |
+| 23 | A | **J4.6** | `wallet forecast` defaults to 1 month. Expected 6. Should use `-n 6`. | Add `-n 6` to scenario |
+| 24 | A | **J1.2, D1.2** | `wallet init` on existing DB returns success, not error. App is idempotent by design. | Update expected result |
+| 25 | A | **J3.1-2, D8.1-2** | App has built-in default rates. "No rates" precondition impossible. | Update expected results |
+| 26 | B | **D1.4** | App auto-recreates missing DB. No error possible. | Update expected result |
+| 27 | B | **D1.1** | `config.toml` not created during init. Only `rates.toml` is. | Either implement config.toml creation or update expected result |
+| 28 | B | **D7.7** | Missing `-c` (category) flag validates before account. | Add `-c <category>` to scenario |
+
+---
+
+## ℹ️ Skipped Tests (Not Failures)
+
+These 2 scenarios cannot be tested via CLI in a single session — they require time passage.
+
+| ID | Reason |
+|----|--------|
+| **J2.6** | Requires waiting until next month to test one_time budget period check |
+| **J2.7** | Requires monthly period rollover to test auto-creation of new period |
 
 ---
 
 ## Summary by Priority
 
-| Priority | Count | Key Problems |
-|----------|-------|--------------|
-| 🔴 P1 | 3 | Data integrity (delete system categories, delete used categories, FK crash) |
-| 🟠 P2 | 5 | Adjustments in list, --archived missing, CSV export broken, negative amounts, JSON error envelope |
-| 🟡 P3 | 5 | Multi-currency gaps (budget, forecast, account total, category filter, warnings) |
-| 🔵 P4 | 4 | CLI ID vs name inconsistencies (account, category, budget, parent) |
-| ⚪ P5 | 8 | Test document flag mismatches and erroneous expected results |
+| Priority | Count | Part A | Part B | Key Problems |
+|----------|-------|--------|--------|--------------|
+| 🔴 P1 | 4 | 2 | 2 | System cat delete, used cat delete, FK crash on bill rm, one-time bill archive |
+| 🟠 P2 | 5 | 2 | 3 | Adjustments in list, --archived missing, CSV export broken, negative amounts, JSON envelope |
+| 🟡 P3 | 5 | 4 | 1 | Multi-currency gaps (budget, forecast, account total, category filter, warnings) |
+| 🔵 P4 | 4 | 0 | 4 | CLI ID vs name (account, category, budget, parent) |
+| ⚪ P5 | 10 | 5 | 5 | Test scenario flag mismatches |
+| ⏭️ Skipped | 2 | 2 | 0 | Time-constrained tests |
 
 ### Recommended Fix Order
 
-1. **P1 items 1-3** — Data integrity is non-negotiable
-2. **P2 items 4-8** — Core UX broken in visible ways
-3. **P4 items 14-17** — Low effort, high UX impact (name-based lookup)
-4. **P3 items 9-13** — Multi-currency affects a smaller user base but is important for completeness
-5. **P5 items 18-26** — Update test scenarios to match actual CLI behavior
+1. **🔴 P1** — Data integrity first
+2. **🟠 P2** — Core UX broken in visible ways
+3. **🔵 P4** — Name-based lookup (low effort, high UX impact)
+4. **🟡 P3** — Multi-currency completeness
+5. **⚪ P5** — Update test scenarios to match actual CLI behavior
 
 ---
 
