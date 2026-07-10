@@ -9,6 +9,8 @@ func NewRootCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().Bool("json", false, "Enable JSON output for machine-readable results")
+	cmd.PersistentFlags().CountP("verbose", "v", "Increase log verbosity (-v for INFO, -vv for DEBUG)")
+	cmd.PersistentFlags().String("log-file", "", "Write JSON logs to the specified file")
 
 	cmd.AddCommand(newInitCmd())
 	cmd.AddCommand(newAddCmd())
