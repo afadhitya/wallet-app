@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/afadhitya/wallet-app/internal/gen"
@@ -35,22 +36,35 @@ type TransactionResult struct {
 }
 
 func (s *Service) AddExpense(params CreateExpenseParams) (*TransactionResult, error) {
+	s.logger.Info("AddExpense called", slog.Int64("amount", params.Amount), slog.String("category", params.Category), slog.String("account", params.Account))
 	if params.Amount <= 0 {
+		s.logger.Warn("AddExpense validation failed", slog.String("field", "amount"))
 		return nil, ErrInvalidAmount
 	}
 
 	date, err := parseDate(params.Date)
 	if err != nil {
+		s.logger.Warn("AddExpense validation failed", slog.String("field", "date"), slog.String("error", err.Error()))
 		return nil, &ValidationError{Field: "date", Message: err.Error()}
 	}
 
 	category, err := s.ResolveCategory(params.Category)
 	if err != nil {
+		if isBusinessError(err) {
+			s.logger.Warn("AddExpense category resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("AddExpense category resolution failed", slog.String("error", err.Error()))
+		}
 		return nil, fmt.Errorf("category: %w", err)
 	}
 
 	account, err := s.ResolveAccount(params.Account)
 	if err != nil {
+		if isBusinessError(err) {
+			s.logger.Warn("AddExpense account resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("AddExpense account resolution failed", slog.String("error", err.Error()))
+		}
 		return nil, fmt.Errorf("account: %w", err)
 	}
 
@@ -67,6 +81,11 @@ func (s *Service) AddExpense(params CreateExpenseParams) (*TransactionResult, er
 
 	baseAmount, baseCurrency, err := s.resolveBaseFields(account.Currency, params.Amount)
 	if err != nil {
+		if isBusinessError(err) {
+			s.logger.Warn("AddExpense resolve base fields failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("AddExpense resolve base fields failed", slog.String("error", err.Error()))
+		}
 		return nil, err
 	}
 
@@ -83,6 +102,7 @@ func (s *Service) AddExpense(params CreateExpenseParams) (*TransactionResult, er
 		BaseCurrency: baseCurrency,
 	})
 	if err != nil {
+		s.logger.Error("AddExpense failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("create transaction: %w", err)
 	}
 
@@ -90,38 +110,59 @@ func (s *Service) AddExpense(params CreateExpenseParams) (*TransactionResult, er
 	for _, tagName := range params.Tags {
 		tag, err := s.ResolveTag(tagName)
 		if err != nil {
+			if isBusinessError(err) {
+				s.logger.Warn("AddExpense tag resolution failed", slog.String("tag", tagName), slog.String("error", err.Error()))
+			} else {
+				s.logger.Error("AddExpense tag resolution failed", slog.String("tag", tagName), slog.String("error", err.Error()))
+			}
 			return nil, fmt.Errorf("tag '%s': %w", tagName, err)
 		}
 		if err := s.AddTransactionTag(txn.ID, tag.ID); err != nil {
+			s.logger.Error("AddExpense add tag failed", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("add tag: %w", err)
 		}
 		tags = append(tags, tag)
 	}
 
 	if err := s.recalculateBalance(account.ID); err != nil {
+		s.logger.Error("AddExpense recalculate balance failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("recalculate balance: %w", err)
 	}
 
+	s.logger.Info("AddExpense completed", slog.Int64("id", txn.ID), slog.Int("tag_count", len(tags)))
 	return &TransactionResult{Transaction: txn, Tags: tags}, nil
 }
 
 func (s *Service) AddIncome(params CreateIncomeParams) (*TransactionResult, error) {
+	s.logger.Info("AddIncome called", slog.Int64("amount", params.Amount), slog.String("category", params.Category), slog.String("account", params.Account))
 	if params.Amount <= 0 {
+		s.logger.Warn("AddIncome validation failed", slog.String("field", "amount"))
 		return nil, ErrInvalidAmount
 	}
 
 	date, err := parseDate(params.Date)
 	if err != nil {
+		s.logger.Warn("AddIncome validation failed", slog.String("field", "date"), slog.String("error", err.Error()))
 		return nil, &ValidationError{Field: "date", Message: err.Error()}
 	}
 
 	category, err := s.ResolveCategory(params.Category)
 	if err != nil {
+		if isBusinessError(err) {
+			s.logger.Warn("AddIncome category resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("AddIncome category resolution failed", slog.String("error", err.Error()))
+		}
 		return nil, fmt.Errorf("category: %w", err)
 	}
 
 	account, err := s.ResolveAccount(params.Account)
 	if err != nil {
+		if isBusinessError(err) {
+			s.logger.Warn("AddIncome account resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("AddIncome account resolution failed", slog.String("error", err.Error()))
+		}
 		return nil, fmt.Errorf("account: %w", err)
 	}
 
@@ -138,6 +179,11 @@ func (s *Service) AddIncome(params CreateIncomeParams) (*TransactionResult, erro
 
 	baseAmount, baseCurrency, err := s.resolveBaseFields(account.Currency, params.Amount)
 	if err != nil {
+		if isBusinessError(err) {
+			s.logger.Warn("AddIncome resolve base fields failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("AddIncome resolve base fields failed", slog.String("error", err.Error()))
+		}
 		return nil, err
 	}
 
@@ -154,6 +200,7 @@ func (s *Service) AddIncome(params CreateIncomeParams) (*TransactionResult, erro
 		BaseCurrency: baseCurrency,
 	})
 	if err != nil {
+		s.logger.Error("AddIncome failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("create transaction: %w", err)
 	}
 
@@ -161,18 +208,26 @@ func (s *Service) AddIncome(params CreateIncomeParams) (*TransactionResult, erro
 	for _, tagName := range params.Tags {
 		tag, err := s.ResolveTag(tagName)
 		if err != nil {
+			if isBusinessError(err) {
+				s.logger.Warn("AddIncome tag resolution failed", slog.String("tag", tagName), slog.String("error", err.Error()))
+			} else {
+				s.logger.Error("AddIncome tag resolution failed", slog.String("tag", tagName), slog.String("error", err.Error()))
+			}
 			return nil, fmt.Errorf("tag '%s': %w", tagName, err)
 		}
 		if err := s.AddTransactionTag(txn.ID, tag.ID); err != nil {
+			s.logger.Error("AddIncome add tag failed", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("add tag: %w", err)
 		}
 		tags = append(tags, tag)
 	}
 
 	if err := s.recalculateBalance(account.ID); err != nil {
+		s.logger.Error("AddIncome recalculate balance failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("recalculate balance: %w", err)
 	}
 
+	s.logger.Info("AddIncome completed", slog.Int64("id", txn.ID), slog.Int("tag_count", len(tags)))
 	return &TransactionResult{Transaction: txn, Tags: tags}, nil
 }
 
@@ -203,31 +258,46 @@ type TransferResult struct {
 }
 
 func (s *Service) AddTransfer(params CreateTransferParams) (*TransferResult, error) {
+	s.logger.Info("AddTransfer called", slog.Int64("amount", params.Amount), slog.String("from_account", params.FromAccount), slog.String("to_account", params.ToAccount))
 	if params.Amount <= 0 {
+		s.logger.Warn("AddTransfer validation failed", slog.String("field", "amount"))
 		return nil, ErrInvalidAmount
 	}
 
 	if params.FromAccount == params.ToAccount {
+		s.logger.Warn("AddTransfer validation failed", slog.String("field", "accounts"))
 		return nil, &ValidationError{Field: "accounts", Message: "source and destination accounts must be different"}
 	}
 
 	date, err := parseDate(params.Date)
 	if err != nil {
+		s.logger.Warn("AddTransfer validation failed", slog.String("field", "date"), slog.String("error", err.Error()))
 		return nil, &ValidationError{Field: "date", Message: err.Error()}
 	}
 
 	fromAccount, err := s.ResolveAccount(params.FromAccount)
 	if err != nil {
+		if isBusinessError(err) {
+			s.logger.Warn("AddTransfer source account resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("AddTransfer source account resolution failed", slog.String("error", err.Error()))
+		}
 		return nil, fmt.Errorf("source account: %w", err)
 	}
 
 	toAccount, err := s.ResolveAccount(params.ToAccount)
 	if err != nil {
+		if isBusinessError(err) {
+			s.logger.Warn("AddTransfer destination account resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("AddTransfer destination account resolution failed", slog.String("error", err.Error()))
+		}
 		return nil, fmt.Errorf("destination account: %w", err)
 	}
 
 	fromBalance, err := s.q.GetAccountBalance(s.ctx(), fromAccount.ID)
 	if err != nil {
+		s.logger.Error("AddTransfer get source balance failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("get source balance: %w", err)
 	}
 	fromBalanceInt := balanceToInt64(fromBalance)
@@ -260,16 +330,20 @@ func (s *Service) AddTransfer(params CreateTransferParams) (*TransferResult, err
 		Date:         date,
 	})
 	if err != nil {
+		s.logger.Error("AddTransfer create transaction failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("create transfer: %w", err)
 	}
 
 	if err := s.recalculateBalance(fromAccount.ID); err != nil {
+		s.logger.Error("AddTransfer recalculate source balance failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("recalculate source balance: %w", err)
 	}
 	if err := s.recalculateBalance(toAccount.ID); err != nil {
+		s.logger.Error("AddTransfer recalculate destination balance failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("recalculate destination balance: %w", err)
 	}
 
+	s.logger.Info("AddTransfer completed", slog.Int64("id", txn.ID), slog.String("warning", warning))
 	return &TransferResult{Transaction: txn, Warning: warning}, nil
 }
 
@@ -300,6 +374,7 @@ type ListTransactionsResult struct {
 }
 
 func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransactionsResult, error) {
+	s.logger.Info("ListTransactions called", slog.String("type", params.Type), slog.String("month", params.Month), slog.Int("limit", params.Limit))
 	if params.Limit <= 0 {
 		params.Limit = 20
 	}
@@ -311,6 +386,11 @@ func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransact
 	if params.AccountName != "" {
 		account, err := s.ResolveAccount(params.AccountName)
 		if err != nil {
+			if isBusinessError(err) {
+				s.logger.Warn("ListTransactions account resolution failed", slog.String("error", err.Error()))
+			} else {
+				s.logger.Error("ListTransactions account resolution failed", slog.String("error", err.Error()))
+			}
 			return nil, fmt.Errorf("account: %w", err)
 		}
 		accountID = account.ID
@@ -319,6 +399,11 @@ func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransact
 	if params.CategoryName != "" {
 		category, err := s.ResolveCategory(params.CategoryName)
 		if err != nil {
+			if isBusinessError(err) {
+				s.logger.Warn("ListTransactions category resolution failed", slog.String("error", err.Error()))
+			} else {
+				s.logger.Error("ListTransactions category resolution failed", slog.String("error", err.Error()))
+			}
 			return nil, fmt.Errorf("category: %w", err)
 		}
 		categoryID = category.ID
@@ -339,6 +424,7 @@ func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransact
 	if params.Month != "" {
 		from, to, err := parseMonth(params.Month)
 		if err != nil {
+			s.logger.Warn("ListTransactions invalid month", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("month: %w", err)
 		}
 		dateFrom = from
@@ -365,9 +451,11 @@ func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransact
 			Offset:     int64(params.Offset),
 		})
 		if err != nil {
+			s.logger.Error("ListTransactions failed", slog.String("error", err.Error()))
 			return nil, err
 		}
 		result := buildListResult(s, transactions)
+		s.logger.Info("ListTransactions completed", slog.Int("count", len(transactions)), slog.Int64("total", result.Total))
 		return result, nil
 	}
 
@@ -381,10 +469,12 @@ func (s *Service) ListTransactions(params ListTransactionsParams) (*ListTransact
 		Offset:     int64(params.Offset),
 	})
 	if err != nil {
+		s.logger.Error("ListTransactions failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	result := buildListResult(s, transactions)
+	s.logger.Info("ListTransactions completed", slog.Int("count", len(transactions)), slog.Int64("total", result.Total))
 	return result, nil
 }
 
@@ -503,17 +593,21 @@ type EditTransactionParams struct {
 }
 
 func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*TransactionResult, error) {
+	s.logger.Info("EditTransaction called", slog.Int64("id", id))
 	oldTxn, err := s.q.GetTransactionByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.Warn("EditTransaction not found", slog.Int64("id", id))
 			return nil, &NotFoundError{Entity: "transaction", Name: fmt.Sprintf("%d", id)}
 		}
+		s.logger.Error("EditTransaction failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var amountVal sql.NullInt64
 	if params.Amount != nil {
 		if *params.Amount <= 0 {
+			s.logger.Warn("EditTransaction validation failed", slog.String("field", "amount"))
 			return nil, ErrInvalidAmount
 		}
 		amountVal = sql.NullInt64{Int64: *params.Amount, Valid: true}
@@ -523,6 +617,11 @@ func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*Tran
 	if params.CategoryName != "" {
 		category, err := s.ResolveCategory(params.CategoryName)
 		if err != nil {
+			if isBusinessError(err) {
+				s.logger.Warn("EditTransaction category resolution failed", slog.String("error", err.Error()))
+			} else {
+				s.logger.Error("EditTransaction category resolution failed", slog.String("error", err.Error()))
+			}
 			return nil, fmt.Errorf("category: %w", err)
 		}
 		categoryID = sql.NullInt64{Int64: category.ID, Valid: true}
@@ -532,6 +631,11 @@ func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*Tran
 	if params.AccountName != "" {
 		account, err := s.ResolveAccount(params.AccountName)
 		if err != nil {
+			if isBusinessError(err) {
+				s.logger.Warn("EditTransaction account resolution failed", slog.String("error", err.Error()))
+			} else {
+				s.logger.Error("EditTransaction account resolution failed", slog.String("error", err.Error()))
+			}
 			return nil, fmt.Errorf("account: %w", err)
 		}
 		accountID = sql.NullInt64{Int64: account.ID, Valid: true}
@@ -541,6 +645,7 @@ func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*Tran
 	if params.Date != "" {
 		parsed, err := parseDate(params.Date)
 		if err != nil {
+			s.logger.Warn("EditTransaction validation failed", slog.String("field", "date"), slog.String("error", err.Error()))
 			return nil, &ValidationError{Field: "date", Message: err.Error()}
 		}
 		dateVal = sql.NullString{String: parsed, Valid: true}
@@ -564,15 +669,22 @@ func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*Tran
 		Notes:       notesVal,
 	})
 	if err != nil {
+		s.logger.Error("EditTransaction update transaction failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("update transaction: %w", err)
 	}
 
 	for _, tagName := range params.AddTagNames {
 		tag, err := s.ResolveTag(tagName)
 		if err != nil {
+			if isBusinessError(err) {
+				s.logger.Warn("EditTransaction add tag resolution failed", slog.String("tag", tagName), slog.String("error", err.Error()))
+			} else {
+				s.logger.Error("EditTransaction add tag resolution failed", slog.String("tag", tagName), slog.String("error", err.Error()))
+			}
 			return nil, fmt.Errorf("add tag '%s': %w", tagName, err)
 		}
 		if err := s.AddTransactionTag(id, tag.ID); err != nil {
+			s.logger.Error("EditTransaction add tag failed", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("add tag: %w", err)
 		}
 	}
@@ -580,9 +692,15 @@ func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*Tran
 	for _, tagName := range params.RemoveTagNames {
 		tag, err := s.ResolveTag(tagName)
 		if err != nil {
+			if isBusinessError(err) {
+				s.logger.Warn("EditTransaction remove tag resolution failed", slog.String("tag", tagName), slog.String("error", err.Error()))
+			} else {
+				s.logger.Error("EditTransaction remove tag resolution failed", slog.String("tag", tagName), slog.String("error", err.Error()))
+			}
 			return nil, fmt.Errorf("remove tag '%s': %w", tagName, err)
 		}
 		if err := s.RemoveTransactionTag(id, tag.ID); err != nil {
+			s.logger.Error("EditTransaction remove tag failed", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("remove tag: %w", err)
 		}
 	}
@@ -605,28 +723,35 @@ func (s *Service) EditTransaction(id int64, params EditTransactionParams) (*Tran
 
 	for acctID := range affectedAccounts {
 		if err := s.recalculateBalance(acctID); err != nil {
+			s.logger.Error("EditTransaction recalculate balance failed", slog.Int64("account_id", acctID), slog.String("error", err.Error()))
 			return nil, fmt.Errorf("recalculate balance for account %d: %w", acctID, err)
 		}
 	}
 
 	tags, err := s.ListTransactionTags(id)
 	if err != nil {
+		s.logger.Error("EditTransaction list tags failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("list tags: %w", err)
 	}
 
+	s.logger.Info("EditTransaction completed", slog.Int64("id", id))
 	return &TransactionResult{Transaction: updated, Tags: tags}, nil
 }
 
 func (s *Service) RemoveTransaction(id int64) error {
+	s.logger.Info("RemoveTransaction called", slog.Int64("id", id))
 	txn, err := s.q.GetTransactionByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.Warn("RemoveTransaction not found", slog.Int64("id", id))
 			return &NotFoundError{Entity: "transaction", Name: fmt.Sprintf("%d", id)}
 		}
+		s.logger.Error("RemoveTransaction failed", slog.String("error", err.Error()))
 		return err
 	}
 
 	if err := s.q.ArchiveTransaction(s.ctx(), id); err != nil {
+		s.logger.Error("RemoveTransaction archive transaction failed", slog.String("error", err.Error()))
 		return fmt.Errorf("archive transaction: %w", err)
 	}
 
@@ -638,10 +763,12 @@ func (s *Service) RemoveTransaction(id int64) error {
 
 	for acctID := range affectedAccounts {
 		if err := s.recalculateBalance(acctID); err != nil {
+			s.logger.Error("RemoveTransaction recalculate balance failed", slog.Int64("account_id", acctID), slog.String("error", err.Error()))
 			return fmt.Errorf("recalculate balance for account %d: %w", acctID, err)
 		}
 	}
 
+	s.logger.Info("RemoveTransaction completed", slog.Int64("id", id))
 	return nil
 }
 
@@ -661,19 +788,27 @@ type AdjustBalanceResult struct {
 }
 
 func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResult, error) {
+	s.logger.Info("AdjustBalance called", slog.String("account", params.Account), slog.Int64("target", params.Target))
 	account, err := s.ResolveAccount(params.Account)
 	if err != nil {
+		if isBusinessError(err) {
+			s.logger.Warn("AdjustBalance account resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("AdjustBalance account resolution failed", slog.String("error", err.Error()))
+		}
 		return nil, fmt.Errorf("account: %w", err)
 	}
 
 	oldBalanceRaw, err := s.q.GetAccountBalance(s.ctx(), account.ID)
 	if err != nil {
+		s.logger.Error("AdjustBalance get current balance failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("get current balance: %w", err)
 	}
 	oldBalance := balanceToInt64(oldBalanceRaw)
 	diff := params.Target - oldBalance
 
 	if diff == 0 {
+		s.logger.Info("AdjustBalance completed (no change)", slog.Int64("account_id", account.ID))
 		return &AdjustBalanceResult{
 			Account:    account,
 			OldBalance: oldBalance,
@@ -701,19 +836,23 @@ func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResul
 		Date:        time.Now().Format("2006-01-02"),
 	})
 	if err != nil {
+		s.logger.Error("AdjustBalance create adjustment failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("create adjustment: %w", err)
 	}
 
 	if err := s.recalculateBalance(account.ID); err != nil {
+		s.logger.Error("AdjustBalance recalculate balance failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("recalculate balance: %w", err)
 	}
 
 	newBalanceRaw, err := s.q.GetAccountBalance(s.ctx(), account.ID)
 	if err != nil {
+		s.logger.Error("AdjustBalance get new balance failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("get new balance: %w", err)
 	}
 	newBalance := balanceToInt64(newBalanceRaw)
 
+	s.logger.Info("AdjustBalance completed", slog.Int64("account_id", account.ID), slog.Int64("diff", diff))
 	return &AdjustBalanceResult{
 		Account:     account,
 		OldBalance:  oldBalance,
@@ -724,13 +863,17 @@ func (s *Service) AdjustBalance(params AdjustBalanceParams) (*AdjustBalanceResul
 }
 
 func (s *Service) GetTransactionByID(id int64) (*gen.Transaction, error) {
+	s.logger.Info("GetTransactionByID called", slog.Int64("id", id))
 	txn, err := s.q.GetTransactionByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.Warn("GetTransactionByID not found", slog.Int64("id", id))
 			return nil, &NotFoundError{Entity: "transaction", Name: fmt.Sprintf("%d", id)}
 		}
+		s.logger.Error("GetTransactionByID failed", slog.String("error", err.Error()))
 		return nil, err
 	}
+	s.logger.Info("GetTransactionByID completed", slog.Int64("id", id))
 	return txn, nil
 }
 
