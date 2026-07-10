@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -405,7 +406,7 @@ func TestGetService_MkdirAllError(t *testing.T) {
 func TestGetService_DBOpenError(t *testing.T) {
 	oldOpen := svcDBOpen
 	defer func() { svcDBOpen = oldOpen }()
-	svcDBOpen = func(path string) (*sql.DB, error) {
+	svcDBOpen = func(path string, logger *slog.Logger) (*sql.DB, error) {
 		return nil, fmt.Errorf("mock open error")
 	}
 
@@ -419,7 +420,7 @@ func TestGetService_DBOpenError(t *testing.T) {
 func TestGetService_MigrateError(t *testing.T) {
 	oldMigrate := svcDBMigrate
 	defer func() { svcDBMigrate = oldMigrate }()
-	svcDBMigrate = func(db *sql.DB) error {
+	svcDBMigrate = func(db *sql.DB, logger *slog.Logger) error {
 		return fmt.Errorf("mock migrate error")
 	}
 

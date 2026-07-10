@@ -5,11 +5,18 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/afadhitya/wallet-app/internal/testdb"
 )
 
 func setupServiceForPP(t *testing.T) *Service {
 	t.Helper()
-	return setupService(t)
+	SetTestRateConfig(TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates:        map[string]int64{},
+	})
+	t.Cleanup(ResetTestRateConfig)
+	return New(testdb.Open(t, testLogger()), testLogger())
 }
 
 func mustCreateAccount(t *testing.T, svc *Service, name, accType, currency string) {

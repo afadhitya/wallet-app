@@ -5,12 +5,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
 	"strings"
 	"testing"
 
 	"github.com/afadhitya/wallet-app/internal/gen"
 	"github.com/afadhitya/wallet-app/internal/testdb"
 )
+
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 func TestSetBudgetMonthlyWithCategories(t *testing.T) {
 	svc := setupService(t)
@@ -994,8 +1000,8 @@ func (q *budgetSpendingFailQuerier) SumTagExpenses(ctx context.Context, arg gen.
 }
 
 func TestSetBudgetCreateError(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetCreateFailQuerier{Querier: gen.New(dbase)})
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, &budgetCreateFailQuerier{Querier: gen.New(dbase)}, testLogger())
 
 	_, err := svc.SetBudget(SetBudgetParams{
 		Name:       "Food",
@@ -1012,8 +1018,8 @@ func TestSetBudgetCreateError(t *testing.T) {
 }
 
 func TestEditBudgetGetError(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetGetFailQuerier{Querier: gen.New(dbase)})
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, &budgetGetFailQuerier{Querier: gen.New(dbase)}, testLogger())
 
 	_, err := svc.EditBudget(1, EditBudgetParams{Name: "Test"})
 	if err == nil {
@@ -1025,7 +1031,7 @@ func TestEditBudgetGetError(t *testing.T) {
 }
 
 func TestListBudgetsSpendingError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1035,7 +1041,7 @@ func TestListBudgetsSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true}, testLogger())
 
 	_, err := svc.ListBudgets(ListBudgetsParams{All: false})
 	if err == nil {
@@ -1066,8 +1072,8 @@ func TestListBudgetsAll(t *testing.T) {
 }
 
 func TestListBudgetsActiveError(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)})
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)}, testLogger())
 
 	_, err := svc.ListBudgets(ListBudgetsParams{All: false})
 	if err == nil {
@@ -1076,9 +1082,9 @@ func TestListBudgetsActiveError(t *testing.T) {
 }
 
 func TestListBudgetsAllError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
-	svc := NewWithQuerier(dbase, &budgetAllListFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetAllListFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.ListBudgets(ListBudgetsParams{All: true})
 	if err == nil {
@@ -1087,8 +1093,8 @@ func TestListBudgetsAllError(t *testing.T) {
 }
 
 func TestCheckBudgetsListError(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)})
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)}, testLogger())
 
 	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
 	if err == nil {
@@ -1137,8 +1143,8 @@ func TestResolveBudgetByIDInactive(t *testing.T) {
 }
 
 func TestResolveBudgetListError(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)})
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)}, testLogger())
 
 	_, err := svc.resolveBudget("ByName")
 	if err == nil {
@@ -1365,8 +1371,8 @@ func (q *budgetPriorFailQuerier) GetMostRecentPriorBudget(ctx context.Context, a
 }
 
 func TestSetBudgetGetByNameError(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetGetByNameAndPeriodFailQuerier{Querier: gen.New(dbase)})
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, &budgetGetByNameAndPeriodFailQuerier{Querier: gen.New(dbase)}, testLogger())
 
 	_, err := svc.SetBudget(SetBudgetParams{
 		Name:       "Food",
@@ -1383,8 +1389,8 @@ func TestSetBudgetGetByNameError(t *testing.T) {
 }
 
 func TestSetBudgetAddCategoryError(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetAddCatFailQuerier{Querier: gen.New(dbase)})
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, &budgetAddCatFailQuerier{Querier: gen.New(dbase)}, testLogger())
 
 	_, err := svc.SetBudget(SetBudgetParams{
 		Name:       "Food",
@@ -1401,10 +1407,10 @@ func TestSetBudgetAddCategoryError(t *testing.T) {
 }
 
 func TestSetBudgetAddTagError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateTag(context.Background(), "test-tag")
-	svc := NewWithQuerier(dbase, &budgetAddTagFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetAddTagFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.SetBudget(SetBudgetParams{
 		Name:   "Food",
@@ -1421,7 +1427,7 @@ func TestSetBudgetAddTagError(t *testing.T) {
 }
 
 func TestUpdateExistingBudgetRemoveCatError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1431,7 +1437,7 @@ func TestUpdateExistingBudgetRemoveCatError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetRemoveCatFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetRemoveCatFailQuerier{Querier: q}, testLogger())
 
 	cat, _ := svc.ResolveCategory("Food & Dining")
 	_, err := svc.updateExistingBudget(1, SetBudgetParams{
@@ -1444,7 +1450,7 @@ func TestUpdateExistingBudgetRemoveCatError(t *testing.T) {
 }
 
 func TestUpdateExistingBudgetRemoveTagError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1454,7 +1460,7 @@ func TestUpdateExistingBudgetRemoveTagError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetRemoveTagFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetRemoveTagFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.updateExistingBudget(1, SetBudgetParams{
 		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
@@ -1466,8 +1472,8 @@ func TestUpdateExistingBudgetRemoveTagError(t *testing.T) {
 }
 
 func TestUpdateExistingBudgetUpdateError(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetUpdateFailQuerier2{Querier: gen.New(dbase)})
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, &budgetUpdateFailQuerier2{Querier: gen.New(dbase)}, testLogger())
 
 	_, err := svc.updateExistingBudget(1, SetBudgetParams{
 		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
@@ -1479,8 +1485,8 @@ func TestUpdateExistingBudgetUpdateError(t *testing.T) {
 }
 
 func TestRemoveBudgetGetError(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetGetFailQuerier{Querier: gen.New(dbase)})
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, &budgetGetFailQuerier{Querier: gen.New(dbase)}, testLogger())
 
 	err := svc.RemoveBudget(1)
 	if err == nil {
@@ -1492,7 +1498,7 @@ func TestRemoveBudgetGetError(t *testing.T) {
 }
 
 func TestRemoveBudgetMarkInactiveError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1502,7 +1508,7 @@ func TestRemoveBudgetMarkInactiveError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetMarkInactiveFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetMarkInactiveFailQuerier{Querier: q}, testLogger())
 
 	err := svc.RemoveBudget(1)
 	if err == nil {
@@ -1514,7 +1520,7 @@ func TestRemoveBudgetMarkInactiveError(t *testing.T) {
 }
 
 func TestEditBudgetUpdateError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1524,7 +1530,7 @@ func TestEditBudgetUpdateError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetUpdateFailQuerier2{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetUpdateFailQuerier2{Querier: q}, testLogger())
 
 	_, err := svc.EditBudget(1, EditBudgetParams{Name: "New"})
 	if err == nil {
@@ -1533,7 +1539,7 @@ func TestEditBudgetUpdateError(t *testing.T) {
 }
 
 func TestEnsureCurrentPeriodPriorError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1543,7 +1549,7 @@ func TestEnsureCurrentPeriodPriorError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q}, testLogger())
 
 	budget := &gen.Budget{
 		ID:          2,
@@ -1562,7 +1568,7 @@ func TestEnsureCurrentPeriodPriorError(t *testing.T) {
 }
 
 func TestCheckSingleBudgetEnsureError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1572,7 +1578,7 @@ func TestCheckSingleBudgetEnsureError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.CheckBudgets(CheckBudgetsParams{Identifier: "Test"})
 	if err == nil {
@@ -1630,7 +1636,7 @@ func (q *budgetEditTagAddFailQuerier) AddBudgetTag(ctx context.Context, arg gen.
 }
 
 func TestResolveBudgetGetByIDError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1640,7 +1646,7 @@ func TestResolveBudgetGetByIDError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetResolveGetFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetResolveGetFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.resolveBudget("1")
 	if err == nil {
@@ -1652,7 +1658,7 @@ func TestResolveBudgetGetByIDError(t *testing.T) {
 }
 
 func TestEnsureCurrentPeriodCreateError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1662,7 +1668,7 @@ func TestEnsureCurrentPeriodCreateError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetEnsureCreateFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEnsureCreateFailQuerier{Querier: q}, testLogger())
 
 	b := &gen.Budget{
 		ID:          2,
@@ -1681,7 +1687,7 @@ func TestEnsureCurrentPeriodCreateError(t *testing.T) {
 }
 
 func TestEnsureCurrentPeriodListCatError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1691,7 +1697,7 @@ func TestEnsureCurrentPeriodListCatError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetEnsureCatFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEnsureCatFailQuerier{Querier: q}, testLogger())
 
 	b := &gen.Budget{
 		ID:          2,
@@ -1710,7 +1716,7 @@ func TestEnsureCurrentPeriodListCatError(t *testing.T) {
 }
 
 func TestEnsureCurrentPeriodListTagError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1722,7 +1728,7 @@ func TestEnsureCurrentPeriodListTagError(t *testing.T) {
 	})
 	_ = q.AddBudgetCategory(context.Background(), gen.AddBudgetCategoryParams{BudgetID: 1, CategoryID: 1})
 
-	svc := NewWithQuerier(dbase, &budgetEnsureTagFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEnsureTagFailQuerier{Querier: q}, testLogger())
 
 	b := &gen.Budget{
 		ID:          2,
@@ -1741,7 +1747,7 @@ func TestEnsureCurrentPeriodListTagError(t *testing.T) {
 }
 
 func TestEditBudgetAddCategoryError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1751,7 +1757,7 @@ func TestEditBudgetAddCategoryError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.EditBudget(1, EditBudgetParams{
 		AddCategories: []string{"Food & Dining"},
@@ -1762,7 +1768,7 @@ func TestEditBudgetAddCategoryError(t *testing.T) {
 }
 
 func TestEditBudgetAddTagError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1773,7 +1779,7 @@ func TestEditBudgetAddTagError(t *testing.T) {
 		PeriodEnd:   "2026-07-31",
 	})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
-	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.EditBudget(1, EditBudgetParams{
 		AddTags: []string{"test-tag"},
@@ -1866,7 +1872,7 @@ func TestEditBudgetInvalidNotify(t *testing.T) {
 }
 
 func TestCheckBudgetsLoopEnsureError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1876,7 +1882,7 @@ func TestCheckBudgetsLoopEnsureError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
 	if err == nil {
@@ -1885,7 +1891,7 @@ func TestCheckBudgetsLoopEnsureError(t *testing.T) {
 }
 
 func TestUpdateExistingBudgetAddCatError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1895,7 +1901,7 @@ func TestUpdateExistingBudgetAddCatError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q}, testLogger())
 
 	cat, _ := svc.ResolveCategory("Food & Dining")
 	_, err := svc.updateExistingBudget(1, SetBudgetParams{
@@ -1907,7 +1913,7 @@ func TestUpdateExistingBudgetAddCatError(t *testing.T) {
 }
 
 func TestUpdateExistingBudgetAddTagError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1918,7 +1924,7 @@ func TestUpdateExistingBudgetAddTagError(t *testing.T) {
 		PeriodEnd:   "2026-07-31",
 	})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
-	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q}, testLogger())
 
 	tag, _ := svc.ResolveTag("test-tag")
 	_, err := svc.updateExistingBudget(1, SetBudgetParams{
@@ -1930,9 +1936,9 @@ func TestUpdateExistingBudgetAddTagError(t *testing.T) {
 }
 
 func TestEnsureCurrentPeriodDefaultType(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
-	svc := NewWithQuerier(dbase, q)
+	svc := NewWithQuerier(dbase, q, testLogger())
 
 	b := &gen.Budget{
 		ID:          1,
@@ -1954,7 +1960,7 @@ func TestEnsureCurrentPeriodDefaultType(t *testing.T) {
 }
 
 func TestCalculateSpendingTagError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1964,7 +1970,7 @@ func TestCalculateSpendingTagError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, tagOnly: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, tagOnly: true}, testLogger())
 
 	_, err := svc.calculateSpending(1, "2026-07-01", "2026-07-31")
 	if err == nil {
@@ -1973,7 +1979,7 @@ func TestCalculateSpendingTagError(t *testing.T) {
 }
 
 func TestBuildCheckResultSpendingError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -1983,7 +1989,7 @@ func TestBuildCheckResultSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true}, testLogger())
 
 	b, _ := q.GetBudgetByID(context.Background(), 1)
 	_, err := svc.buildCheckResult(b)
@@ -2046,7 +2052,7 @@ func (q *budgetEditRemoveTagFailQuerier) RemoveBudgetTag(ctx context.Context, ar
 }
 
 func TestEditBudgetRemoveCategoryError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -2056,7 +2062,7 @@ func TestEditBudgetRemoveCategoryError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetEditRemoveCatFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEditRemoveCatFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.EditBudget(1, EditBudgetParams{
 		RemoveCategories: []string{"Food & Dining"},
@@ -2067,7 +2073,7 @@ func TestEditBudgetRemoveCategoryError(t *testing.T) {
 }
 
 func TestEditBudgetRemoveTagError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -2078,7 +2084,7 @@ func TestEditBudgetRemoveTagError(t *testing.T) {
 		PeriodEnd:   "2026-07-31",
 	})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
-	svc := NewWithQuerier(dbase, &budgetEditRemoveTagFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEditRemoveTagFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.EditBudget(1, EditBudgetParams{
 		RemoveTags: []string{"test-tag"},
@@ -2089,7 +2095,7 @@ func TestEditBudgetRemoveTagError(t *testing.T) {
 }
 
 func TestRecurringAutoGenerationWithPrior(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Monthly", Valid: true},
@@ -2099,7 +2105,7 @@ func TestRecurringAutoGenerationWithPrior(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, q)
+	svc := NewWithQuerier(dbase, q, testLogger())
 
 	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
@@ -2116,7 +2122,7 @@ func TestRecurringAutoGenerationWithPrior(t *testing.T) {
 }
 
 func TestCheckBudgetsSpendingError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -2126,7 +2132,7 @@ func TestCheckBudgetsSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true}, testLogger())
 
 	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
 	if err == nil {
@@ -2135,7 +2141,7 @@ func TestCheckBudgetsSpendingError(t *testing.T) {
 }
 
 func TestCheckSingleBudgetSpendingError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -2145,7 +2151,7 @@ func TestCheckSingleBudgetSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true}, testLogger())
 
 	_, err := svc.CheckBudgets(CheckBudgetsParams{Identifier: "Test"})
 	if err == nil {
@@ -2154,7 +2160,7 @@ func TestCheckSingleBudgetSpendingError(t *testing.T) {
 }
 
 func TestEnsureCurrentPeriodNoPrior(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Custom", Valid: true},
@@ -2164,7 +2170,7 @@ func TestEnsureCurrentPeriodNoPrior(t *testing.T) {
 		PeriodStart: "2026-07-15",
 		PeriodEnd:   "2026-08-14",
 	})
-	svc := NewWithQuerier(dbase, q)
+	svc := NewWithQuerier(dbase, q, testLogger())
 
 	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
@@ -2176,7 +2182,7 @@ func TestEnsureCurrentPeriodNoPrior(t *testing.T) {
 }
 
 func TestEnsureCurrentPeriodCopyCatError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -2187,7 +2193,7 @@ func TestEnsureCurrentPeriodCopyCatError(t *testing.T) {
 		PeriodEnd:   "2026-06-30",
 	})
 	_ = q.AddBudgetCategory(context.Background(), gen.AddBudgetCategoryParams{BudgetID: 1, CategoryID: 1})
-	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q}, testLogger())
 
 	b := &gen.Budget{
 		ID:          2,
@@ -2206,7 +2212,7 @@ func TestEnsureCurrentPeriodCopyCatError(t *testing.T) {
 }
 
 func TestEnsureCurrentPeriodCopyTagError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
 		Name:        sql.NullString{String: "Test", Valid: true},
@@ -2219,7 +2225,7 @@ func TestEnsureCurrentPeriodCopyTagError(t *testing.T) {
 	_ = q.AddBudgetCategory(context.Background(), gen.AddBudgetCategoryParams{BudgetID: 1, CategoryID: 1})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
 	_ = q.AddBudgetTag(context.Background(), gen.AddBudgetTagParams{BudgetID: 1, TagID: 1})
-	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q}, testLogger())
 
 	b := &gen.Budget{
 		ID:          2,
