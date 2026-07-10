@@ -3476,13 +3476,27 @@ func TestResolveBaseFieldsMissingRateConfig(t *testing.T) {
 }
 
 func TestIsBusinessError(t *testing.T) {
-	if !isBusinessError(ErrRateMustBePositive) {
-		t.Error("ErrRateMustBePositive should be a business error")
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{"NotFoundError", &NotFoundError{Entity: "test", Name: "x"}, true},
+		{"ValidationError", &ValidationError{Field: "x", Message: "msg"}, true},
+		{"RateNotFoundError", &RateNotFoundError{Currency: "USD", Base: "IDR"}, true},
+		{"ErrInvalidAmount", ErrInvalidAmount, true},
+		{"ErrDuplicateName", ErrDuplicateName, true},
+		{"ErrMissingField", ErrMissingField, true},
+		{"ErrRateConfigMissing", ErrRateConfigMissing, true},
+		{"ErrRateMustBePositive", ErrRateMustBePositive, true},
+		{"random error", fmt.Errorf("random db error"), false},
+		{"nil error", nil, false},
 	}
-	if !isBusinessError(ErrRateConfigMissing) {
-		t.Error("ErrRateConfigMissing should be a business error")
-	}
-	if isBusinessError(fmt.Errorf("random db error")) {
-		t.Error("random db error should not be a business error")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isBusinessError(tc.err); got != tc.expected {
+				t.Errorf("isBusinessError(%v) = %v, want %v", tc.err, got, tc.expected)
+			}
+		})
 	}
 }
