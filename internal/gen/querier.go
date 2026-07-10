@@ -22,7 +22,6 @@ type Querier interface {
 	CreateBudget(ctx context.Context, arg CreateBudgetParams) (*Budget, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (*Category, error)
 	CreatePlannedPayment(ctx context.Context, arg CreatePlannedPaymentParams) (*PlannedPayment, error)
-	CreatePlannedTransaction(ctx context.Context, arg CreatePlannedTransactionParams) (*Transaction, error)
 	CreateTag(ctx context.Context, name string) (*Tag, error)
 	CreateTransaction(ctx context.Context, arg CreateTransactionParams) (*Transaction, error)
 	DeletePlannedPayment(ctx context.Context, id int64) error
