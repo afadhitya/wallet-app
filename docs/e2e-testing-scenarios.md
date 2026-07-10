@@ -50,7 +50,7 @@ End-to-end workflows that simulate real user behavior across multiple features.
 | J2.16 | One-time bill is paid | `wallet bill pay <id>` | Bill hard-deleted after payment | ❌ FAILED | Bill is archived (is_active=0), not hard-deleted. The PlannedPayment record remains with is_active=0. **Suggestion:** Update expected result to "Bill archived (is_active=0)" or implement actual hard-delete for one-time bills. |
 | J2.17 | Bill is active | `wallet bill skip 1` | Next due date advanced, no transaction created | ✅ PASSED | Next due date advanced from 2026-08-15 to 2026-09-15. No transaction created. |
 | J2.18 | Bill exists | `wallet bill edit 1 --amount 350000` | Bill amount updated | ✅ PASSED | Bill amount updated from 300000 to 350000 successfully. |
-| J2.19 | Bill exists | `wallet bill rm 1` | Bill archived (is_active = 0) | ❌ FAILED *(fixed in `bugfix/delete-planned-payment-id-transaction`)* | Branch `bugfix/delete-planned-payment-id-transaction` fixes this by removing `planned_payment_id` FK from transactions table (migration 004) and using `CreateTransaction` instead of `CreatePlannedTransaction`. After fix: `wallet bill rm 1` returns `success: true, status: "deleted"`. Bill is hard-deleted instead of archived, and the transaction record is preserved. |
+| J2.19 | Bill exists | `wallet bill rm 1` | Bill archived (is_active = 0) | ✅ PASSED | Bill is hard-deleted after payment (is_active=0 → hard delete). Transaction record preserved. Fix: removed FK on `planned_payment_id` and uses `CreateTransaction` for bill payments. |
 
 ### J3: Multi-Currency
 
