@@ -47,7 +47,7 @@ The schema SHALL support unique freeform tags for cross-cutting transaction and 
 - **THEN** the second insert fails due to the unique tag name constraint
 
 ### Requirement: Transactions
-The schema SHALL store every money movement as a transaction with support for expenses, income, transfers, balance adjustments, optional planned-payment linkage, original transaction currency, and optional locked base-currency conversion values.
+The schema SHALL store every money movement as a transaction with support for expenses, income, transfers, balance adjustments, original transaction currency, and optional locked base-currency conversion values.
 
 #### Scenario: Standard transaction stores classification and dates
 - **WHEN** an expense or income transaction is inserted
@@ -69,11 +69,6 @@ The schema SHALL store every money movement as a transaction with support for ex
 - **WHEN** a transaction is recorded for an account whose currency equals the configured base currency
 - **THEN** it stores original `amount` and `currency`
 - **AND** it does not require `base_amount` or `base_currency`
-
-#### Scenario: Planned payment transaction stores source linkage
-- **WHEN** a transaction is created by paying a planned payment
-- **THEN** it stores a marker indicating the transaction is planned
-- **AND** it stores the source planned payment identifier
 
 ### Requirement: Transaction Tags
 The schema SHALL support many-to-many tags on transactions.
@@ -101,11 +96,6 @@ The schema SHALL store planned income and expense payments with precomputed due 
 #### Scenario: Planned payment stores recurrence details
 - **WHEN** a planned payment is inserted
 - **THEN** it stores account, optional category, type, amount, currency, name, recurrence, optional recurrence rule, start date, next due date, active state, paused state, creation timestamp, and update timestamp
-
-#### Scenario: Archived planned payment remains linkable
-- **WHEN** a one-time planned payment is paid and archived
-- **THEN** existing transactions can still reference the archived planned payment
-- **AND** default active planned-payment queries exclude it
 
 ### Requirement: Exchange Rates
 The schema SHALL store exchange-rate rows for cached or sourced conversion data while manual rate configuration remains the authoritative source for this change.

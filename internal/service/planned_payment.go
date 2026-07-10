@@ -282,22 +282,22 @@ func (s *Service) PayPlannedPayment(params PayPlannedPaymentParams) (*PayPlanned
 	if pp.Name != "" {
 		description = sql.NullString{String: pp.Name, Valid: true}
 	}
-	plannedPaymentID := sql.NullInt64{Int64: pp.ID, Valid: true}
 
-	txn, err := s.q.CreatePlannedTransaction(s.ctx(), gen.CreatePlannedTransactionParams{
-		AccountID:        pp.AccountID,
-		CategoryID:       pp.CategoryID,
-		Type:             pp.Type,
-		Amount:           amount,
-		Currency:         pp.Currency,
-		Description:      description,
-		Notes:            sql.NullString{},
-		TransferToID:     sql.NullInt64{},
-		Date:             date,
-		PlannedPaymentID: plannedPaymentID,
+	txn, err := s.q.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
+		AccountID:    pp.AccountID,
+		CategoryID:   pp.CategoryID,
+		Type:         pp.Type,
+		Amount:       amount,
+		Currency:     pp.Currency,
+		Description:  description,
+		Notes:        sql.NullString{},
+		TransferToID: sql.NullInt64{},
+		Date:         date,
+		BaseAmount:   sql.NullInt64{},
+		BaseCurrency: sql.NullString{},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("create planned transaction: %w", err)
+		return nil, fmt.Errorf("create transaction: %w", err)
 	}
 
 	if err := s.recalculateBalance(account.ID); err != nil {

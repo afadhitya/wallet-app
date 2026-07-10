@@ -323,12 +323,6 @@ func TestPayPlannedPayment_Recurring(t *testing.T) {
 	if result.Transaction.Amount != 149000 {
 		t.Errorf("expected transaction amount 149000, got %d", result.Transaction.Amount)
 	}
-	if result.Transaction.IsPlanned != 1 {
-		t.Errorf("expected is_planned=1, got %d", result.Transaction.IsPlanned)
-	}
-	if !result.Transaction.PlannedPaymentID.Valid || result.Transaction.PlannedPaymentID.Int64 != pp.ID {
-		t.Error("expected planned_payment_id to match")
-	}
 	if result.NextDueDate == "" {
 		t.Error("expected next due date after pay")
 	}
