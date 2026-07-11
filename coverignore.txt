@@ -162,14 +162,6 @@ github.com/afadhitya/wallet-app/internal/service/planned_payment.go:558.10,559.3
 # setDayInMonth: day > lastDay clamp (tested via EOM test)
 github.com/afadhitya/wallet-app/internal/service/planned_payment.go:565.19,567.3
 
-# calcNextDueFromRRULE: RRULE not set (data integrity)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:606.39,608.3
-
-# calcNextDueFromRRULE: BYMONTHDAY Sscanf (tested)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:628.17,631.4
-
-# calcNextDueFromRRULE: unsupported RRULE (covered by error test)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:637.20,639.4
 
 # === CLI bill.go: error/infrastructure paths ===
 
