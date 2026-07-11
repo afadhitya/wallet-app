@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/afadhitya/wallet-app/internal/gen"
+	"github.com/afadhitya/wallet-app/internal/service/plannedpayment"
 )
 
 type ForecastBalanceResult struct {
@@ -371,7 +372,7 @@ func expandOccurrences(seedDate time.Time, recurrence string, recurrenceRule sql
 		if !current.Before(horizonStart) {
 			occurrences = append(occurrences, current)
 		}
-		next, err := calcNextDue(current, recurrence, recurrenceRule)
+		next, err := plannedpayment.CalcNextDue(current, recurrence, recurrenceRule)
 		if err != nil {
 			break
 		}

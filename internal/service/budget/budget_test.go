@@ -1,4 +1,4 @@
-package service
+package budget
 
 import (
 	"context"
@@ -9,13 +9,35 @@ import (
 	"testing"
 
 	"github.com/afadhitya/wallet-app/internal/gen"
+	"github.com/afadhitya/wallet-app/internal/service/shared"
 	"github.com/afadhitya/wallet-app/internal/testdb"
 )
 
-func TestSetBudgetMonthlyWithCategories(t *testing.T) {
-	svc := setupService(t)
+func setupBudgetManager(t *testing.T) *BudgetManager {
+	t.Helper()
+	shared.SetTestRateConfig(shared.TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates:        map[string]int64{},
+	})
+	t.Cleanup(shared.ResetTestRateConfig)
+	return NewBudgetManager(gen.New(testdb.Open(t)))
+}
 
-	result, err := svc.SetBudget(SetBudgetParams{
+func setupBudgetManagerWithDB(t *testing.T) (*BudgetManager, gen.Querier) {
+	t.Helper()
+	shared.SetTestRateConfig(shared.TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates:        map[string]int64{},
+	})
+	t.Cleanup(shared.ResetTestRateConfig)
+	q := gen.New(testdb.Open(t))
+	return NewBudgetManager(q), q
+}
+
+func TestSetBudgetMonthlyWithCategories(t *testing.T) {
+	m := setupBudgetManager(t)
+
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Monthly Food",
 		Amount:     2000000,
 		Period:     "monthly",
@@ -37,11 +59,11 @@ func TestSetBudgetMonthlyWithCategories(t *testing.T) {
 }
 
 func TestSetBudgetWithTags(t *testing.T) {
-	svc := setupService(t)
-	_, _ = svc.CreateTag("japan-2026")
-	_, _ = svc.CreateTag("tokyo")
+	m, q := setupBudgetManagerWithDB(t)
+	_, _ = q.CreateTag(context.Background(), "japan-2026")
+	_, _ = q.CreateTag(context.Background(), "tokyo")
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:   "Japan Trip",
 		Amount: 10000000,
 		Period: "one_time",
@@ -58,10 +80,10 @@ func TestSetBudgetWithTags(t *testing.T) {
 }
 
 func TestSetBudgetMixedTargets(t *testing.T) {
-	svc := setupService(t)
-	_, _ = svc.CreateTag("travel")
+	m, q := setupBudgetManagerWithDB(t)
+	_, _ = q.CreateTag(context.Background(), "travel")
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Travel Budget",
 		Amount:     5000000,
 		Period:     "monthly",
@@ -80,9 +102,9 @@ func TestSetBudgetMixedTargets(t *testing.T) {
 }
 
 func TestSetBudgetUpsertSameNameAndPeriod(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Monthly Food",
 		Amount:     2000000,
 		Period:     "monthly",
@@ -92,7 +114,7 @@ func TestSetBudgetUpsertSameNameAndPeriod(t *testing.T) {
 		t.Fatalf("first SetBudget: %v", err)
 	}
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Monthly Food",
 		Amount:     2500000,
 		Period:     "monthly",
@@ -114,9 +136,9 @@ func TestSetBudgetUpsertSameNameAndPeriod(t *testing.T) {
 }
 
 func TestSetBudgetNoTargets(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:   "Untargeted",
 		Amount: 1000000,
 		Period: "monthly",
@@ -124,40 +146,40 @@ func TestSetBudgetNoTargets(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for budget without targets")
 	}
-	var valErr *ValidationError
+	var valErr *shared.ValidationError
 	if !errors.As(err, &valErr) {
 		t.Errorf("expected ValidationError, got %T", err)
 	}
 }
 
 func TestSetBudgetInvalidAmount(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Zero Budget",
 		Amount:     0,
 		Period:     "monthly",
 		Categories: []string{"Restaurant"},
 	})
-	if !errors.Is(err, ErrInvalidAmount) {
+	if !errors.Is(err, shared.ErrInvalidAmount) {
 		t.Errorf("expected ErrInvalidAmount, got %v", err)
 	}
 
-	_, err = svc.SetBudget(SetBudgetParams{
+	_, err = m.SetBudget(SetBudgetParams{
 		Name:       "Negative Budget",
 		Amount:     -100,
 		Period:     "monthly",
 		Categories: []string{"Restaurant"},
 	})
-	if !errors.Is(err, ErrInvalidAmount) {
+	if !errors.Is(err, shared.ErrInvalidAmount) {
 		t.Errorf("expected ErrInvalidAmount for negative, got %v", err)
 	}
 }
 
 func TestSetBudgetInvalidPeriod(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Daily Budget",
 		Amount:     1000000,
 		Period:     "daily",
@@ -172,9 +194,9 @@ func TestSetBudgetInvalidPeriod(t *testing.T) {
 }
 
 func TestSetBudgetOneTimeWithoutDates(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Trip",
 		Amount:     10000000,
 		Period:     "one_time",
@@ -189,9 +211,9 @@ func TestSetBudgetOneTimeWithoutDates(t *testing.T) {
 }
 
 func TestSetBudgetInvalidNotifyPct(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Bad Notify",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -204,9 +226,9 @@ func TestSetBudgetInvalidNotifyPct(t *testing.T) {
 }
 
 func TestSetBudgetCategoryNotFound(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Missing Cat",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -221,9 +243,9 @@ func TestSetBudgetCategoryNotFound(t *testing.T) {
 }
 
 func TestSetBudgetTagNotFound(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:   "Missing Tag",
 		Amount: 1000000,
 		Period: "monthly",
@@ -238,9 +260,9 @@ func TestSetBudgetTagNotFound(t *testing.T) {
 }
 
 func TestSetBudgetExplicitDates(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Custom Period",
 		Amount:     500000,
 		Period:     "monthly",
@@ -260,25 +282,25 @@ func TestSetBudgetExplicitDates(t *testing.T) {
 }
 
 func TestPeriodCalculationDefault(t *testing.T) {
-	start, end, err := calculatePeriod("monthly", "", "")
+	start, end, err := CalculatePeriod("monthly", "", "")
 	if err != nil {
-		t.Fatalf("calculatePeriod monthly: %v", err)
+		t.Fatalf("CalculatePeriod monthly: %v", err)
 	}
 	if start == "" || end == "" {
 		t.Error("expected non-empty start and end for monthly")
 	}
 
-	start, end, err = calculatePeriod("weekly", "", "")
+	start, end, err = CalculatePeriod("weekly", "", "")
 	if err != nil {
-		t.Fatalf("calculatePeriod weekly: %v", err)
+		t.Fatalf("CalculatePeriod weekly: %v", err)
 	}
 	if start == "" || end == "" {
 		t.Error("expected non-empty start and end for weekly")
 	}
 
-	start, end, err = calculatePeriod("yearly", "", "")
+	start, end, err = CalculatePeriod("yearly", "", "")
 	if err != nil {
-		t.Fatalf("calculatePeriod yearly: %v", err)
+		t.Fatalf("CalculatePeriod yearly: %v", err)
 	}
 	if start == "" || end == "" {
 		t.Error("expected non-empty start and end for yearly")
@@ -286,9 +308,9 @@ func TestPeriodCalculationDefault(t *testing.T) {
 }
 
 func TestPeriodCalculationExplicit(t *testing.T) {
-	start, end, err := calculatePeriod("monthly", "2026-01-01", "2026-01-31")
+	start, end, err := CalculatePeriod("monthly", "2026-01-01", "2026-01-31")
 	if err != nil {
-		t.Fatalf("calculatePeriod explicit: %v", err)
+		t.Fatalf("CalculatePeriod explicit: %v", err)
 	}
 	if start != "2026-01-01" {
 		t.Errorf("expected start 2026-01-01, got %s", start)
@@ -299,21 +321,21 @@ func TestPeriodCalculationExplicit(t *testing.T) {
 }
 
 func TestPeriodCalculationInvalidDate(t *testing.T) {
-	_, _, err := calculatePeriod("monthly", "invalid", "2026-01-31")
+	_, _, err := CalculatePeriod("monthly", "invalid", "2026-01-31")
 	if err == nil {
 		t.Fatal("expected error for invalid from date")
 	}
 
-	_, _, err = calculatePeriod("monthly", "2026-01-01", "invalid")
+	_, _, err = CalculatePeriod("monthly", "2026-01-01", "invalid")
 	if err == nil {
 		t.Fatal("expected error for invalid to date")
 	}
 }
 
 func TestListBudgetsActive(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Active Budget",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -323,7 +345,7 @@ func TestListBudgetsActive(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	items, err := svc.ListBudgets(ListBudgetsParams{All: false})
+	items, err := m.ListBudgets(ListBudgetsParams{All: false})
 	if err != nil {
 		t.Fatalf("ListBudgets: %v", err)
 	}
@@ -333,13 +355,11 @@ func TestListBudgetsActive(t *testing.T) {
 }
 
 func TestListBudgetsWithSpent(t *testing.T) {
-	svc := setupService(t)
-	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
-	defer ResetTestRateConfig()
+	m, q := setupBudgetManagerWithDB(t)
 
-	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 
-	budget, err := svc.SetBudget(SetBudgetParams{
+	budget, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food Budget",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -349,17 +369,22 @@ func TestListBudgetsWithSpent(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	_, err = svc.AddExpense(CreateExpenseParams{
+	cat, _ := shared.ResolveCategory(q, "Restaurant")
+	acct, _ := shared.ResolveAccount(q, "BCA")
+	_, err = q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
+		AccountID:   acct.ID,
+		CategoryID:  sql.NullInt64{Int64: cat.ID, Valid: true},
 		Amount:      200000,
-		Description: "Lunch",
-		Category:    "Restaurant",
-		Account:     "BCA",
+		Type:        "expense",
+		Currency:    "IDR",
+		Description: sql.NullString{String: "Lunch", Valid: true},
+		Date:        "2026-07-01",
 	})
 	if err != nil {
-		t.Fatalf("AddExpense: %v", err)
+		t.Fatalf("CreateTransaction: %v", err)
 	}
 
-	items, err := svc.ListBudgets(ListBudgetsParams{All: false})
+	items, err := m.ListBudgets(ListBudgetsParams{All: false})
 	if err != nil {
 		t.Fatalf("ListBudgets: %v", err)
 	}
@@ -376,9 +401,9 @@ func TestListBudgetsWithSpent(t *testing.T) {
 }
 
 func TestListBudgetsInactiveExcluded(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food Budget",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -388,11 +413,11 @@ func TestListBudgetsInactiveExcluded(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	if err := svc.RemoveBudget(result.Budget.ID); err != nil {
+	if err := m.RemoveBudget(result.Budget.ID); err != nil {
 		t.Fatalf("RemoveBudget: %v", err)
 	}
 
-	items, err := svc.ListBudgets(ListBudgetsParams{All: false})
+	items, err := m.ListBudgets(ListBudgetsParams{All: false})
 	if err != nil {
 		t.Fatalf("ListBudgets active: %v", err)
 	}
@@ -400,7 +425,7 @@ func TestListBudgetsInactiveExcluded(t *testing.T) {
 		t.Errorf("expected 0 active budgets, got %d", len(items))
 	}
 
-	items, err = svc.ListBudgets(ListBudgetsParams{All: true})
+	items, err = m.ListBudgets(ListBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("ListBudgets all: %v", err)
 	}
@@ -410,9 +435,9 @@ func TestListBudgetsInactiveExcluded(t *testing.T) {
 }
 
 func TestCheckBudgetsAll(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food Budget",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -422,7 +447,7 @@ func TestCheckBudgetsAll(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -439,9 +464,9 @@ func TestCheckBudgetsAll(t *testing.T) {
 }
 
 func TestCheckBudgetsSingle(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food Budget",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -451,7 +476,7 @@ func TestCheckBudgetsSingle(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{Identifier: "Food Budget"})
+	results, err := m.CheckBudgets(CheckBudgetsParams{Identifier: "Food Budget"})
 	if err != nil {
 		t.Fatalf("CheckBudgets by name: %v", err)
 	}
@@ -463,7 +488,7 @@ func TestCheckBudgetsSingle(t *testing.T) {
 	}
 
 	idStr := fmt.Sprintf("%d", result.Budget.ID)
-	results, err = svc.CheckBudgets(CheckBudgetsParams{Identifier: idStr})
+	results, err = m.CheckBudgets(CheckBudgetsParams{Identifier: idStr})
 	if err != nil {
 		t.Fatalf("CheckBudgets by ID: %v", err)
 	}
@@ -473,26 +498,24 @@ func TestCheckBudgetsSingle(t *testing.T) {
 }
 
 func TestCheckBudgetsNotFound(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.CheckBudgets(CheckBudgetsParams{Identifier: "Ghost Budget"})
+	_, err := m.CheckBudgets(CheckBudgetsParams{Identifier: "Ghost Budget"})
 	if err == nil {
 		t.Fatal("expected error for missing budget")
 	}
-	var notFound *NotFoundError
+	var notFound *shared.NotFoundError
 	if !errors.As(err, &notFound) {
 		t.Errorf("expected NotFoundError, got %T", err)
 	}
 }
 
 func TestCheckBudgetsStatusWarning(t *testing.T) {
-	svc := setupService(t)
-	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
-	defer ResetTestRateConfig()
+	m, q := setupBudgetManagerWithDB(t)
 
-	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food Budget",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -503,17 +526,22 @@ func TestCheckBudgetsStatusWarning(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	_, err = svc.AddExpense(CreateExpenseParams{
+	cat, _ := shared.ResolveCategory(q, "Restaurant")
+	acct, _ := shared.ResolveAccount(q, "BCA")
+	_, err = q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
+		AccountID:   acct.ID,
+		CategoryID:  sql.NullInt64{Int64: cat.ID, Valid: true},
 		Amount:      800000,
-		Description: "Expensive dinner",
-		Category:    "Restaurant",
-		Account:     "BCA",
+		Type:        "expense",
+		Currency:    "IDR",
+		Description: sql.NullString{String: "Expensive dinner", Valid: true},
+		Date:        "2026-07-01",
 	})
 	if err != nil {
-		t.Fatalf("AddExpense: %v", err)
+		t.Fatalf("CreateTransaction: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -527,13 +555,11 @@ func TestCheckBudgetsStatusWarning(t *testing.T) {
 }
 
 func TestCheckBudgetsStatusOver(t *testing.T) {
-	svc := setupService(t)
-	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
-	defer ResetTestRateConfig()
+	m, q := setupBudgetManagerWithDB(t)
 
-	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food Budget",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -543,17 +569,22 @@ func TestCheckBudgetsStatusOver(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	_, err = svc.AddExpense(CreateExpenseParams{
+	cat, _ := shared.ResolveCategory(q, "Restaurant")
+	acct, _ := shared.ResolveAccount(q, "BCA")
+	_, err = q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
+		AccountID:   acct.ID,
+		CategoryID:  sql.NullInt64{Int64: cat.ID, Valid: true},
 		Amount:      1000000,
-		Description: "Maxed out",
-		Category:    "Restaurant",
-		Account:     "BCA",
+		Type:        "expense",
+		Currency:    "IDR",
+		Description: sql.NullString{String: "Maxed out", Valid: true},
+		Date:        "2026-07-01",
 	})
 	if err != nil {
-		t.Fatalf("AddExpense: %v", err)
+		t.Fatalf("CreateTransaction: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -566,13 +597,11 @@ func TestCheckBudgetsStatusOver(t *testing.T) {
 }
 
 func TestSpendingExcludesNonExpense(t *testing.T) {
-	svc := setupService(t)
-	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
-	defer ResetTestRateConfig()
+	m, q := setupBudgetManagerWithDB(t)
 
-	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food Budget",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -582,17 +611,22 @@ func TestSpendingExcludesNonExpense(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	_, err = svc.AddIncome(CreateIncomeParams{
+	cat, _ := shared.ResolveCategory(q, "Salary")
+	acct, _ := shared.ResolveAccount(q, "BCA")
+	_, err = q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
+		AccountID:   acct.ID,
+		CategoryID:  sql.NullInt64{Int64: cat.ID, Valid: true},
 		Amount:      1000000,
-		Description: "Gaji",
-		Category:    "Salary",
-		Account:     "BCA",
+		Type:        "income",
+		Currency:    "IDR",
+		Description: sql.NullString{String: "Gaji", Valid: true},
+		Date:        "2026-07-01",
 	})
 	if err != nil {
-		t.Fatalf("AddIncome: %v", err)
+		t.Fatalf("CreateTransaction: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -605,13 +639,11 @@ func TestSpendingExcludesNonExpense(t *testing.T) {
 }
 
 func TestSpendingExcludesArchived(t *testing.T) {
-	svc := setupService(t)
-	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
-	defer ResetTestRateConfig()
+	m, q := setupBudgetManagerWithDB(t)
 
-	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
+	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food Budget",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -621,21 +653,26 @@ func TestSpendingExcludesArchived(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	txn, err := svc.AddExpense(CreateExpenseParams{
+	cat, _ := shared.ResolveCategory(q, "Restaurant")
+	acct, _ := shared.ResolveAccount(q, "BCA")
+	txn, err := q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
+		AccountID:   acct.ID,
+		CategoryID:  sql.NullInt64{Int64: cat.ID, Valid: true},
 		Amount:      200000,
-		Description: "Lunch",
-		Category:    "Restaurant",
-		Account:     "BCA",
+		Type:        "expense",
+		Currency:    "IDR",
+		Description: sql.NullString{String: "Lunch", Valid: true},
+		Date:        "2026-07-01",
 	})
 	if err != nil {
-		t.Fatalf("AddExpense: %v", err)
+		t.Fatalf("CreateTransaction: %v", err)
 	}
 
-	if err := svc.RemoveTransaction(txn.Transaction.ID); err != nil {
-		t.Fatalf("RemoveTransaction: %v", err)
+	if err := q.ArchiveTransaction(context.Background(), txn.ID); err != nil {
+		t.Fatalf("ArchiveTransaction: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -648,14 +685,12 @@ func TestSpendingExcludesArchived(t *testing.T) {
 }
 
 func TestSpendingMixedOverlapDoubleCounted(t *testing.T) {
-	svc := setupService(t)
-	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
-	defer ResetTestRateConfig()
+	m, q := setupBudgetManagerWithDB(t)
 
-	_, _ = svc.CreateAccount("BCA", "checking", "IDR")
-	_, _ = svc.CreateTag("japan-2026")
+	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
+	_, _ = q.CreateTag(context.Background(), "japan-2026")
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Japan Budget",
 		Amount:     10000000,
 		Period:     "monthly",
@@ -666,18 +701,28 @@ func TestSpendingMixedOverlapDoubleCounted(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	_, err = svc.AddExpense(CreateExpenseParams{
+	cat, _ := shared.ResolveCategory(q, "Restaurant")
+	acct, _ := shared.ResolveAccount(q, "BCA")
+	tag, _ := shared.ResolveTag(q, "japan-2026")
+	txn, err := q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
+		AccountID:   acct.ID,
+		CategoryID:  sql.NullInt64{Int64: cat.ID, Valid: true},
 		Amount:      500000,
-		Description: "Sushi",
-		Category:    "Restaurant",
-		Account:     "BCA",
-		Tags:        []string{"japan-2026"},
+		Type:        "expense",
+		Currency:    "IDR",
+		Description: sql.NullString{String: "Sushi", Valid: true},
+		Date:        "2026-07-01",
 	})
 	if err != nil {
-		t.Fatalf("AddExpense: %v", err)
+		t.Fatalf("CreateTransaction: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	_ = q.AddTransactionTag(context.Background(), gen.AddTransactionTagParams{
+		TransactionID: txn.ID,
+		TagID:         tag.ID,
+	})
+
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -690,9 +735,9 @@ func TestSpendingMixedOverlapDoubleCounted(t *testing.T) {
 }
 
 func TestRecurringAutoGeneration(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Monthly Bills",
 		Amount:     500000,
 		Period:     "monthly",
@@ -703,7 +748,7 @@ func TestRecurringAutoGeneration(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -711,7 +756,7 @@ func TestRecurringAutoGeneration(t *testing.T) {
 		t.Fatal("expected check results")
 	}
 
-	allBudgets, err := svc.ListBudgets(ListBudgetsParams{All: true})
+	allBudgets, err := m.ListBudgets(ListBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("ListBudgets all: %v", err)
 	}
@@ -721,9 +766,9 @@ func TestRecurringAutoGeneration(t *testing.T) {
 }
 
 func TestRecurringOneTimeExcluded(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "One Time Trip",
 		Amount:     1000000,
 		Period:     "one_time",
@@ -735,7 +780,7 @@ func TestRecurringOneTimeExcluded(t *testing.T) {
 		t.Fatalf("SetBudget one_time: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -748,9 +793,9 @@ func TestRecurringOneTimeExcluded(t *testing.T) {
 }
 
 func TestEditBudgetAmount(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -761,7 +806,7 @@ func TestEditBudgetAmount(t *testing.T) {
 	}
 
 	newAmount := int64(2500000)
-	edited, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	edited, err := m.EditBudget(result.Budget.ID, EditBudgetParams{
 		Amount:    &newAmount,
 		NotifyPct: int64Ptr(75),
 	})
@@ -774,9 +819,9 @@ func TestEditBudgetAmount(t *testing.T) {
 }
 
 func TestEditBudgetName(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -786,7 +831,7 @@ func TestEditBudgetName(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	edited, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	edited, err := m.EditBudget(result.Budget.ID, EditBudgetParams{
 		Name: "Monthly Essentials",
 	})
 	if err != nil {
@@ -798,10 +843,10 @@ func TestEditBudgetName(t *testing.T) {
 }
 
 func TestEditBudgetTargets(t *testing.T) {
-	svc := setupService(t)
-	_, _ = svc.CreateTag("food-tag")
+	m, q := setupBudgetManagerWithDB(t)
+	_, _ = q.CreateTag(context.Background(), "food-tag")
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -811,7 +856,7 @@ func TestEditBudgetTargets(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	edited, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	edited, err := m.EditBudget(result.Budget.ID, EditBudgetParams{
 		AddCategories:    []string{"Coffee & Snacks"},
 		RemoveCategories: []string{"Restaurant"},
 		AddTags:          []string{"food-tag"},
@@ -828,24 +873,24 @@ func TestEditBudgetTargets(t *testing.T) {
 }
 
 func TestEditBudgetNotFound(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.EditBudget(99, EditBudgetParams{
+	_, err := m.EditBudget(99, EditBudgetParams{
 		Name: "Ghost",
 	})
 	if err == nil {
 		t.Fatal("expected error for missing budget")
 	}
-	var notFound *NotFoundError
+	var notFound *shared.NotFoundError
 	if !errors.As(err, &notFound) {
 		t.Errorf("expected NotFoundError, got %T", err)
 	}
 }
 
 func TestRemoveBudget(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -855,11 +900,11 @@ func TestRemoveBudget(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	if err := svc.RemoveBudget(result.Budget.ID); err != nil {
+	if err := m.RemoveBudget(result.Budget.ID); err != nil {
 		t.Fatalf("RemoveBudget: %v", err)
 	}
 
-	items, err := svc.ListBudgets(ListBudgetsParams{All: false})
+	items, err := m.ListBudgets(ListBudgetsParams{All: false})
 	if err != nil {
 		t.Fatalf("ListBudgets: %v", err)
 	}
@@ -869,22 +914,22 @@ func TestRemoveBudget(t *testing.T) {
 }
 
 func TestRemoveBudgetNotFound(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	err := svc.RemoveBudget(99)
+	err := m.RemoveBudget(99)
 	if err == nil {
 		t.Fatal("expected error for missing budget")
 	}
-	var notFound *NotFoundError
+	var notFound *shared.NotFoundError
 	if !errors.As(err, &notFound) {
 		t.Errorf("expected NotFoundError, got %T", err)
 	}
 }
 
 func TestEditBudgetInvalidAmount(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -895,22 +940,22 @@ func TestEditBudgetInvalidAmount(t *testing.T) {
 	}
 
 	negAmount := int64(-1)
-	_, err = svc.EditBudget(result.Budget.ID, EditBudgetParams{Amount: &negAmount})
-	if !errors.Is(err, ErrInvalidAmount) {
+	_, err = m.EditBudget(result.Budget.ID, EditBudgetParams{Amount: &negAmount})
+	if !errors.Is(err, shared.ErrInvalidAmount) {
 		t.Errorf("expected ErrInvalidAmount, got %v", err)
 	}
 
 	zeroAmount := int64(0)
-	_, err = svc.EditBudget(result.Budget.ID, EditBudgetParams{Amount: &zeroAmount})
-	if !errors.Is(err, ErrInvalidAmount) {
+	_, err = m.EditBudget(result.Budget.ID, EditBudgetParams{Amount: &zeroAmount})
+	if !errors.Is(err, shared.ErrInvalidAmount) {
 		t.Errorf("expected ErrInvalidAmount for zero, got %v", err)
 	}
 }
 
 func TestSetBudgetWeekly(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Weekly Groceries",
 		Amount:     500000,
 		Period:     "weekly",
@@ -925,9 +970,9 @@ func TestSetBudgetWeekly(t *testing.T) {
 }
 
 func TestSetBudgetYearly(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Yearly Travel",
 		Amount:     50000000,
 		Period:     "yearly",
@@ -945,7 +990,6 @@ func int64Ptr(v int64) *int64 {
 	return &v
 }
 
-// Mock queriers for error path coverage
 type budgetCreateFailQuerier struct {
 	gen.Querier
 }
@@ -995,9 +1039,9 @@ func (q *budgetSpendingFailQuerier) SumTagExpenses(ctx context.Context, arg gen.
 
 func TestSetBudgetCreateError(t *testing.T) {
 	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetCreateFailQuerier{Querier: gen.New(dbase)})
+	m := NewBudgetManager(&budgetCreateFailQuerier{Querier: gen.New(dbase)})
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -1013,9 +1057,9 @@ func TestSetBudgetCreateError(t *testing.T) {
 
 func TestEditBudgetGetError(t *testing.T) {
 	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetGetFailQuerier{Querier: gen.New(dbase)})
+	m := NewBudgetManager(&budgetGetFailQuerier{Querier: gen.New(dbase)})
 
-	_, err := svc.EditBudget(1, EditBudgetParams{Name: "Test"})
+	_, err := m.EditBudget(1, EditBudgetParams{Name: "Test"})
 	if err == nil {
 		t.Fatal("expected get error")
 	}
@@ -1035,18 +1079,18 @@ func TestListBudgetsSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	m := NewBudgetManager(&budgetSpendingFailQuerier{Querier: q, catFail: true})
 
-	_, err := svc.ListBudgets(ListBudgetsParams{All: false})
+	_, err := m.ListBudgets(ListBudgetsParams{All: false})
 	if err == nil {
 		t.Fatal("expected spending error")
 	}
 }
 
 func TestListBudgetsAll(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -1056,7 +1100,7 @@ func TestListBudgetsAll(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	items, err := svc.ListBudgets(ListBudgetsParams{All: true})
+	items, err := m.ListBudgets(ListBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("ListBudgets all: %v", err)
 	}
@@ -1067,9 +1111,9 @@ func TestListBudgetsAll(t *testing.T) {
 
 func TestListBudgetsActiveError(t *testing.T) {
 	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)})
+	m := NewBudgetManager(&budgetListFailQuerier{Querier: gen.New(dbase)})
 
-	_, err := svc.ListBudgets(ListBudgetsParams{All: false})
+	_, err := m.ListBudgets(ListBudgetsParams{All: false})
 	if err == nil {
 		t.Fatal("expected list error")
 	}
@@ -1078,9 +1122,9 @@ func TestListBudgetsActiveError(t *testing.T) {
 func TestListBudgetsAllError(t *testing.T) {
 	dbase := testdb.Open(t)
 	q := gen.New(dbase)
-	svc := NewWithQuerier(dbase, &budgetAllListFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetAllListFailQuerier{Querier: q})
 
-	_, err := svc.ListBudgets(ListBudgetsParams{All: true})
+	_, err := m.ListBudgets(ListBudgetsParams{All: true})
 	if err == nil {
 		t.Fatal("expected list error")
 	}
@@ -1088,9 +1132,9 @@ func TestListBudgetsAllError(t *testing.T) {
 
 func TestCheckBudgetsListError(t *testing.T) {
 	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)})
+	m := NewBudgetManager(&budgetListFailQuerier{Querier: gen.New(dbase)})
 
-	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	_, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err == nil {
 		t.Fatal("expected list error")
 	}
@@ -1100,9 +1144,9 @@ func TestCheckBudgetsListError(t *testing.T) {
 }
 
 func TestResolveBudgetByID(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, _ := svc.SetBudget(SetBudgetParams{
+	result, _ := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -1110,7 +1154,7 @@ func TestResolveBudgetByID(t *testing.T) {
 	})
 
 	idStr := fmt.Sprintf("%d", result.Budget.ID)
-	b, err := svc.resolveBudget(idStr)
+	b, err := m.ResolveBudget(idStr)
 	if err != nil {
 		t.Fatalf("resolveBudget: %v", err)
 	}
@@ -1120,17 +1164,17 @@ func TestResolveBudgetByID(t *testing.T) {
 }
 
 func TestResolveBudgetByIDInactive(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, _ := svc.SetBudget(SetBudgetParams{
+	result, _ := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
 		Categories: []string{"Restaurant"},
 	})
-	_ = svc.RemoveBudget(result.Budget.ID)
+	_ = m.RemoveBudget(result.Budget.ID)
 
-	_, err := svc.resolveBudget(fmt.Sprintf("%d", result.Budget.ID))
+	_, err := m.ResolveBudget(fmt.Sprintf("%d", result.Budget.ID))
 	if err == nil {
 		t.Fatal("expected not found for inactive budget by ID")
 	}
@@ -1138,18 +1182,18 @@ func TestResolveBudgetByIDInactive(t *testing.T) {
 
 func TestResolveBudgetListError(t *testing.T) {
 	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetListFailQuerier{Querier: gen.New(dbase)})
+	m := NewBudgetManager(&budgetListFailQuerier{Querier: gen.New(dbase)})
 
-	_, err := svc.resolveBudget("ByName")
+	_, err := m.ResolveBudget("ByName")
 	if err == nil {
 		t.Fatal("expected list error")
 	}
 }
 
 func TestEnsureCurrentPeriodWeekly(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Weekly",
 		Amount:     500000,
 		Period:     "weekly",
@@ -1159,7 +1203,7 @@ func TestEnsureCurrentPeriodWeekly(t *testing.T) {
 		t.Fatalf("SetBudget weekly: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets weekly: %v", err)
 	}
@@ -1169,9 +1213,9 @@ func TestEnsureCurrentPeriodWeekly(t *testing.T) {
 }
 
 func TestEnsureCurrentPeriodYearly(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Yearly",
 		Amount:     50000000,
 		Period:     "yearly",
@@ -1181,7 +1225,7 @@ func TestEnsureCurrentPeriodYearly(t *testing.T) {
 		t.Fatalf("SetBudget yearly: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets yearly: %v", err)
 	}
@@ -1191,9 +1235,9 @@ func TestEnsureCurrentPeriodYearly(t *testing.T) {
 }
 
 func TestBuildCheckResultZeroAmount(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Zero Test",
 		Amount:     1,
 		Period:     "monthly",
@@ -1203,7 +1247,7 @@ func TestBuildCheckResultZeroAmount(t *testing.T) {
 		t.Fatalf("SetBudget: %v", err)
 	}
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -1217,7 +1261,7 @@ func TestBuildCheckResultZeroAmount(t *testing.T) {
 
 func TestBudgetNameWithNull(t *testing.T) {
 	b := &gen.Budget{}
-	name := budgetName(b)
+	name := BudgetName(b)
 	if !strings.Contains(name, "0") {
 		t.Errorf("expected ID-based name for null, got %s", name)
 	}
@@ -1225,24 +1269,24 @@ func TestBudgetNameWithNull(t *testing.T) {
 
 func TestBudgetNameWithName(t *testing.T) {
 	b := &gen.Budget{Name: sql.NullString{String: "Test Name", Valid: true}}
-	name := budgetName(b)
+	name := BudgetName(b)
 	if name != "Test Name" {
 		t.Errorf("expected 'Test Name', got %s", name)
 	}
 }
 
 func TestCalculatePeriodPartialDates(t *testing.T) {
-	start, end, err := calculatePeriod("monthly", "2026-01-01", "")
+	start, end, err := CalculatePeriod("monthly", "2026-01-01", "")
 	if err != nil {
-		t.Fatalf("calculatePeriod with only from: %v", err)
+		t.Fatalf("CalculatePeriod with only from: %v", err)
 	}
 	if start == "" || end == "" {
 		t.Error("expected non-empty result with partial dates")
 	}
 
-	start2, end2, err := calculatePeriod("monthly", "", "2026-01-31")
+	start2, end2, err := CalculatePeriod("monthly", "", "2026-01-31")
 	if err != nil {
-		t.Fatalf("calculatePeriod with only to: %v", err)
+		t.Fatalf("CalculatePeriod with only to: %v", err)
 	}
 	if start2 == "" || end2 == "" {
 		t.Error("expected non-empty result with only to")
@@ -1250,9 +1294,9 @@ func TestCalculatePeriodPartialDates(t *testing.T) {
 }
 
 func TestCalculatePeriodOneTimeExplicit(t *testing.T) {
-	start, end, err := calculatePeriod("one_time", "2026-01-01", "2026-12-31")
+	start, end, err := CalculatePeriod("one_time", "2026-01-01", "2026-12-31")
 	if err != nil {
-		t.Fatalf("calculatePeriod one_time: %v", err)
+		t.Fatalf("CalculatePeriod one_time: %v", err)
 	}
 	if start != "2026-01-01" || end != "2026-12-31" {
 		t.Errorf("expected 2026-01-01/2026-12-31, got %s/%s", start, end)
@@ -1260,9 +1304,9 @@ func TestCalculatePeriodOneTimeExplicit(t *testing.T) {
 }
 
 func TestSetBudgetNotifyPctDefault(t *testing.T) {
-	svc := setupService(t)
+	m := setupBudgetManager(t)
 
-	result, err := svc.SetBudget(SetBudgetParams{
+	result, err := m.SetBudget(SetBudgetParams{
 		Name:       "Default Notify",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -1278,20 +1322,19 @@ func TestSetBudgetNotifyPctDefault(t *testing.T) {
 }
 
 func TestToInt64NonInt64(t *testing.T) {
-	v := toInt64("not an int64")
+	v := ToInt64("not an int64")
 	if v != 0 {
 		t.Errorf("expected 0, got %d", v)
 	}
 }
 
 func TestToInt64Int64(t *testing.T) {
-	v := toInt64(int64(42))
+	v := ToInt64(int64(42))
 	if v != 42 {
 		t.Errorf("expected 42, got %d", v)
 	}
 }
 
-// Additional mock queriers for error path coverage
 type budgetAllListFailQuerier struct {
 	gen.Querier
 }
@@ -1366,9 +1409,9 @@ func (q *budgetPriorFailQuerier) GetMostRecentPriorBudget(ctx context.Context, a
 
 func TestSetBudgetGetByNameError(t *testing.T) {
 	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetGetByNameAndPeriodFailQuerier{Querier: gen.New(dbase)})
+	m := NewBudgetManager(&budgetGetByNameAndPeriodFailQuerier{Querier: gen.New(dbase)})
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -1384,9 +1427,9 @@ func TestSetBudgetGetByNameError(t *testing.T) {
 
 func TestSetBudgetAddCategoryError(t *testing.T) {
 	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetAddCatFailQuerier{Querier: gen.New(dbase)})
+	m := NewBudgetManager(&budgetAddCatFailQuerier{Querier: gen.New(dbase)})
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:       "Food",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -1404,9 +1447,9 @@ func TestSetBudgetAddTagError(t *testing.T) {
 	dbase := testdb.Open(t)
 	q := gen.New(dbase)
 	_, _ = q.CreateTag(context.Background(), "test-tag")
-	svc := NewWithQuerier(dbase, &budgetAddTagFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetAddTagFailQuerier{Querier: q})
 
-	_, err := svc.SetBudget(SetBudgetParams{
+	_, err := m.SetBudget(SetBudgetParams{
 		Name:   "Food",
 		Amount: 1000000,
 		Period: "monthly",
@@ -1431,10 +1474,10 @@ func TestUpdateExistingBudgetRemoveCatError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetRemoveCatFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetRemoveCatFailQuerier{Querier: q})
 
-	cat, _ := svc.ResolveCategory("Food & Dining")
-	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+	cat, _ := shared.ResolveCategory(q, "Food & Dining")
+	_, err := m.UpdateExistingBudget(1, SetBudgetParams{
 		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
 		Categories: []string{},
 	}, "monthly", "2026-07-01", "2026-07-31", []*gen.Category{cat}, nil)
@@ -1454,9 +1497,9 @@ func TestUpdateExistingBudgetRemoveTagError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetRemoveTagFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetRemoveTagFailQuerier{Querier: q})
 
-	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+	_, err := m.UpdateExistingBudget(1, SetBudgetParams{
 		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
 		Categories: []string{},
 	}, "monthly", "2026-07-01", "2026-07-31", nil, nil)
@@ -1467,9 +1510,9 @@ func TestUpdateExistingBudgetRemoveTagError(t *testing.T) {
 
 func TestUpdateExistingBudgetUpdateError(t *testing.T) {
 	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetUpdateFailQuerier2{Querier: gen.New(dbase)})
+	m := NewBudgetManager(&budgetUpdateFailQuerier2{Querier: gen.New(dbase)})
 
-	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+	_, err := m.UpdateExistingBudget(1, SetBudgetParams{
 		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
 		Categories: []string{},
 	}, "monthly", "2026-07-01", "2026-07-31", nil, nil)
@@ -1480,9 +1523,9 @@ func TestUpdateExistingBudgetUpdateError(t *testing.T) {
 
 func TestRemoveBudgetGetError(t *testing.T) {
 	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, &budgetGetFailQuerier{Querier: gen.New(dbase)})
+	m := NewBudgetManager(&budgetGetFailQuerier{Querier: gen.New(dbase)})
 
-	err := svc.RemoveBudget(1)
+	err := m.RemoveBudget(1)
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -1502,9 +1545,9 @@ func TestRemoveBudgetMarkInactiveError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetMarkInactiveFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetMarkInactiveFailQuerier{Querier: q})
 
-	err := svc.RemoveBudget(1)
+	err := m.RemoveBudget(1)
 	if err == nil {
 		t.Fatal("expected mark inactive error")
 	}
@@ -1524,9 +1567,9 @@ func TestEditBudgetUpdateError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetUpdateFailQuerier2{Querier: q})
+	m := NewBudgetManager(&budgetUpdateFailQuerier2{Querier: q})
 
-	_, err := svc.EditBudget(1, EditBudgetParams{Name: "New"})
+	_, err := m.EditBudget(1, EditBudgetParams{Name: "New"})
 	if err == nil {
 		t.Fatal("expected update error")
 	}
@@ -1543,7 +1586,7 @@ func TestEnsureCurrentPeriodPriorError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetPriorFailQuerier{Querier: q})
 
 	budget := &gen.Budget{
 		ID:          2,
@@ -1555,7 +1598,7 @@ func TestEnsureCurrentPeriodPriorError(t *testing.T) {
 		Currency:    "IDR",
 		IsActive:    1,
 	}
-	_, err := svc.ensureCurrentPeriod(budget)
+	_, err := m.ensureCurrentPeriod(budget)
 	if err == nil {
 		t.Fatal("expected prior budget error")
 	}
@@ -1572,15 +1615,14 @@ func TestCheckSingleBudgetEnsureError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetPriorFailQuerier{Querier: q})
 
-	_, err := svc.CheckBudgets(CheckBudgetsParams{Identifier: "Test"})
+	_, err := m.CheckBudgets(CheckBudgetsParams{Identifier: "Test"})
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
-// Additional mock queriers for remaining coverage gaps
 type budgetResolveGetFailQuerier struct {
 	gen.Querier
 }
@@ -1640,9 +1682,9 @@ func TestResolveBudgetGetByIDError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetResolveGetFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetResolveGetFailQuerier{Querier: q})
 
-	_, err := svc.resolveBudget("1")
+	_, err := m.ResolveBudget("1")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -1662,7 +1704,7 @@ func TestEnsureCurrentPeriodCreateError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetEnsureCreateFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEnsureCreateFailQuerier{Querier: q})
 
 	b := &gen.Budget{
 		ID:          2,
@@ -1674,7 +1716,7 @@ func TestEnsureCurrentPeriodCreateError(t *testing.T) {
 		Currency:    "IDR",
 		IsActive:    1,
 	}
-	_, err := svc.ensureCurrentPeriod(b)
+	_, err := m.ensureCurrentPeriod(b)
 	if err == nil {
 		t.Fatal("expected create error in ensureCurrentPeriod")
 	}
@@ -1691,7 +1733,7 @@ func TestEnsureCurrentPeriodListCatError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetEnsureCatFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEnsureCatFailQuerier{Querier: q})
 
 	b := &gen.Budget{
 		ID:          2,
@@ -1703,7 +1745,7 @@ func TestEnsureCurrentPeriodListCatError(t *testing.T) {
 		Currency:    "IDR",
 		IsActive:    1,
 	}
-	_, err := svc.ensureCurrentPeriod(b)
+	_, err := m.ensureCurrentPeriod(b)
 	if err == nil {
 		t.Fatal("expected list categories error")
 	}
@@ -1722,7 +1764,7 @@ func TestEnsureCurrentPeriodListTagError(t *testing.T) {
 	})
 	_ = q.AddBudgetCategory(context.Background(), gen.AddBudgetCategoryParams{BudgetID: 1, CategoryID: 1})
 
-	svc := NewWithQuerier(dbase, &budgetEnsureTagFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEnsureTagFailQuerier{Querier: q})
 
 	b := &gen.Budget{
 		ID:          2,
@@ -1734,7 +1776,7 @@ func TestEnsureCurrentPeriodListTagError(t *testing.T) {
 		Currency:    "IDR",
 		IsActive:    1,
 	}
-	_, err := svc.ensureCurrentPeriod(b)
+	_, err := m.ensureCurrentPeriod(b)
 	if err == nil {
 		t.Fatal("expected list tags error")
 	}
@@ -1751,9 +1793,9 @@ func TestEditBudgetAddCategoryError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEditCatAddFailQuerier{Querier: q})
 
-	_, err := svc.EditBudget(1, EditBudgetParams{
+	_, err := m.EditBudget(1, EditBudgetParams{
 		AddCategories: []string{"Food & Dining"},
 	})
 	if err == nil {
@@ -1773,9 +1815,9 @@ func TestEditBudgetAddTagError(t *testing.T) {
 		PeriodEnd:   "2026-07-31",
 	})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
-	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEditTagAddFailQuerier{Querier: q})
 
-	_, err := svc.EditBudget(1, EditBudgetParams{
+	_, err := m.EditBudget(1, EditBudgetParams{
 		AddTags: []string{"test-tag"},
 	})
 	if err == nil {
@@ -1784,15 +1826,15 @@ func TestEditBudgetAddTagError(t *testing.T) {
 }
 
 func TestEditBudgetRemoveCategoryMissing(t *testing.T) {
-	svc := setupService(t)
-	result, _ := svc.SetBudget(SetBudgetParams{
+	m := setupBudgetManager(t)
+	result, _ := m.SetBudget(SetBudgetParams{
 		Name:       "Test",
 		Amount:     1000000,
 		Period:     "monthly",
 		Categories: []string{"Restaurant"},
 	})
 
-	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	_, err := m.EditBudget(result.Budget.ID, EditBudgetParams{
 		RemoveCategories: []string{"GhostCategory"},
 	})
 	if err == nil {
@@ -1804,17 +1846,17 @@ func TestEditBudgetRemoveCategoryMissing(t *testing.T) {
 }
 
 func TestEditBudgetRemoveTag(t *testing.T) {
-	svc := setupService(t)
-	_, _ = svc.CreateTag("test-tag")
-	_, _ = svc.CreateTag("extra-tag")
-	result, _ := svc.SetBudget(SetBudgetParams{
+	m, q := setupBudgetManagerWithDB(t)
+	_, _ = q.CreateTag(context.Background(), "test-tag")
+	_, _ = q.CreateTag(context.Background(), "extra-tag")
+	result, _ := m.SetBudget(SetBudgetParams{
 		Name:   "Test",
 		Amount: 1000000,
 		Period: "monthly",
 		Tags:   []string{"test-tag", "extra-tag"},
 	})
 
-	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	_, err := m.EditBudget(result.Budget.ID, EditBudgetParams{
 		RemoveTags: []string{"test-tag"},
 	})
 	if err != nil {
@@ -1823,15 +1865,15 @@ func TestEditBudgetRemoveTag(t *testing.T) {
 }
 
 func TestEditBudgetRemoveTagMissing(t *testing.T) {
-	svc := setupService(t)
-	result, _ := svc.SetBudget(SetBudgetParams{
+	m := setupBudgetManager(t)
+	result, _ := m.SetBudget(SetBudgetParams{
 		Name:       "Test",
 		Amount:     1000000,
 		Period:     "monthly",
 		Categories: []string{"Restaurant"},
 	})
 
-	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	_, err := m.EditBudget(result.Budget.ID, EditBudgetParams{
 		RemoveTags: []string{"GhostTag"},
 	})
 	if err == nil {
@@ -1840,8 +1882,8 @@ func TestEditBudgetRemoveTagMissing(t *testing.T) {
 }
 
 func TestEditBudgetInvalidNotify(t *testing.T) {
-	svc := setupService(t)
-	result, _ := svc.SetBudget(SetBudgetParams{
+	m := setupBudgetManager(t)
+	result, _ := m.SetBudget(SetBudgetParams{
 		Name:       "Test",
 		Amount:     1000000,
 		Period:     "monthly",
@@ -1849,7 +1891,7 @@ func TestEditBudgetInvalidNotify(t *testing.T) {
 	})
 
 	notify := int64(101)
-	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	_, err := m.EditBudget(result.Budget.ID, EditBudgetParams{
 		NotifyPct: &notify,
 	})
 	if err == nil {
@@ -1857,7 +1899,7 @@ func TestEditBudgetInvalidNotify(t *testing.T) {
 	}
 
 	notify = int64(0)
-	_, err = svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	_, err = m.EditBudget(result.Budget.ID, EditBudgetParams{
 		NotifyPct: &notify,
 	})
 	if err == nil {
@@ -1876,9 +1918,9 @@ func TestCheckBudgetsLoopEnsureError(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, &budgetPriorFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetPriorFailQuerier{Querier: q})
 
-	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	_, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err == nil {
 		t.Fatal("expected ensureCurrentPeriod error in check loop")
 	}
@@ -1895,10 +1937,10 @@ func TestUpdateExistingBudgetAddCatError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEditCatAddFailQuerier{Querier: q})
 
-	cat, _ := svc.ResolveCategory("Food & Dining")
-	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+	cat, _ := shared.ResolveCategory(q, "Food & Dining")
+	_, err := m.UpdateExistingBudget(1, SetBudgetParams{
 		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
 	}, "monthly", "2026-07-01", "2026-07-31", []*gen.Category{cat}, nil)
 	if err == nil {
@@ -1918,10 +1960,10 @@ func TestUpdateExistingBudgetAddTagError(t *testing.T) {
 		PeriodEnd:   "2026-07-31",
 	})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
-	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEditTagAddFailQuerier{Querier: q})
 
-	tag, _ := svc.ResolveTag("test-tag")
-	_, err := svc.updateExistingBudget(1, SetBudgetParams{
+	tag, _ := shared.ResolveTag(q, "test-tag")
+	_, err := m.UpdateExistingBudget(1, SetBudgetParams{
 		Name: "Test", Amount: 2000000, Period: "monthly", NotifyPct: 80,
 	}, "monthly", "2026-07-01", "2026-07-31", nil, []*gen.Tag{tag})
 	if err == nil {
@@ -1932,7 +1974,7 @@ func TestUpdateExistingBudgetAddTagError(t *testing.T) {
 func TestEnsureCurrentPeriodDefaultType(t *testing.T) {
 	dbase := testdb.Open(t)
 	q := gen.New(dbase)
-	svc := NewWithQuerier(dbase, q)
+	m := NewBudgetManager(q)
 
 	b := &gen.Budget{
 		ID:          1,
@@ -1944,7 +1986,7 @@ func TestEnsureCurrentPeriodDefaultType(t *testing.T) {
 		Currency:    "IDR",
 		IsActive:    1,
 	}
-	result, err := svc.ensureCurrentPeriod(b)
+	result, err := m.ensureCurrentPeriod(b)
 	if err != nil {
 		t.Fatalf("ensureCurrentPeriod: %v", err)
 	}
@@ -1964,9 +2006,9 @@ func TestCalculateSpendingTagError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, tagOnly: true})
+	m := NewBudgetManager(&budgetSpendingFailQuerier{Querier: q, tagOnly: true})
 
-	_, err := svc.calculateSpending(1, "2026-07-01", "2026-07-31")
+	_, err := m.calculateSpending(1, "2026-07-01", "2026-07-31")
 	if err == nil {
 		t.Fatal("expected tag spending error")
 	}
@@ -1983,25 +2025,25 @@ func TestBuildCheckResultSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	m := NewBudgetManager(&budgetSpendingFailQuerier{Querier: q, catFail: true})
 
 	b, _ := q.GetBudgetByID(context.Background(), 1)
-	_, err := svc.buildCheckResult(b)
+	_, err := m.buildCheckResult(b)
 	if err == nil {
 		t.Fatal("expected spending error in buildCheckResult")
 	}
 }
 
 func TestEditBudgetResolveAddTagError(t *testing.T) {
-	svc := setupService(t)
-	result, _ := svc.SetBudget(SetBudgetParams{
+	m := setupBudgetManager(t)
+	result, _ := m.SetBudget(SetBudgetParams{
 		Name:       "Test",
 		Amount:     1000000,
 		Period:     "monthly",
 		Categories: []string{"Restaurant"},
 	})
 
-	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	_, err := m.EditBudget(result.Budget.ID, EditBudgetParams{
 		AddTags: []string{"GhostTag"},
 	})
 	if err == nil {
@@ -2013,15 +2055,15 @@ func TestEditBudgetResolveAddTagError(t *testing.T) {
 }
 
 func TestEditBudgetResolveAddCategoryError(t *testing.T) {
-	svc := setupService(t)
-	result, _ := svc.SetBudget(SetBudgetParams{
+	m := setupBudgetManager(t)
+	result, _ := m.SetBudget(SetBudgetParams{
 		Name:       "Test",
 		Amount:     1000000,
 		Period:     "monthly",
 		Categories: []string{"Restaurant"},
 	})
 
-	_, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+	_, err := m.EditBudget(result.Budget.ID, EditBudgetParams{
 		AddCategories: []string{"GhostCategory"},
 	})
 	if err == nil {
@@ -2056,9 +2098,9 @@ func TestEditBudgetRemoveCategoryError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetEditRemoveCatFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEditRemoveCatFailQuerier{Querier: q})
 
-	_, err := svc.EditBudget(1, EditBudgetParams{
+	_, err := m.EditBudget(1, EditBudgetParams{
 		RemoveCategories: []string{"Food & Dining"},
 	})
 	if err == nil {
@@ -2078,9 +2120,9 @@ func TestEditBudgetRemoveTagError(t *testing.T) {
 		PeriodEnd:   "2026-07-31",
 	})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
-	svc := NewWithQuerier(dbase, &budgetEditRemoveTagFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEditRemoveTagFailQuerier{Querier: q})
 
-	_, err := svc.EditBudget(1, EditBudgetParams{
+	_, err := m.EditBudget(1, EditBudgetParams{
 		RemoveTags: []string{"test-tag"},
 	})
 	if err == nil {
@@ -2099,9 +2141,9 @@ func TestRecurringAutoGenerationWithPrior(t *testing.T) {
 		PeriodStart: "2026-06-01",
 		PeriodEnd:   "2026-06-30",
 	})
-	svc := NewWithQuerier(dbase, q)
+	m := NewBudgetManager(q)
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -2109,7 +2151,7 @@ func TestRecurringAutoGenerationWithPrior(t *testing.T) {
 		t.Fatal("expected auto-generated budget in results")
 	}
 
-	all, _ := svc.ListBudgets(ListBudgetsParams{All: true})
+	all, _ := m.ListBudgets(ListBudgetsParams{All: true})
 	if len(all) < 2 {
 		t.Errorf("expected at least 2 budgets (original + auto-generated), got %d", len(all))
 	}
@@ -2126,9 +2168,9 @@ func TestCheckBudgetsSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	m := NewBudgetManager(&budgetSpendingFailQuerier{Querier: q, catFail: true})
 
-	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	_, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err == nil {
 		t.Fatal("expected spending error in check all")
 	}
@@ -2145,9 +2187,9 @@ func TestCheckSingleBudgetSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	m := NewBudgetManager(&budgetSpendingFailQuerier{Querier: q, catFail: true})
 
-	_, err := svc.CheckBudgets(CheckBudgetsParams{Identifier: "Test"})
+	_, err := m.CheckBudgets(CheckBudgetsParams{Identifier: "Test"})
 	if err == nil {
 		t.Fatal("expected spending error in single check")
 	}
@@ -2164,9 +2206,9 @@ func TestEnsureCurrentPeriodNoPrior(t *testing.T) {
 		PeriodStart: "2026-07-15",
 		PeriodEnd:   "2026-08-14",
 	})
-	svc := NewWithQuerier(dbase, q)
+	m := NewBudgetManager(q)
 
-	results, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
+	results, err := m.CheckBudgets(CheckBudgetsParams{All: true})
 	if err != nil {
 		t.Fatalf("CheckBudgets: %v", err)
 	}
@@ -2187,7 +2229,7 @@ func TestEnsureCurrentPeriodCopyCatError(t *testing.T) {
 		PeriodEnd:   "2026-06-30",
 	})
 	_ = q.AddBudgetCategory(context.Background(), gen.AddBudgetCategoryParams{BudgetID: 1, CategoryID: 1})
-	svc := NewWithQuerier(dbase, &budgetEditCatAddFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEditCatAddFailQuerier{Querier: q})
 
 	b := &gen.Budget{
 		ID:          2,
@@ -2199,7 +2241,7 @@ func TestEnsureCurrentPeriodCopyCatError(t *testing.T) {
 		Currency:    "IDR",
 		IsActive:    1,
 	}
-	_, err := svc.ensureCurrentPeriod(b)
+	_, err := m.ensureCurrentPeriod(b)
 	if err == nil {
 		t.Fatal("expected add category error")
 	}
@@ -2219,7 +2261,7 @@ func TestEnsureCurrentPeriodCopyTagError(t *testing.T) {
 	_ = q.AddBudgetCategory(context.Background(), gen.AddBudgetCategoryParams{BudgetID: 1, CategoryID: 1})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
 	_ = q.AddBudgetTag(context.Background(), gen.AddBudgetTagParams{BudgetID: 1, TagID: 1})
-	svc := NewWithQuerier(dbase, &budgetEditTagAddFailQuerier{Querier: q})
+	m := NewBudgetManager(&budgetEditTagAddFailQuerier{Querier: q})
 
 	b := &gen.Budget{
 		ID:          2,
@@ -2231,7 +2273,7 @@ func TestEnsureCurrentPeriodCopyTagError(t *testing.T) {
 		Currency:    "IDR",
 		IsActive:    1,
 	}
-	_, err := svc.ensureCurrentPeriod(b)
+	_, err := m.ensureCurrentPeriod(b)
 	if err == nil {
 		t.Fatal("expected add tag error")
 	}

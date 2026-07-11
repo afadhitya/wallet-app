@@ -6,13 +6,14 @@ import (
 	"strconv"
 
 	"github.com/afadhitya/wallet-app/internal/gen"
+	"github.com/afadhitya/wallet-app/internal/service/shared"
 )
 
 func (s *Service) GetTagByID(id int64) (*gen.Tag, error) {
 	tag, err := s.q.GetTagByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, &NotFoundError{Entity: "tag", Name: strconv.FormatInt(id, 10)}
+			return nil, &shared.NotFoundError{Entity: "tag", Name: strconv.FormatInt(id, 10)}
 		}
 		return nil, err
 	}
@@ -23,28 +24,7 @@ func (s *Service) GetTagByName(name string) (*gen.Tag, error) {
 	tag, err := s.q.GetTagByName(s.ctx(), name)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, &NotFoundError{Entity: "tag", Name: name}
-		}
-		return nil, err
-	}
-	return tag, nil
-}
-
-func (s *Service) ResolveTag(identifier string) (*gen.Tag, error) {
-	if id, err := strconv.ParseInt(identifier, 10, 64); err == nil {
-		tag, err := s.q.GetTagByID(s.ctx(), id)
-		if err == nil {
-			return tag, nil
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
-		}
-	}
-
-	tag, err := s.q.GetTagByName(s.ctx(), identifier)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, &NotFoundError{Entity: "tag", Name: identifier}
+			return nil, &shared.NotFoundError{Entity: "tag", Name: name}
 		}
 		return nil, err
 	}
@@ -57,12 +37,12 @@ func (s *Service) ListTags() ([]*gen.Tag, error) {
 
 func (s *Service) CreateTag(name string) (*gen.Tag, error) {
 	if name == "" {
-		return nil, &ValidationError{Field: "name", Message: "tag name is required"}
+		return nil, &shared.ValidationError{Field: "name", Message: "tag name is required"}
 	}
 
 	existing, err := s.q.GetTagByName(s.ctx(), name)
 	if err == nil && existing != nil {
-		return nil, ErrDuplicateName
+		return nil, shared.ErrDuplicateName
 	}
 
 	return s.q.CreateTag(s.ctx(), name)
@@ -72,7 +52,7 @@ func (s *Service) DeleteTag(id int64) error {
 	_, err := s.q.GetTagByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &NotFoundError{Entity: "tag", Name: strconv.FormatInt(id, 10)}
+			return &shared.NotFoundError{Entity: "tag", Name: strconv.FormatInt(id, 10)}
 		}
 		return err
 	}
