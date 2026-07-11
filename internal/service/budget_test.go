@@ -647,7 +647,7 @@ func TestSpendingExcludesArchived(t *testing.T) {
 	}
 }
 
-func TestSpendingMixedOverlapDoubleCounted(t *testing.T) {
+func TestSpendingMixedOverlapDeduplicated(t *testing.T) {
 	svc := setupService(t)
 	SetTestRateConfig(TestRateConfig{BaseCurrency: "IDR", Rates: map[string]int64{}})
 	defer ResetTestRateConfig()
@@ -684,8 +684,8 @@ func TestSpendingMixedOverlapDoubleCounted(t *testing.T) {
 	if len(results) == 0 {
 		t.Fatal("expected results")
 	}
-	if results[0].Spent != 1000000 {
-		t.Errorf("expected spent 1000000 (double-counted 500000), got %d", results[0].Spent)
+	if results[0].Spent != 500000 {
+		t.Errorf("expected spent 500000 (deduplicated overlap), got %d", results[0].Spent)
 	}
 }
 
@@ -972,23 +972,12 @@ func (q *budgetListFailQuerier) ListActiveBudgets(ctx context.Context) ([]*gen.B
 
 type budgetSpendingFailQuerier struct {
 	gen.Querier
-	catFail bool
-	tagOnly bool
+	fail bool
 }
 
-func (q *budgetSpendingFailQuerier) SumCategoryExpenses(ctx context.Context, arg gen.SumCategoryExpensesParams) (interface{}, error) {
-	if q.catFail {
+func (q *budgetSpendingFailQuerier) SumBudgetExpenses(ctx context.Context, arg gen.SumBudgetExpensesParams) (interface{}, error) {
+	if q.fail {
 		return nil, fmt.Errorf("mock spending failure")
-	}
-	return int64(0), nil
-}
-
-func (q *budgetSpendingFailQuerier) SumTagExpenses(ctx context.Context, arg gen.SumTagExpensesParams) (interface{}, error) {
-	if q.tagOnly {
-		return nil, fmt.Errorf("mock tag spending failure")
-	}
-	if q.catFail {
-		return nil, fmt.Errorf("mock tag spending failure")
 	}
 	return int64(0), nil
 }
@@ -1035,7 +1024,7 @@ func TestListBudgetsSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, fail: true})
 
 	_, err := svc.ListBudgets(ListBudgetsParams{All: false})
 	if err == nil {
@@ -1953,7 +1942,7 @@ func TestEnsureCurrentPeriodDefaultType(t *testing.T) {
 	}
 }
 
-func TestCalculateSpendingTagError(t *testing.T) {
+func TestCalculateSpendingError(t *testing.T) {
 	dbase := testdb.Open(t)
 	q := gen.New(dbase)
 	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
@@ -1964,11 +1953,11 @@ func TestCalculateSpendingTagError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, tagOnly: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, fail: true})
 
 	_, err := svc.calculateSpending(1, "2026-07-01", "2026-07-31")
 	if err == nil {
-		t.Fatal("expected tag spending error")
+		t.Fatal("expected spending error")
 	}
 }
 
@@ -1983,7 +1972,7 @@ func TestBuildCheckResultSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, fail: true})
 
 	b, _ := q.GetBudgetByID(context.Background(), 1)
 	_, err := svc.buildCheckResult(b)
@@ -2126,7 +2115,7 @@ func TestCheckBudgetsSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, fail: true})
 
 	_, err := svc.CheckBudgets(CheckBudgetsParams{All: true})
 	if err == nil {
@@ -2145,7 +2134,7 @@ func TestCheckSingleBudgetSpendingError(t *testing.T) {
 		PeriodStart: "2026-07-01",
 		PeriodEnd:   "2026-07-31",
 	})
-	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, catFail: true})
+	svc := NewWithQuerier(dbase, &budgetSpendingFailQuerier{Querier: q, fail: true})
 
 	_, err := svc.CheckBudgets(CheckBudgetsParams{Identifier: "Test"})
 	if err == nil {
