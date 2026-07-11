@@ -1183,6 +1183,98 @@ func TestCalcNextDue_CustomWithoutRule(t *testing.T) {
 	}
 }
 
+func TestCalcNextDue_RRULEWeeklyBYDAY_SingleDay(t *testing.T) {
+	dueDate := time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC)
+	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=WE"))
+	if err != nil {
+		t.Fatalf("calcNextDue: %v", err)
+	}
+	expected := time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)
+	if !next.Equal(expected) {
+		t.Errorf("expected %s, got %s", expected.Format("2006-01-02"), next.Format("2006-01-02"))
+	}
+}
+
+func TestCalcNextDue_RRULEWeeklyBYDAY_MultiDay(t *testing.T) {
+	dueDate := time.Date(2026, 7, 4, 0, 0, 0, 0, time.UTC)
+	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=TU,WE"))
+	if err != nil {
+		t.Fatalf("calcNextDue: %v", err)
+	}
+	expected := time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC)
+	if !next.Equal(expected) {
+		t.Errorf("expected %s, got %s", expected.Format("2006-01-02"), next.Format("2006-01-02"))
+	}
+}
+
+func TestCalcNextDue_RRULEWeeklyBYDAY_SameDay(t *testing.T) {
+	dueDate := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
+	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=TH"))
+	if err != nil {
+		t.Fatalf("calcNextDue: %v", err)
+	}
+	expected := time.Date(2026, 7, 9, 0, 0, 0, 0, time.UTC)
+	if !next.Equal(expected) {
+		t.Errorf("expected %s, got %s", expected.Format("2006-01-02"), next.Format("2006-01-02"))
+	}
+}
+
+func TestCalcNextDue_RRULEWeeklyBYDAY_LastDayOfWeek(t *testing.T) {
+	dueDate := time.Date(2026, 7, 5, 0, 0, 0, 0, time.UTC)
+	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=SU"))
+	if err != nil {
+		t.Fatalf("calcNextDue: %v", err)
+	}
+	expected := time.Date(2026, 7, 12, 0, 0, 0, 0, time.UTC)
+	if !next.Equal(expected) {
+		t.Errorf("expected %s, got %s", expected.Format("2006-01-02"), next.Format("2006-01-02"))
+	}
+}
+
+func TestCalcNextDue_RRULEWeekly_NoBYDAY(t *testing.T) {
+	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY"))
+	if err != nil {
+		t.Fatalf("calcNextDue: %v", err)
+	}
+	expected := time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)
+	if !next.Equal(expected) {
+		t.Errorf("expected %s, got %s", expected.Format("2006-01-02"), next.Format("2006-01-02"))
+	}
+}
+
+func TestCalcNextDue_RRULEMonthly_EOMClamp(t *testing.T) {
+	dueDate := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC)
+	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=MONTHLY;BYMONTHDAY=31"))
+	if err != nil {
+		t.Fatalf("calcNextDue: %v", err)
+	}
+	expected := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
+	if !next.Equal(expected) {
+		t.Errorf("expected %s, got %s", expected.Format("2006-01-02"), next.Format("2006-01-02"))
+	}
+}
+
+func TestCalcNextDue_RRULEMonthly_YearRollover(t *testing.T) {
+	dueDate := time.Date(2026, 12, 15, 0, 0, 0, 0, time.UTC)
+	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=MONTHLY"))
+	if err != nil {
+		t.Fatalf("calcNextDue: %v", err)
+	}
+	expected := time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC)
+	if !next.Equal(expected) {
+		t.Errorf("expected %s, got %s", expected.Format("2006-01-02"), next.Format("2006-01-02"))
+	}
+}
+
+func TestCalcNextDue_RRULE_NoFREQ(t *testing.T) {
+	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
+	_, err := calcNextDue(dueDate, "custom", testNullString("INVALID"))
+	if err == nil {
+		t.Fatal("expected error for RRULE not starting with FREQ=")
+	}
+}
+
 func TestResumePlannedPayment_NotFound(t *testing.T) {
 	svc := setupServiceForPP(t)
 
