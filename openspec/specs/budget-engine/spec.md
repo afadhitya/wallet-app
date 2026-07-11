@@ -131,10 +131,10 @@ The system SHALL calculate budget spending from non-archived expense transaction
 - **WHEN** transactions match a budget's category or tag targets but are not non-archived expenses
 - **THEN** those transactions do not contribute to the budget spent amount
 
-#### Scenario: Mixed target overlap is double-counted
+#### Scenario: Mixed target overlap is deduplicated
 - **WHEN** one expense transaction matches both a budget category target and a budget tag target
-- **THEN** the transaction amount may be counted once for the category target and once for the tag target
-- **AND** the system does not deduplicate overlap between target types
+- **THEN** the transaction amount is counted exactly once toward the budget spent amount
+- **AND** the system deduplicates overlap between target types using a single query with OR-based matching
 
 ### Requirement: Budget Recurring Period Auto-Generation
 The system SHALL auto-create a current recurring budget period during budget check when an active monthly, weekly, or yearly budget has a previous period but no current period.
