@@ -282,22 +282,22 @@ func (s *Service) PayPlannedPayment(params PayPlannedPaymentParams) (*PayPlanned
 	if pp.Name != "" {
 		description = sql.NullString{String: pp.Name, Valid: true}
 	}
-	plannedPaymentID := sql.NullInt64{Int64: pp.ID, Valid: true}
 
-	txn, err := s.q.CreatePlannedTransaction(s.ctx(), gen.CreatePlannedTransactionParams{
-		AccountID:        pp.AccountID,
-		CategoryID:       pp.CategoryID,
-		Type:             pp.Type,
-		Amount:           amount,
-		Currency:         pp.Currency,
-		Description:      description,
-		Notes:            sql.NullString{},
-		TransferToID:     sql.NullInt64{},
-		Date:             date,
-		PlannedPaymentID: plannedPaymentID,
+	txn, err := s.q.CreateTransaction(s.ctx(), gen.CreateTransactionParams{
+		AccountID:    pp.AccountID,
+		CategoryID:   pp.CategoryID,
+		Type:         pp.Type,
+		Amount:       amount,
+		Currency:     pp.Currency,
+		Description:  description,
+		Notes:        sql.NullString{},
+		TransferToID: sql.NullInt64{},
+		Date:         date,
+		BaseAmount:   sql.NullInt64{},
+		BaseCurrency: sql.NullString{},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("create planned transaction: %w", err)
+		return nil, fmt.Errorf("create transaction: %w", err)
 	}
 
 	if err := s.recalculateBalance(account.ID); err != nil {
@@ -601,6 +601,16 @@ func calcNextDue(currentDue time.Time, recurrence string, recurrenceRule sql.Nul
 	}
 }
 
+var bydayLookup = map[string]time.Weekday{
+	"MO": time.Monday,
+	"TU": time.Tuesday,
+	"WE": time.Wednesday,
+	"TH": time.Thursday,
+	"FR": time.Friday,
+	"SA": time.Saturday,
+	"SU": time.Sunday,
+}
+
 func calcNextDueFromRRULE(currentDue time.Time, rrule string) (time.Time, error) {
 	rule := strings.ToUpper(rrule)
 	if !strings.HasPrefix(rule, "FREQ=") {
@@ -610,10 +620,19 @@ func calcNextDueFromRRULE(currentDue time.Time, rrule string) (time.Time, error)
 	parts := strings.Split(rule, ";")
 	freq := strings.TrimPrefix(parts[0], "FREQ=")
 	var byMonthDay int
+	bydayDays := make(map[time.Weekday]bool)
 
 	for _, part := range parts[1:] {
 		if strings.HasPrefix(part, "BYMONTHDAY=") {
 			_, _ = fmt.Sscanf(part, "BYMONTHDAY=%d", &byMonthDay)
+		}
+		if strings.HasPrefix(part, "BYDAY=") {
+			dayStr := strings.TrimPrefix(part, "BYDAY=")
+			for _, d := range strings.Split(dayStr, ",") {
+				if wd, ok := bydayLookup[strings.TrimSpace(d)]; ok {
+					bydayDays[wd] = true
+				}
+			}
 		}
 	}
 
@@ -621,6 +640,15 @@ func calcNextDueFromRRULE(currentDue time.Time, rrule string) (time.Time, error)
 	case "DAILY":
 		return currentDue.AddDate(0, 0, 1), nil
 	case "WEEKLY":
+		if len(bydayDays) > 0 {
+			start := currentDue.AddDate(0, 0, 1)
+			for i := 0; i < 7; i++ {
+				if bydayDays[start.Weekday()] {
+					return start, nil
+				}
+				start = start.AddDate(0, 0, 1)
+			}
+		}
 		return currentDue.AddDate(0, 0, 7), nil
 	case "MONTHLY":
 		year := currentDue.Year()
