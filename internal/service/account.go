@@ -6,50 +6,8 @@ import (
 	"strconv"
 
 	"github.com/afadhitya/wallet-app/internal/gen"
+	"github.com/afadhitya/wallet-app/internal/service/shared"
 )
-
-func (s *Service) GetAccountByID(id int64) (*gen.Account, error) {
-	account, err := s.q.GetAccountByID(s.ctx(), id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, &NotFoundError{Entity: "account", Name: strconv.FormatInt(id, 10)}
-		}
-		return nil, err
-	}
-	return account, nil
-}
-
-func (s *Service) GetAccountByName(name string) (*gen.Account, error) {
-	account, err := s.q.GetAccountByName(s.ctx(), name)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, &NotFoundError{Entity: "account", Name: name}
-		}
-		return nil, err
-	}
-	return account, nil
-}
-
-func (s *Service) ResolveAccount(identifier string) (*gen.Account, error) {
-	if id, err := strconv.ParseInt(identifier, 10, 64); err == nil {
-		account, err := s.q.GetAccountByID(s.ctx(), id)
-		if err == nil {
-			return account, nil
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
-		}
-	}
-
-	account, err := s.q.GetAccountByName(s.ctx(), identifier)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, &NotFoundError{Entity: "account", Name: identifier}
-		}
-		return nil, err
-	}
-	return account, nil
-}
 
 func (s *Service) ListAccounts() ([]*gen.Account, error) {
 	return s.q.ListAccounts(s.ctx())
@@ -61,7 +19,7 @@ func (s *Service) ListAllAccounts() ([]*gen.Account, error) {
 
 func (s *Service) CreateAccount(name, accountType, currency string) (*gen.Account, error) {
 	if name == "" {
-		return nil, &ValidationError{Field: "name", Message: "account name is required"}
+		return nil, &shared.ValidationError{Field: "name", Message: "account name is required"}
 	}
 	if accountType == "" {
 		accountType = "checking"
@@ -72,7 +30,7 @@ func (s *Service) CreateAccount(name, accountType, currency string) (*gen.Accoun
 
 	existing, checkErr := s.q.GetAccountByName(s.ctx(), name)
 	if checkErr == nil && existing != nil {
-		return nil, ErrDuplicateName
+		return nil, shared.ErrDuplicateName
 	}
 	if checkErr != nil && !errors.Is(checkErr, sql.ErrNoRows) {
 		return nil, checkErr
@@ -89,13 +47,13 @@ func (s *Service) UpdateAccount(id int64, name, accountType, currency string, so
 	_, err := s.q.GetAccountByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, &NotFoundError{Entity: "account", Name: strconv.FormatInt(id, 10)}
+			return nil, &shared.NotFoundError{Entity: "account", Name: strconv.FormatInt(id, 10)}
 		}
 		return nil, err
 	}
 
 	if name == "" {
-		return nil, &ValidationError{Field: "name", Message: "account name cannot be empty"}
+		return nil, &shared.ValidationError{Field: "name", Message: "account name cannot be empty"}
 	}
 
 	return s.q.UpdateAccount(s.ctx(), gen.UpdateAccountParams{
@@ -111,7 +69,7 @@ func (s *Service) ArchiveAccount(id int64) error {
 	_, err := s.q.GetAccountByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &NotFoundError{Entity: "account", Name: strconv.FormatInt(id, 10)}
+			return &shared.NotFoundError{Entity: "account", Name: strconv.FormatInt(id, 10)}
 		}
 		return err
 	}

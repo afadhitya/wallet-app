@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/afadhitya/wallet-app/internal/service/shared"
 	"github.com/afadhitya/wallet-app/internal/testdb"
 	"github.com/afadhitya/wallet-app/pkg/config"
 )
@@ -12,8 +13,8 @@ import (
 func setupServiceWithRates(t *testing.T, base string, rates map[string]int64) *Service {
 	t.Helper()
 
-	origLoad := svcLoadRates
-	origSave := svcSaveRates
+	origLoad := shared.LoadRates
+	origSave := shared.SaveRates
 
 	stored := config.RateConfig{
 		BaseCurrency: base,
@@ -23,7 +24,7 @@ func setupServiceWithRates(t *testing.T, base string, rates map[string]int64) *S
 		stored.Rates[k] = v
 	}
 
-	svcLoadRates = func() (config.RateConfig, error) {
+	shared.LoadRates = func() (config.RateConfig, error) {
 		rc := config.RateConfig{
 			BaseCurrency: stored.BaseCurrency,
 			Rates:        make(map[string]int64),
@@ -34,14 +35,14 @@ func setupServiceWithRates(t *testing.T, base string, rates map[string]int64) *S
 		return rc, nil
 	}
 
-	svcSaveRates = func(cfg config.RateConfig) error {
+	shared.SaveRates = func(cfg config.RateConfig) error {
 		stored = cfg
 		return nil
 	}
 
 	t.Cleanup(func() {
-		svcLoadRates = origLoad
-		svcSaveRates = origSave
+		shared.LoadRates = origLoad
+		shared.SaveRates = origSave
 	})
 
 	return New(testdb.Open(t))
@@ -317,11 +318,11 @@ func TestRemoveRateBaseCurrency(t *testing.T) {
 }
 
 func TestRateConfigMissingError(t *testing.T) {
-	origLoad := svcLoadRates
-	svcLoadRates = func() (config.RateConfig, error) {
+	origLoad := shared.LoadRates
+	shared.LoadRates = func() (config.RateConfig, error) {
 		return config.RateConfig{}, errors.New("rate configuration not found")
 	}
-	defer func() { svcLoadRates = origLoad }()
+	defer func() { shared.LoadRates = origLoad }()
 
 	svc := New(testdb.Open(t))
 	_, err := svc.GetBaseCurrency()
@@ -334,11 +335,11 @@ func TestRateConfigMissingError(t *testing.T) {
 }
 
 func TestRateConfigLoadError(t *testing.T) {
-	origLoad := svcLoadRates
-	svcLoadRates = func() (config.RateConfig, error) {
+	origLoad := shared.LoadRates
+	shared.LoadRates = func() (config.RateConfig, error) {
 		return config.RateConfig{}, errors.New("read rates file: permission denied")
 	}
-	defer func() { svcLoadRates = origLoad }()
+	defer func() { shared.LoadRates = origLoad }()
 
 	svc := New(testdb.Open(t))
 	_, err := svc.GetBaseCurrency()
@@ -351,18 +352,18 @@ func TestRateConfigLoadError(t *testing.T) {
 }
 
 func TestGetRateNonPositiveInConfig(t *testing.T) {
-	origLoad := svcLoadRates
-	origSave := svcSaveRates
-	svcLoadRates = func() (config.RateConfig, error) {
+	origLoad := shared.LoadRates
+	origSave := shared.SaveRates
+	shared.LoadRates = func() (config.RateConfig, error) {
 		return config.RateConfig{
 			BaseCurrency: "IDR",
 			Rates:        map[string]int64{"USD": 0},
 		}, nil
 	}
-	svcSaveRates = func(config.RateConfig) error { return nil }
+	shared.SaveRates = func(config.RateConfig) error { return nil }
 	defer func() {
-		svcLoadRates = origLoad
-		svcSaveRates = origSave
+		shared.LoadRates = origLoad
+		shared.SaveRates = origSave
 	}()
 
 	svc := New(testdb.Open(t))
@@ -376,18 +377,18 @@ func TestGetRateNonPositiveInConfig(t *testing.T) {
 }
 
 func TestConvertNonPositiveRate(t *testing.T) {
-	origLoad := svcLoadRates
-	origSave := svcSaveRates
-	svcLoadRates = func() (config.RateConfig, error) {
+	origLoad := shared.LoadRates
+	origSave := shared.SaveRates
+	shared.LoadRates = func() (config.RateConfig, error) {
 		return config.RateConfig{
 			BaseCurrency: "IDR",
 			Rates:        map[string]int64{"USD": -1},
 		}, nil
 	}
-	svcSaveRates = func(config.RateConfig) error { return nil }
+	shared.SaveRates = func(config.RateConfig) error { return nil }
 	defer func() {
-		svcLoadRates = origLoad
-		svcSaveRates = origSave
+		shared.LoadRates = origLoad
+		shared.SaveRates = origSave
 	}()
 
 	svc := New(testdb.Open(t))
@@ -398,18 +399,18 @@ func TestConvertNonPositiveRate(t *testing.T) {
 }
 
 func TestConvertMissingRateInConvert(t *testing.T) {
-	origLoad := svcLoadRates
-	origSave := svcSaveRates
-	svcLoadRates = func() (config.RateConfig, error) {
+	origLoad := shared.LoadRates
+	origSave := shared.SaveRates
+	shared.LoadRates = func() (config.RateConfig, error) {
 		return config.RateConfig{
 			BaseCurrency: "IDR",
 			Rates:        map[string]int64{"USD": 15800},
 		}, nil
 	}
-	svcSaveRates = func(config.RateConfig) error { return nil }
+	shared.SaveRates = func(config.RateConfig) error { return nil }
 	defer func() {
-		svcLoadRates = origLoad
-		svcSaveRates = origSave
+		shared.LoadRates = origLoad
+		shared.SaveRates = origSave
 	}()
 
 	svc := New(testdb.Open(t))
@@ -420,11 +421,11 @@ func TestConvertMissingRateInConvert(t *testing.T) {
 }
 
 func TestListRatesWithLoadError(t *testing.T) {
-	origLoad := svcLoadRates
-	svcLoadRates = func() (config.RateConfig, error) {
+	origLoad := shared.LoadRates
+	shared.LoadRates = func() (config.RateConfig, error) {
 		return config.RateConfig{}, ErrRateConfigMissing
 	}
-	defer func() { svcLoadRates = origLoad }()
+	defer func() { shared.LoadRates = origLoad }()
 
 	svc := New(testdb.Open(t))
 	_, _, err := svc.ListRates()

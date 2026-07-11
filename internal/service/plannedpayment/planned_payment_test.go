@@ -1,29 +1,43 @@
-package service
+package plannedpayment
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/afadhitya/wallet-app/internal/gen"
+	"github.com/afadhitya/wallet-app/internal/service/shared"
+	"github.com/afadhitya/wallet-app/internal/testdb"
 )
 
-func setupServiceForPP(t *testing.T) *Service {
+func setupPlannedPaymentManager(t *testing.T) *PlannedPaymentManager {
 	t.Helper()
-	return setupService(t)
+	shared.SetTestRateConfig(shared.TestRateConfig{
+		BaseCurrency: "IDR",
+		Rates:        map[string]int64{},
+	})
+	t.Cleanup(shared.ResetTestRateConfig)
+	return NewPlannedPaymentManager(gen.New(testdb.Open(t)))
 }
 
-func mustCreateAccount(t *testing.T, svc *Service, name, accType, currency string) {
+func mustCreateAccount(t *testing.T, m *PlannedPaymentManager, name, accountType, currency string) *gen.Account {
 	t.Helper()
-	if _, err := svc.CreateAccount(name, accType, currency); err != nil {
-		t.Fatalf("create account %s: %v", name, err)
+	acc, err := m.q.CreateAccount(context.Background(), gen.CreateAccountParams{
+		Name: name, Type: accountType, Currency: currency,
+	})
+	if err != nil {
+		t.Fatalf("create account: %v", err)
 	}
+	return acc
 }
 
 func TestCreatePlannedPayment_Valid(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name:       "Netflix",
 		Amount:     149000,
 		Account:    "BCA",
@@ -50,10 +64,10 @@ func TestCreatePlannedPayment_Valid(t *testing.T) {
 }
 
 func TestCreatePlannedPayment_InvalidAmount(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name:       "Invalid",
 		Amount:     0,
 		Account:    "BCA",
@@ -63,16 +77,16 @@ func TestCreatePlannedPayment_InvalidAmount(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for zero amount")
 	}
-	if err != ErrInvalidAmount {
+	if err != shared.ErrInvalidAmount {
 		t.Errorf("expected ErrInvalidAmount, got %v", err)
 	}
 }
 
 func TestCreatePlannedPayment_MissingName(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Amount:     50000,
 		Account:    "BCA",
 		Category:   "Subscriptions",
@@ -81,17 +95,17 @@ func TestCreatePlannedPayment_MissingName(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for missing name")
 	}
-	ve, ok := err.(*ValidationError)
+	ve, ok := err.(*shared.ValidationError)
 	if !ok || ve.Field != "name" {
 		t.Errorf("expected name validation error, got %v", err)
 	}
 }
 
 func TestCreatePlannedPayment_InvalidRecurrence(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name:       "Test",
 		Amount:     50000,
 		Account:    "BCA",
@@ -104,10 +118,10 @@ func TestCreatePlannedPayment_InvalidRecurrence(t *testing.T) {
 }
 
 func TestCreatePlannedPayment_CustomRRULEMissing(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name:       "Test",
 		Amount:     50000,
 		Account:    "BCA",
@@ -120,10 +134,10 @@ func TestCreatePlannedPayment_CustomRRULEMissing(t *testing.T) {
 }
 
 func TestCreatePlannedPayment_InvalidRRULE(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name:           "Test",
 		Amount:         50000,
 		Account:        "BCA",
@@ -137,9 +151,9 @@ func TestCreatePlannedPayment_InvalidRRULE(t *testing.T) {
 }
 
 func TestCreatePlannedPayment_AccountNotFound(t *testing.T) {
-	svc := setupServiceForPP(t)
+	m := setupPlannedPaymentManager(t)
 
-	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name:       "Test",
 		Amount:     50000,
 		Account:    "NonExistent",
@@ -152,10 +166,10 @@ func TestCreatePlannedPayment_AccountNotFound(t *testing.T) {
 }
 
 func TestCreatePlannedPayment_MissingCategory(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name:       "Netflix",
 		Amount:     149000,
 		Account:    "BCA",
@@ -164,17 +178,17 @@ func TestCreatePlannedPayment_MissingCategory(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for missing category")
 	}
-	var ve *ValidationError
+	var ve *shared.ValidationError
 	if !errors.As(err, &ve) || ve.Field != "category" {
 		t.Fatalf("expected category validation error, got %v", err)
 	}
 }
 
 func TestCreatePlannedPayment_MissingSchedule(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	_, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name:       "Unscheduled",
 		Amount:     1000,
 		Account:    "BCA",
@@ -184,17 +198,17 @@ func TestCreatePlannedPayment_MissingSchedule(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for missing schedule")
 	}
-	var ve *ValidationError
+	var ve *shared.ValidationError
 	if !errors.As(err, &ve) || ve.Field != "schedule" {
 		t.Fatalf("expected schedule validation error, got %v", err)
 	}
 }
 
 func TestCreatePlannedPayment_OneTime(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name:       "Flight to Tokyo",
 		Amount:     3000000,
 		Account:    "BCA",
@@ -211,19 +225,19 @@ func TestCreatePlannedPayment_OneTime(t *testing.T) {
 }
 
 func TestListPlannedPayments_Active(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	_, _ = svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, _ = m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
-	_, _ = svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, _ = m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Spotify", Amount: 54990, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 1,
 	})
 
-	payments, err := svc.ListPlannedPayments(false, false)
+	payments, err := m.ListPlannedPayments(false, false)
 	if err != nil {
 		t.Fatalf("ListPlannedPayments: %v", err)
 	}
@@ -233,16 +247,16 @@ func TestListPlannedPayments_Active(t *testing.T) {
 }
 
 func TestListPlannedPayments_Paused(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
-	_ = svc.PausePlannedPayment(pp.ID)
+	_ = m.PausePlannedPayment(pp.ID)
 
-	active, err := svc.ListPlannedPayments(false, false)
+	active, err := m.ListPlannedPayments(false, false)
 	if err != nil {
 		t.Fatalf("ListPlannedPayments active: %v", err)
 	}
@@ -250,7 +264,7 @@ func TestListPlannedPayments_Paused(t *testing.T) {
 		t.Errorf("expected 0 active payments after pause, got %d", len(active))
 	}
 
-	paused, err := svc.ListPlannedPayments(true, false)
+	paused, err := m.ListPlannedPayments(true, false)
 	if err != nil {
 		t.Fatalf("ListPlannedPayments paused: %v", err)
 	}
@@ -260,18 +274,18 @@ func TestListPlannedPayments_Paused(t *testing.T) {
 }
 
 func TestListDuePlannedPayments_CurrentMonth(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
 	now := time.Now()
 	today := now.Format("2006-01-02")
 
-	_, _ = svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, _ = m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Due Now", Amount: 50000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", StartDate: today, DueDay: now.Day(),
 	})
 
-	due, total, err := svc.ListDuePlannedPayments(ListDueParams{Filter: DueCurrentMonth})
+	due, total, err := m.ListDuePlannedPayments(ListDueParams{Filter: DueCurrentMonth})
 	if err != nil {
 		t.Fatalf("ListDuePlannedPayments: %v", err)
 	}
@@ -284,15 +298,15 @@ func TestListDuePlannedPayments_CurrentMonth(t *testing.T) {
 }
 
 func TestListDuePlannedPayments_Overdue(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	_, _ = svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_, _ = m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Overdue Bill", Amount: 75000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", StartDate: "2020-01-15", DueDay: 15,
 	})
 
-	due, total, err := svc.ListDuePlannedPayments(ListDueParams{Filter: DueOverdue})
+	due, total, err := m.ListDuePlannedPayments(ListDueParams{Filter: DueOverdue})
 	if err != nil {
 		t.Fatalf("ListDuePlannedPayments overdue: %v", err)
 	}
@@ -305,10 +319,10 @@ func TestListDuePlannedPayments_Overdue(t *testing.T) {
 }
 
 func TestPayPlannedPayment_Recurring(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", StartDate: "2026-07-15", DueDay: 15,
 	})
@@ -316,7 +330,7 @@ func TestPayPlannedPayment_Recurring(t *testing.T) {
 		t.Fatalf("CreatePlannedPayment: %v", err)
 	}
 
-	result, err := svc.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID})
+	result, err := m.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID})
 	if err != nil {
 		t.Fatalf("PayPlannedPayment: %v", err)
 	}
@@ -327,7 +341,7 @@ func TestPayPlannedPayment_Recurring(t *testing.T) {
 		t.Error("expected next due date after pay")
 	}
 
-	updatedPP, err := svc.GetPlannedPaymentByID(pp.ID)
+	updatedPP, err := m.GetPlannedPaymentByID(pp.ID)
 	if err != nil {
 		t.Fatalf("GetPlannedPaymentByID: %v", err)
 	}
@@ -335,7 +349,7 @@ func TestPayPlannedPayment_Recurring(t *testing.T) {
 		t.Errorf("expected is_active=1 for recurring, got %d", updatedPP.IsActive)
 	}
 
-	account, err := svc.GetAccountByID(pp.AccountID)
+	account, err := m.q.GetAccountByID(context.Background(), pp.AccountID)
 	if err != nil {
 		t.Fatalf("GetAccountByID: %v", err)
 	}
@@ -345,10 +359,10 @@ func TestPayPlannedPayment_Recurring(t *testing.T) {
 }
 
 func TestPayPlannedPayment_OneTime(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Flight", Amount: 3000000, Account: "BCA",
 		Category: "Travel", Recurrence: "none", StartDate: "2026-08-15",
 	})
@@ -356,7 +370,7 @@ func TestPayPlannedPayment_OneTime(t *testing.T) {
 		t.Fatalf("CreatePlannedPayment: %v", err)
 	}
 
-	result, err := svc.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID})
+	result, err := m.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID})
 	if err != nil {
 		t.Fatalf("PayPlannedPayment: %v", err)
 	}
@@ -364,7 +378,7 @@ func TestPayPlannedPayment_OneTime(t *testing.T) {
 		t.Errorf("expected transaction amount 3000000, got %d", result.Transaction.Amount)
 	}
 
-	updatedPP, err := svc.GetPlannedPaymentByID(pp.ID)
+	updatedPP, err := m.GetPlannedPaymentByID(pp.ID)
 	if err != nil {
 		t.Fatalf("GetPlannedPaymentByID: %v", err)
 	}
@@ -374,10 +388,10 @@ func TestPayPlannedPayment_OneTime(t *testing.T) {
 }
 
 func TestPayPlannedPayment_WithOverride(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", StartDate: "2026-07-15", DueDay: 15,
 	})
@@ -385,7 +399,7 @@ func TestPayPlannedPayment_WithOverride(t *testing.T) {
 		t.Fatalf("CreatePlannedPayment: %v", err)
 	}
 
-	result, err := svc.PayPlannedPayment(PayPlannedPaymentParams{
+	result, err := m.PayPlannedPayment(PayPlannedPaymentParams{
 		ID:     pp.ID,
 		Date:   "2026-07-14",
 		Amount: 100000,
@@ -402,35 +416,35 @@ func TestPayPlannedPayment_WithOverride(t *testing.T) {
 }
 
 func TestPayPlannedPayment_Paused(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
-	_ = svc.PausePlannedPayment(pp.ID)
+	_ = m.PausePlannedPayment(pp.ID)
 
-	_, err := svc.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID})
+	_, err := m.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID})
 	if err == nil {
 		t.Fatal("expected error for paying paused planned payment")
 	}
 }
 
 func TestPayPlannedPayment_NotFound(t *testing.T) {
-	svc := setupServiceForPP(t)
+	m := setupPlannedPaymentManager(t)
 
-	_, err := svc.PayPlannedPayment(PayPlannedPaymentParams{ID: 9999})
+	_, err := m.PayPlannedPayment(PayPlannedPaymentParams{ID: 9999})
 	if err == nil {
 		t.Fatal("expected error for non-existent planned payment")
 	}
 }
 
 func TestSkipPlannedPayment_Recurring(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", StartDate: "2026-07-15", DueDay: 15,
 	})
@@ -438,7 +452,7 @@ func TestSkipPlannedPayment_Recurring(t *testing.T) {
 		t.Fatalf("CreatePlannedPayment: %v", err)
 	}
 
-	updated, err := svc.SkipPlannedPayment(pp.ID)
+	updated, err := m.SkipPlannedPayment(pp.ID)
 	if err != nil {
 		t.Fatalf("SkipPlannedPayment: %v", err)
 	}
@@ -448,10 +462,10 @@ func TestSkipPlannedPayment_Recurring(t *testing.T) {
 }
 
 func TestSkipPlannedPayment_OneTime(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Flight", Amount: 3000000, Account: "BCA",
 		Category: "Travel", Recurrence: "none", StartDate: "2026-08-15",
 	})
@@ -459,26 +473,26 @@ func TestSkipPlannedPayment_OneTime(t *testing.T) {
 		t.Fatalf("CreatePlannedPayment: %v", err)
 	}
 
-	_, err = svc.SkipPlannedPayment(pp.ID)
+	_, err = m.SkipPlannedPayment(pp.ID)
 	if err == nil {
 		t.Fatal("expected error for skipping one-time planned payment")
 	}
 }
 
 func TestPausePlannedPayment(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
-	if err := svc.PausePlannedPayment(pp.ID); err != nil {
+	if err := m.PausePlannedPayment(pp.ID); err != nil {
 		t.Fatalf("PausePlannedPayment: %v", err)
 	}
 
-	updated, err := svc.GetPlannedPaymentByID(pp.ID)
+	updated, err := m.GetPlannedPaymentByID(pp.ID)
 	if err != nil {
 		t.Fatalf("GetPlannedPaymentByID: %v", err)
 	}
@@ -488,36 +502,36 @@ func TestPausePlannedPayment(t *testing.T) {
 }
 
 func TestPausePlannedPayment_AlreadyPaused(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
-	_ = svc.PausePlannedPayment(pp.ID)
+	_ = m.PausePlannedPayment(pp.ID)
 
-	err := svc.PausePlannedPayment(pp.ID)
+	err := m.PausePlannedPayment(pp.ID)
 	if err == nil {
 		t.Fatal("expected error for pausing already paused payment")
 	}
 }
 
 func TestResumePlannedPayment(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
-	_ = svc.PausePlannedPayment(pp.ID)
+	_ = m.PausePlannedPayment(pp.ID)
 
-	if err := svc.ResumePlannedPayment(pp.ID); err != nil {
+	if err := m.ResumePlannedPayment(pp.ID); err != nil {
 		t.Fatalf("ResumePlannedPayment: %v", err)
 	}
 
-	updated, err := svc.GetPlannedPaymentByID(pp.ID)
+	updated, err := m.GetPlannedPaymentByID(pp.ID)
 	if err != nil {
 		t.Fatalf("GetPlannedPaymentByID: %v", err)
 	}
@@ -527,32 +541,32 @@ func TestResumePlannedPayment(t *testing.T) {
 }
 
 func TestResumePlannedPayment_NotPaused(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
-	err := svc.ResumePlannedPayment(pp.ID)
+	err := m.ResumePlannedPayment(pp.ID)
 	if err == nil {
 		t.Fatal("expected error for resuming non-paused payment")
 	}
 }
 
 func TestEditPlannedPayment(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
 	newName := "Netflix Premium"
 	newAmount := int64(169000)
-	updated, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{
+	updated, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{
 		Name:   &newName,
 		Amount: &newAmount,
 	})
@@ -568,16 +582,16 @@ func TestEditPlannedPayment(t *testing.T) {
 }
 
 func TestEditPlannedPayment_DueDayChange(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", StartDate: "2026-07-15", DueDay: 15,
 	})
 
 	newDay := 20
-	updated, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{
+	updated, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{
 		DueDay: &newDay,
 	})
 	if err != nil {
@@ -589,28 +603,28 @@ func TestEditPlannedPayment_DueDayChange(t *testing.T) {
 }
 
 func TestDeletePlannedPayment(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
-	if err := svc.DeletePlannedPayment(pp.ID); err != nil {
+	if err := m.DeletePlannedPayment(pp.ID); err != nil {
 		t.Fatalf("DeletePlannedPayment: %v", err)
 	}
 
-	_, err := svc.GetPlannedPaymentByID(pp.ID)
+	_, err := m.GetPlannedPaymentByID(pp.ID)
 	if err == nil {
 		t.Fatal("expected error for deleted planned payment")
 	}
 }
 
 func TestDeletePlannedPayment_NotFound(t *testing.T) {
-	svc := setupServiceForPP(t)
+	m := setupPlannedPaymentManager(t)
 
-	err := svc.DeletePlannedPayment(9999)
+	err := m.DeletePlannedPayment(9999)
 	if err == nil {
 		t.Fatal("expected error for deleting non-existent planned payment")
 	}
@@ -618,9 +632,9 @@ func TestDeletePlannedPayment_NotFound(t *testing.T) {
 
 func TestCalcNextDue_Daily(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "daily", testNullString(""))
+	next, err := CalcNextDue(dueDate, "daily", testNullString(""))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -630,9 +644,9 @@ func TestCalcNextDue_Daily(t *testing.T) {
 
 func TestCalcNextDue_Weekly(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "weekly", testNullString(""))
+	next, err := CalcNextDue(dueDate, "weekly", testNullString(""))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -642,9 +656,9 @@ func TestCalcNextDue_Weekly(t *testing.T) {
 
 func TestCalcNextDue_Monthly(t *testing.T) {
 	dueDate := time.Date(2026, 1, 15, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "monthly", testNullString(""))
+	next, err := CalcNextDue(dueDate, "monthly", testNullString(""))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -654,9 +668,9 @@ func TestCalcNextDue_Monthly(t *testing.T) {
 
 func TestCalcNextDue_MonthlyEndOfMonthClamp(t *testing.T) {
 	dueDate := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "monthly", testNullString(""))
+	next, err := CalcNextDue(dueDate, "monthly", testNullString(""))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -666,9 +680,9 @@ func TestCalcNextDue_MonthlyEndOfMonthClamp(t *testing.T) {
 
 func TestCalcNextDue_Yearly(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "yearly", testNullString(""))
+	next, err := CalcNextDue(dueDate, "yearly", testNullString(""))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2027, 7, 1, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -678,9 +692,9 @@ func TestCalcNextDue_Yearly(t *testing.T) {
 
 func TestCalcNextDue_None(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "none", testNullString(""))
+	next, err := CalcNextDue(dueDate, "none", testNullString(""))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	if !next.Equal(dueDate) {
 		t.Errorf("expected same date for none recurrence")
@@ -689,9 +703,9 @@ func TestCalcNextDue_None(t *testing.T) {
 
 func TestCalcNextDue_CustomRRULE(t *testing.T) {
 	dueDate := time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=MONTHLY;BYMONTHDAY=15"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=MONTHLY;BYMONTHDAY=15"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 8, 15, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -701,7 +715,7 @@ func TestCalcNextDue_CustomRRULE(t *testing.T) {
 
 func TestCalcNextDue_CustomRRULE_Unsupported(t *testing.T) {
 	dueDate := time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)
-	_, err := calcNextDue(dueDate, "custom", testNullString("FREQ=HOURLY"))
+	_, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=HOURLY"))
 	if err == nil {
 		t.Fatal("expected error for unsupported RRULE frequency")
 	}
@@ -722,7 +736,7 @@ func TestValidateRRULE(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.rrule, func(t *testing.T) {
-			err := validateRRULE(tt.rrule)
+			err := ValidateRRULE(tt.rrule)
 			if tt.valid && err != nil {
 				t.Errorf("expected valid, got error: %v", err)
 			}
@@ -734,19 +748,19 @@ func TestValidateRRULE(t *testing.T) {
 }
 
 func TestListDuePlannedPayments_ExcludesPaused(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
 	now := time.Now()
 	today := now.Format("2006-01-02")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Paused Bill", Amount: 50000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", StartDate: today, DueDay: now.Day(),
 	})
-	_ = svc.PausePlannedPayment(pp.ID)
+	_ = m.PausePlannedPayment(pp.ID)
 
-	due, _, err := svc.ListDuePlannedPayments(ListDueParams{Filter: DueCurrentMonth})
+	due, _, err := m.ListDuePlannedPayments(ListDueParams{Filter: DueCurrentMonth})
 	if err != nil {
 		t.Fatalf("ListDuePlannedPayments: %v", err)
 	}
@@ -758,16 +772,16 @@ func TestListDuePlannedPayments_ExcludesPaused(t *testing.T) {
 }
 
 func TestListDuePlannedPayments_ExcludesArchived(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Archived Bill", Amount: 50000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "none", StartDate: "2026-07-01",
 	})
-	_, _ = svc.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID})
+	_, _ = m.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID})
 
-	due, _, err := svc.ListDuePlannedPayments(ListDueParams{Filter: DueCurrentMonth})
+	due, _, err := m.ListDuePlannedPayments(ListDueParams{Filter: DueCurrentMonth})
 	if err != nil {
 		t.Fatalf("ListDuePlannedPayments: %v", err)
 	}
@@ -779,25 +793,25 @@ func TestListDuePlannedPayments_ExcludesArchived(t *testing.T) {
 }
 
 func TestListPlannedPayments_All(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	active, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	active, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
-	paused, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	paused, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Spotify", Amount: 54990, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 1,
 	})
-	_ = svc.PausePlannedPayment(paused.ID)
-	oneTime, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	_ = m.PausePlannedPayment(paused.ID)
+	oneTime, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Flight", Amount: 3000000, Account: "BCA",
 		Category: "Travel", Recurrence: "none", StartDate: "2026-08-15",
 	})
-	_, _ = svc.PayPlannedPayment(PayPlannedPaymentParams{ID: oneTime.ID})
+	_, _ = m.PayPlannedPayment(PayPlannedPaymentParams{ID: oneTime.ID})
 
-	payments, err := svc.ListPlannedPayments(true, true)
+	payments, err := m.ListPlannedPayments(true, true)
 	if err != nil {
 		t.Fatalf("ListPlannedPayments all: %v", err)
 	}
@@ -809,10 +823,10 @@ func TestListPlannedPayments_All(t *testing.T) {
 }
 
 func TestGetAccountName(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	name, err := svc.GetAccountName(1)
+	name, err := m.GetAccountName(1)
 	if err != nil {
 		t.Fatalf("GetAccountName: %v", err)
 	}
@@ -822,19 +836,19 @@ func TestGetAccountName(t *testing.T) {
 }
 
 func TestGetCategoryName(t *testing.T) {
-	svc := setupServiceForPP(t)
+	m := setupPlannedPaymentManager(t)
 
-	name := svc.GetCategoryName(1)
+	name := m.GetCategoryName(1)
 	if name == "" {
 		t.Error("expected non-empty category name")
 	}
 }
 
 func TestListDuePlannedPayments_Week(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	due, _, err := svc.ListDuePlannedPayments(ListDueParams{Filter: DueCurrentWeek})
+	due, _, err := m.ListDuePlannedPayments(ListDueParams{Filter: DueCurrentWeek})
 	if err != nil {
 		t.Fatalf("ListDuePlannedPayments week: %v", err)
 	}
@@ -842,10 +856,10 @@ func TestListDuePlannedPayments_Week(t *testing.T) {
 }
 
 func TestListDuePlannedPayments_NextDays(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	due, _, err := svc.ListDuePlannedPayments(ListDueParams{Filter: DueNextDays, NextDays: 30})
+	due, _, err := m.ListDuePlannedPayments(ListDueParams{Filter: DueNextDays, NextDays: 30})
 	if err != nil {
 		t.Fatalf("ListDuePlannedPayments next 30: %v", err)
 	}
@@ -853,18 +867,18 @@ func TestListDuePlannedPayments_NextDays(t *testing.T) {
 }
 
 func TestEditPlannedPayment_AccountAndCategory(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
-	mustCreateAccount(t, svc, "GoPay", "ewallet", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
+	mustCreateAccount(t, m, "GoPay", "ewallet", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
 	newAccount := "GoPay"
 	newCategory := "Internet"
-	updated, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{
+	updated, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{
 		Account:  &newAccount,
 		Category: &newCategory,
 	})
@@ -878,16 +892,16 @@ func TestEditPlannedPayment_AccountAndCategory(t *testing.T) {
 }
 
 func TestEditPlannedPayment_RecurrenceAndRRULE(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
 	newRecurrence := "daily"
-	updated, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{
+	updated, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{
 		Recurrence: &newRecurrence,
 	})
 	if err != nil {
@@ -899,64 +913,64 @@ func TestEditPlannedPayment_RecurrenceAndRRULE(t *testing.T) {
 }
 
 func TestEditPlannedPayment_InvalidAmount(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
 	zero := int64(0)
-	_, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Amount: &zero})
+	_, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Amount: &zero})
 	if err == nil {
 		t.Fatal("expected error for zero amount edit")
 	}
 }
 
 func TestEditPlannedPayment_InvalidRecurrence(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
 	invalid := "bogus"
-	_, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Recurrence: &invalid})
+	_, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Recurrence: &invalid})
 	if err == nil {
 		t.Fatal("expected error for invalid recurrence edit")
 	}
 }
 
 func TestEditPlannedPayment_CustomRRULEMissing(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
 	custom := "custom"
-	_, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Recurrence: &custom})
+	_, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Recurrence: &custom})
 	if err == nil {
 		t.Fatal("expected error for custom recurrence without RRULE")
 	}
 }
 
 func TestEditPlannedPayment_StartDate(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", StartDate: "2026-07-15", DueDay: 15,
 	})
 
 	newStart := "2026-08-01"
-	updated, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{StartDate: &newStart})
+	updated, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{StartDate: &newStart})
 	if err != nil {
 		t.Fatalf("EditPlannedPayment: %v", err)
 	}
@@ -966,69 +980,69 @@ func TestEditPlannedPayment_StartDate(t *testing.T) {
 }
 
 func TestEditPlannedPayment_InvalidStartDate(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
 	invalid := "bad-date"
-	_, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{StartDate: &invalid})
+	_, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{StartDate: &invalid})
 	if err == nil {
 		t.Fatal("expected error for invalid start date")
 	}
 }
 
 func TestEditPlannedPayment_AccountNotFound(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
 	missing := "NonExistent"
-	_, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Account: &missing})
+	_, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Account: &missing})
 	if err == nil {
 		t.Fatal("expected error for non-existent account")
 	}
 }
 
 func TestEditPlannedPayment_CategoryNotFound(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
 	missing := "NonExistentCategory"
-	_, err := svc.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Category: &missing})
+	_, err := m.EditPlannedPayment(pp.ID, EditPlannedPaymentParams{Category: &missing})
 	if err == nil {
 		t.Fatal("expected error for non-existent category")
 	}
 }
 
 func TestResumePlannedPayment_AdvancesOverdue(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly",
 		StartDate: "2020-01-15", DueDay: 15,
 	})
-	_ = svc.PausePlannedPayment(pp.ID)
+	_ = m.PausePlannedPayment(pp.ID)
 
-	if err := svc.ResumePlannedPayment(pp.ID); err != nil {
+	if err := m.ResumePlannedPayment(pp.ID); err != nil {
 		t.Fatalf("ResumePlannedPayment: %v", err)
 	}
 
-	updated, err := svc.GetPlannedPaymentByID(pp.ID)
+	updated, err := m.GetPlannedPaymentByID(pp.ID)
 	if err != nil {
 		t.Fatalf("GetPlannedPaymentByID: %v", err)
 	}
@@ -1041,20 +1055,20 @@ func TestResumePlannedPayment_AdvancesOverdue(t *testing.T) {
 }
 
 func TestListPlannedPayments_ActiveAndArchived(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	active, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	active, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
-	oneTime, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	oneTime, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Flight", Amount: 3000000, Account: "BCA",
 		Category: "Travel", Recurrence: "none", StartDate: "2026-08-15",
 	})
-	_, _ = svc.PayPlannedPayment(PayPlannedPaymentParams{ID: oneTime.ID})
+	_, _ = m.PayPlannedPayment(PayPlannedPaymentParams{ID: oneTime.ID})
 
-	payments, err := svc.ListPlannedPayments(false, true)
+	payments, err := m.ListPlannedPayments(false, true)
 	if err != nil {
 		t.Fatalf("ListPlannedPayments: %v", err)
 	}
@@ -1065,10 +1079,10 @@ func TestListPlannedPayments_ActiveAndArchived(t *testing.T) {
 }
 
 func TestCreatePlannedPayment_Weekly(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Weekly Bill", Amount: 50000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "weekly",
 		StartDate: "2026-07-01", DueDay: int(time.Monday),
@@ -1082,10 +1096,10 @@ func TestCreatePlannedPayment_Weekly(t *testing.T) {
 }
 
 func TestCreatePlannedPayment_Yearly(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Yearly Bill", Amount: 500000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "yearly",
 		StartDate: "2026-07-15", DueDay: 15,
@@ -1099,10 +1113,10 @@ func TestCreatePlannedPayment_Yearly(t *testing.T) {
 }
 
 func TestCreatePlannedPayment_Daily(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Daily Bill", Amount: 10000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "daily", StartDate: "2026-07-01",
 	})
@@ -1115,10 +1129,10 @@ func TestCreatePlannedPayment_Daily(t *testing.T) {
 }
 
 func TestCreatePlannedPayment_CustomRRULE(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, err := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Custom Bill", Amount: 75000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "custom", RecurrenceRule: "FREQ=MONTHLY;BYMONTHDAY=15",
 		StartDate: "2026-07-15",
@@ -1133,9 +1147,9 @@ func TestCreatePlannedPayment_CustomRRULE(t *testing.T) {
 
 func TestCalcNextDue_RRULEWeekly(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1145,9 +1159,9 @@ func TestCalcNextDue_RRULEWeekly(t *testing.T) {
 
 func TestCalcNextDue_RRULEDaily(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=DAILY"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=DAILY"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1157,9 +1171,9 @@ func TestCalcNextDue_RRULEDaily(t *testing.T) {
 
 func TestCalcNextDue_RRULEYearly(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=YEARLY"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=YEARLY"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2027, 7, 1, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1169,7 +1183,7 @@ func TestCalcNextDue_RRULEYearly(t *testing.T) {
 
 func TestCalcNextDue_UnknownRecurrence(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	_, err := calcNextDue(dueDate, "bogus", testNullString(""))
+	_, err := CalcNextDue(dueDate, "bogus", testNullString(""))
 	if err == nil {
 		t.Fatal("expected error for unknown recurrence")
 	}
@@ -1177,7 +1191,7 @@ func TestCalcNextDue_UnknownRecurrence(t *testing.T) {
 
 func TestCalcNextDue_CustomWithoutRule(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	_, err := calcNextDue(dueDate, "custom", testNullString(""))
+	_, err := CalcNextDue(dueDate, "custom", testNullString(""))
 	if err == nil {
 		t.Fatal("expected error for custom without rule")
 	}
@@ -1185,9 +1199,9 @@ func TestCalcNextDue_CustomWithoutRule(t *testing.T) {
 
 func TestCalcNextDue_RRULEWeeklyBYDAY_SingleDay(t *testing.T) {
 	dueDate := time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=WE"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=WE"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1197,9 +1211,9 @@ func TestCalcNextDue_RRULEWeeklyBYDAY_SingleDay(t *testing.T) {
 
 func TestCalcNextDue_RRULEWeeklyBYDAY_MultiDay(t *testing.T) {
 	dueDate := time.Date(2026, 7, 4, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=TU,WE"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=TU,WE"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1209,9 +1223,9 @@ func TestCalcNextDue_RRULEWeeklyBYDAY_MultiDay(t *testing.T) {
 
 func TestCalcNextDue_RRULEWeeklyBYDAY_SameDay(t *testing.T) {
 	dueDate := time.Date(2026, 7, 2, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=TH"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=TH"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 7, 9, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1221,9 +1235,9 @@ func TestCalcNextDue_RRULEWeeklyBYDAY_SameDay(t *testing.T) {
 
 func TestCalcNextDue_RRULEWeeklyBYDAY_LastDayOfWeek(t *testing.T) {
 	dueDate := time.Date(2026, 7, 5, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=SU"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY;BYDAY=SU"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 7, 12, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1233,9 +1247,9 @@ func TestCalcNextDue_RRULEWeeklyBYDAY_LastDayOfWeek(t *testing.T) {
 
 func TestCalcNextDue_RRULEWeekly_NoBYDAY(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=WEEKLY"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1245,9 +1259,9 @@ func TestCalcNextDue_RRULEWeekly_NoBYDAY(t *testing.T) {
 
 func TestCalcNextDue_RRULEMonthly_EOMClamp(t *testing.T) {
 	dueDate := time.Date(2026, 1, 31, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=MONTHLY;BYMONTHDAY=31"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=MONTHLY;BYMONTHDAY=31"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1257,9 +1271,9 @@ func TestCalcNextDue_RRULEMonthly_EOMClamp(t *testing.T) {
 
 func TestCalcNextDue_RRULEMonthly_YearRollover(t *testing.T) {
 	dueDate := time.Date(2026, 12, 15, 0, 0, 0, 0, time.UTC)
-	next, err := calcNextDue(dueDate, "custom", testNullString("FREQ=MONTHLY"))
+	next, err := CalcNextDue(dueDate, "custom", testNullString("FREQ=MONTHLY"))
 	if err != nil {
-		t.Fatalf("calcNextDue: %v", err)
+		t.Fatalf("CalcNextDue: %v", err)
 	}
 	expected := time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC)
 	if !next.Equal(expected) {
@@ -1269,40 +1283,40 @@ func TestCalcNextDue_RRULEMonthly_YearRollover(t *testing.T) {
 
 func TestCalcNextDue_RRULE_NoFREQ(t *testing.T) {
 	dueDate := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
-	_, err := calcNextDue(dueDate, "custom", testNullString("INVALID"))
+	_, err := CalcNextDue(dueDate, "custom", testNullString("INVALID"))
 	if err == nil {
 		t.Fatal("expected error for RRULE not starting with FREQ=")
 	}
 }
 
 func TestResumePlannedPayment_NotFound(t *testing.T) {
-	svc := setupServiceForPP(t)
+	m := setupPlannedPaymentManager(t)
 
-	err := svc.ResumePlannedPayment(9999)
+	err := m.ResumePlannedPayment(9999)
 	if err == nil {
 		t.Fatal("expected error for non-existent payment")
 	}
 }
 
 func TestPausePlannedPayment_NotFound(t *testing.T) {
-	svc := setupServiceForPP(t)
+	m := setupPlannedPaymentManager(t)
 
-	err := svc.PausePlannedPayment(9999)
+	err := m.PausePlannedPayment(9999)
 	if err == nil {
 		t.Fatal("expected error for non-existent payment")
 	}
 }
 
 func TestPayPlannedPayment_DateError(t *testing.T) {
-	svc := setupServiceForPP(t)
-	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+	m := setupPlannedPaymentManager(t)
+	mustCreateAccount(t, m, "BCA", "checking", "IDR")
 
-	pp, _ := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+	pp, _ := m.CreatePlannedPayment(CreatePlannedPaymentParams{
 		Name: "Netflix", Amount: 149000, Account: "BCA",
 		Category: "Subscriptions", Recurrence: "monthly", DueDay: 15,
 	})
 
-	_, err := svc.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID, Date: "bad-date"})
+	_, err := m.PayPlannedPayment(PayPlannedPaymentParams{ID: pp.ID, Date: "bad-date"})
 	if err == nil {
 		t.Fatal("expected error for invalid date")
 	}

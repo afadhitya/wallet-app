@@ -13,6 +13,7 @@ import (
 
 	"github.com/afadhitya/wallet-app/internal/db"
 	"github.com/afadhitya/wallet-app/internal/service"
+	"github.com/afadhitya/wallet-app/internal/service/shared"
 	"github.com/afadhitya/wallet-app/pkg/config"
 	"github.com/afadhitya/wallet-app/pkg/update"
 	"github.com/spf13/cobra"
@@ -98,7 +99,7 @@ const (
 )
 
 func classifyError(err error) (code string, suggestion string) {
-	var notFound *service.NotFoundError
+	var notFound *shared.NotFoundError
 	if errors.As(err, &notFound) {
 		switch notFound.Entity {
 		case "account":
@@ -118,7 +119,7 @@ func classifyError(err error) (code string, suggestion string) {
 		}
 	}
 
-	var validation *service.ValidationError
+	var validation *shared.ValidationError
 	if errors.As(err, &validation) {
 		switch validation.Field {
 		case "amount":
@@ -139,32 +140,32 @@ func classifyError(err error) (code string, suggestion string) {
 		}
 	}
 
-	var rateNotFound *service.RateNotFoundError
+	var rateNotFound *shared.RateNotFoundError
 	if errors.As(err, &rateNotFound) {
 		return ErrCodeExchangeRateNotFound, fmt.Sprintf("use 'wallet rate add %s <rate>'", rateNotFound.Currency)
 	}
 
-	if errors.Is(err, service.ErrInvalidAmount) {
+	if errors.Is(err, 	shared.ErrInvalidAmount) {
 		return ErrCodeInvalidAmount, "amount must be positive"
 	}
 
-	if errors.Is(err, service.ErrRateConfigMissing) {
+	if errors.Is(err, 	shared.ErrRateConfigMissing) {
 		return ErrCodeExchangeRateConfig, "run 'wallet init' to set up"
 	}
 
-	if errors.Is(err, service.ErrRateMustBePositive) {
+	if errors.Is(err, 	shared.ErrRateMustBePositive) {
 		return ErrCodeExchangeRateInvalid, "rate must be a positive integer"
 	}
 
-	if errors.Is(err, service.ErrDuplicateName) {
+	if errors.Is(err, 	shared.ErrDuplicateName) {
 		return ErrCodeValidation, "name already exists"
 	}
 
-	if errors.Is(err, service.ErrNotFound) {
+	if errors.Is(err, 	shared.ErrNotFound) {
 		return ErrCodeNotFound, ""
 	}
 
-	if errors.Is(err, service.ErrMissingField) {
+	if errors.Is(err, 	shared.ErrMissingField) {
 		return ErrCodeValidation, "required field missing"
 	}
 
