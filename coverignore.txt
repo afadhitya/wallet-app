@@ -162,14 +162,6 @@ github.com/afadhitya/wallet-app/internal/service/planned_payment.go:558.10,559.3
 # setDayInMonth: day > lastDay clamp (tested via EOM test)
 github.com/afadhitya/wallet-app/internal/service/planned_payment.go:565.19,567.3
 
-# calcNextDueFromRRULE: RRULE not set (data integrity)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:606.39,608.3
-
-# calcNextDueFromRRULE: BYMONTHDAY Sscanf (tested)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:628.17,631.4
-
-# calcNextDueFromRRULE: unsupported RRULE (covered by error test)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:637.20,639.4
 
 # === CLI bill.go: error/infrastructure paths ===
 
@@ -423,19 +415,19 @@ github.com/afadhitya/wallet-app/internal/cli/report.go:87.16,89.3
 github.com/afadhitya/wallet-app/internal/cli/report.go:94.17,96.4
 
 # runReportExport: os.Create error (OS/infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:115.16,117.3
+github.com/afadhitya/wallet-app/internal/cli/report.go:100.16,102.3
 
 # runReportExport: csv.Write header error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:122.45,124.3
+github.com/afadhitya/wallet-app/internal/cli/report.go:107.45,109.3
+
+# runReportExport: baseAmountStr formatting (data formatting)
+github.com/afadhitya/wallet-app/internal/cli/report.go:113.25,115.4
 
 # runReportExport: csv.Write row error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:128.25,130.4
-
-# runReportExport: csv.Flush error check (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:142.46,144.4
+github.com/afadhitya/wallet-app/internal/cli/report.go:127.46,129.4
 
 # runReportExport: writer.Error check (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:148.39,150.3
+github.com/afadhitya/wallet-app/internal/cli/report.go:133.39,135.3
 
 # printMonthlySummary: transfer > 0 branch (covered by service test, tested behavior)
 github.com/afadhitya/wallet-app/internal/cli/report.go:193.30,195.3

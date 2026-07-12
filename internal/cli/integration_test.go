@@ -1604,6 +1604,14 @@ func TestCLIReportExportCSVJSON(t *testing.T) {
 	if _, ok := result["rows"]; !ok {
 		t.Errorf("expected rows in JSON, got: %s", stdout)
 	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("expected CSV file to exist at %s: %v", outputPath, err)
+	}
+	if len(data) == 0 {
+		t.Error("expected non-empty CSV file")
+	}
 }
 
 func TestCLIReportInvalidMonth(t *testing.T) {
