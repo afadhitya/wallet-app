@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/afadhitya/wallet-app/internal/gen"
 )
@@ -39,21 +40,24 @@ func (e *ValidationError) Error() string {
 }
 
 type Service struct {
-	q  gen.Querier
-	db *sql.DB
+	q      gen.Querier
+	db     *sql.DB
+	logger *slog.Logger
 }
 
-func New(database *sql.DB) *Service {
+func New(database *sql.DB, logger *slog.Logger) *Service {
 	return &Service{
-		q:  gen.New(database),
-		db: database,
+		q:      gen.New(database),
+		db:     database,
+		logger: logger,
 	}
 }
 
-func NewWithQuerier(database *sql.DB, querier gen.Querier) *Service {
+func NewWithQuerier(database *sql.DB, querier gen.Querier, logger *slog.Logger) *Service {
 	return &Service{
-		q:  querier,
-		db: database,
+		q:      querier,
+		db:     database,
+		logger: logger,
 	}
 }
 
@@ -67,4 +71,18 @@ func (s *Service) Queries() gen.Querier {
 
 func (s *Service) ctx() context.Context {
 	return context.Background()
+}
+
+func isBusinessError(err error) bool {
+	var notFound *NotFoundError
+	var validation *ValidationError
+	var rateNotFound *RateNotFoundError
+	if errors.As(err, &notFound) || errors.As(err, &validation) || errors.As(err, &rateNotFound) {
+		return true
+	}
+	if errors.Is(err, ErrInvalidAmount) || errors.Is(err, ErrDuplicateName) || errors.Is(err, ErrMissingField) ||
+		errors.Is(err, ErrRateConfigMissing) || errors.Is(err, ErrRateMustBePositive) {
+		return true
+	}
+	return false
 }

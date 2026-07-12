@@ -19,7 +19,7 @@ func setupService(t *testing.T) *Service {
 		Rates:        map[string]int64{},
 	})
 	t.Cleanup(ResetTestRateConfig)
-	return New(testdb.Open(t))
+	return New(testdb.Open(t, testLogger()), testLogger())
 }
 
 func TestAddExpense(t *testing.T) {
@@ -2610,8 +2610,8 @@ func TestCreateCategoryParentLookupDBError(t *testing.T) {
 }
 
 func TestNewWithQuerier(t *testing.T) {
-	dbase := testdb.Open(t)
-	svc := NewWithQuerier(dbase, gen.New(dbase))
+	dbase := testdb.Open(t, testLogger())
+	svc := NewWithQuerier(dbase, gen.New(dbase), testLogger())
 	if svc == nil {
 		t.Fatal("expected non-nil Service")
 	}
@@ -2629,9 +2629,9 @@ func (c createFailQuerier) CreateTransaction(ctx context.Context, arg gen.Create
 }
 
 func TestAddExpenseCreateFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	_, _ = gen.New(dbase).CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, createFailQuerier{gen.New(dbase)})
+	svc := NewWithQuerier(dbase, createFailQuerier{gen.New(dbase)}, testLogger())
 
 	_, err := svc.AddExpense(CreateExpenseParams{
 		Amount:      35000,
@@ -2646,9 +2646,9 @@ func TestAddExpenseCreateFailure(t *testing.T) {
 }
 
 func TestAddIncomeCreateFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	_, _ = gen.New(dbase).CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, createFailQuerier{gen.New(dbase)})
+	svc := NewWithQuerier(dbase, createFailQuerier{gen.New(dbase)}, testLogger())
 
 	_, err := svc.AddIncome(CreateIncomeParams{
 		Amount:      1000000,
@@ -2662,11 +2662,11 @@ func TestAddIncomeCreateFailure(t *testing.T) {
 }
 
 func TestAddTransferCreateFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "GoPay", Type: "ewallet", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, createFailQuerier{q})
+	svc := NewWithQuerier(dbase, createFailQuerier{q}, testLogger())
 
 	_, err := svc.AddTransfer(CreateTransferParams{
 		Amount:      100000,
@@ -2687,13 +2687,13 @@ func (u updateFailQuerier) UpdateTransaction(ctx context.Context, arg gen.Update
 }
 
 func TestEditTransactionUpdateFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	txn, _ := q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
 		AccountID: 1, Type: "expense", Amount: 35000, Currency: "IDR", Date: "2026-07-01",
 	})
-	svc := NewWithQuerier(dbase, updateFailQuerier{q})
+	svc := NewWithQuerier(dbase, updateFailQuerier{q}, testLogger())
 
 	_, err := svc.EditTransaction(txn.ID, EditTransactionParams{})
 	if err == nil {
@@ -2710,13 +2710,13 @@ func (a archiveFailQuerier) ArchiveTransaction(ctx context.Context, id int64) er
 }
 
 func TestRemoveTransactionArchiveFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	txn, _ := q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
 		AccountID: 1, Type: "expense", Amount: 35000, Currency: "IDR", Date: "2026-07-01",
 	})
-	svc := NewWithQuerier(dbase, archiveFailQuerier{q})
+	svc := NewWithQuerier(dbase, archiveFailQuerier{q}, testLogger())
 
 	err := svc.RemoveTransaction(txn.ID)
 	if err == nil {
@@ -2733,10 +2733,10 @@ func (b balanceFailQuerier) GetAccountBalance(ctx context.Context, accountID int
 }
 
 func TestAdjustBalanceBalanceFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, balanceFailQuerier{q})
+	svc := NewWithQuerier(dbase, balanceFailQuerier{q}, testLogger())
 
 	_, err := svc.AdjustBalance(AdjustBalanceParams{
 		Account: "BCA",
@@ -2764,11 +2764,11 @@ func (t tagRemoveFailQuerier) RemoveTransactionTag(ctx context.Context, arg gen.
 }
 
 func TestAddExpenseTagAddFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	_, _ = q.CreateTag(context.Background(), "lunch")
-	svc := NewWithQuerier(dbase, tagAddFailQuerier{q})
+	svc := NewWithQuerier(dbase, tagAddFailQuerier{q}, testLogger())
 
 	_, err := svc.AddExpense(CreateExpenseParams{
 		Amount:      35000,
@@ -2784,11 +2784,11 @@ func TestAddExpenseTagAddFailure(t *testing.T) {
 }
 
 func TestAddIncomeTagAddFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	_, _ = q.CreateTag(context.Background(), "salary-tag")
-	svc := NewWithQuerier(dbase, tagAddFailQuerier{q})
+	svc := NewWithQuerier(dbase, tagAddFailQuerier{q}, testLogger())
 
 	_, err := svc.AddIncome(CreateIncomeParams{
 		Amount:      1000000,
@@ -2811,13 +2811,13 @@ func (b balanceTypeQuerier) GetAccountBalance(ctx context.Context, accountID int
 }
 
 func TestRecalculateBalanceTypeError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	txn, _ := q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
 		AccountID: 1, Type: "expense", Amount: 35000, Currency: "IDR", Date: "2026-07-01",
 	})
-	svc := NewWithQuerier(dbase, balanceTypeQuerier{q})
+	svc := NewWithQuerier(dbase, balanceTypeQuerier{q}, testLogger())
 
 	err := svc.recalculateBalance(txn.AccountID)
 	if err == nil {
@@ -2829,10 +2829,10 @@ func TestRecalculateBalanceTypeError(t *testing.T) {
 }
 
 func TestAddExpenseBalanceRecalcFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, balanceTypeQuerier{q})
+	svc := NewWithQuerier(dbase, balanceTypeQuerier{q}, testLogger())
 
 	_, err := svc.AddExpense(CreateExpenseParams{
 		Amount:      35000,
@@ -2847,10 +2847,10 @@ func TestAddExpenseBalanceRecalcFailure(t *testing.T) {
 }
 
 func TestAddIncomeBalanceRecalcFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, balanceTypeQuerier{q})
+	svc := NewWithQuerier(dbase, balanceTypeQuerier{q}, testLogger())
 
 	_, err := svc.AddIncome(CreateIncomeParams{
 		Amount:      1000000,
@@ -2877,11 +2877,11 @@ func (t *transferBalanceFailQuerier) GetAccountBalance(ctx context.Context, acco
 }
 
 func TestAddTransferRecalcBalanceFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "GoPay", Type: "ewallet", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, &transferBalanceFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &transferBalanceFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.AddTransfer(CreateTransferParams{
 		Amount:      100000,
@@ -2894,13 +2894,13 @@ func TestAddTransferRecalcBalanceFailure(t *testing.T) {
 }
 
 func TestEditTransactionBalanceRecalcFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	txn, _ := q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
 		AccountID: 1, Type: "expense", Amount: 35000, Currency: "IDR", Date: "2026-07-01",
 	})
-	svc := NewWithQuerier(dbase, balanceFailQuerier{q})
+	svc := NewWithQuerier(dbase, balanceFailQuerier{q}, testLogger())
 
 	_, err := svc.EditTransaction(txn.ID, EditTransactionParams{})
 	if err == nil {
@@ -2909,13 +2909,13 @@ func TestEditTransactionBalanceRecalcFailure(t *testing.T) {
 }
 
 func TestRemoveTransactionRecalcBalanceFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	txn, _ := q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
 		AccountID: 1, Type: "expense", Amount: 35000, Currency: "IDR", Date: "2026-07-01",
 	})
-	svc := NewWithQuerier(dbase, balanceFailQuerier{q})
+	svc := NewWithQuerier(dbase, balanceFailQuerier{q}, testLogger())
 
 	err := svc.RemoveTransaction(txn.ID)
 	if err == nil {
@@ -2924,10 +2924,10 @@ func TestRemoveTransactionRecalcBalanceFailure(t *testing.T) {
 }
 
 func TestAdjustBalanceCreateTransactionFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, createFailQuerier{q})
+	svc := NewWithQuerier(dbase, createFailQuerier{q}, testLogger())
 
 	_, err := svc.AdjustBalance(AdjustBalanceParams{
 		Account:     "BCA",
@@ -2940,14 +2940,14 @@ func TestAdjustBalanceCreateTransactionFailure(t *testing.T) {
 }
 
 func TestEditTransactionTagAddFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
 	txn, _ := q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
 		AccountID: 1, Type: "expense", Amount: 35000, Currency: "IDR", Date: "2026-07-01",
 	})
-	svc := NewWithQuerier(dbase, tagAddFailQuerier{q})
+	svc := NewWithQuerier(dbase, tagAddFailQuerier{q}, testLogger())
 
 	_, err := svc.EditTransaction(txn.ID, EditTransactionParams{
 		AddTagNames: []string{"test-tag"},
@@ -2958,7 +2958,7 @@ func TestEditTransactionTagAddFailure(t *testing.T) {
 }
 
 func TestEditTransactionTagRemoveFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	_, _ = q.CreateTag(context.Background(), "test-tag")
@@ -2967,7 +2967,7 @@ func TestEditTransactionTagRemoveFailure(t *testing.T) {
 	})
 	_ = q.AddTransactionTag(context.Background(), gen.AddTransactionTagParams{TransactionID: txn.ID, TagID: 1})
 
-	svc := NewWithQuerier(dbase, tagRemoveFailQuerier{q})
+	svc := NewWithQuerier(dbase, tagRemoveFailQuerier{q}, testLogger())
 
 	_, err := svc.EditTransaction(txn.ID, EditTransactionParams{
 		RemoveTagNames: []string{"test-tag"},
@@ -2986,13 +2986,13 @@ func (l listTagsFailQuerier) ListTransactionTags(ctx context.Context, transactio
 }
 
 func TestEditTransactionListTagsFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	txn, _ := q.CreateTransaction(context.Background(), gen.CreateTransactionParams{
 		AccountID: 1, Type: "expense", Amount: 35000, Currency: "IDR", Date: "2026-07-01",
 	})
-	svc := NewWithQuerier(dbase, listTagsFailQuerier{q})
+	svc := NewWithQuerier(dbase, listTagsFailQuerier{q}, testLogger())
 
 	_, err := svc.EditTransaction(txn.ID, EditTransactionParams{})
 	if err == nil {
@@ -3014,11 +3014,11 @@ func (t *transferDestFailQuerier) GetAccountBalance(ctx context.Context, account
 }
 
 func TestAddTransferDestinationRecalcFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "GoPay", Type: "ewallet", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, &transferDestFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &transferDestFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.AddTransfer(CreateTransferParams{
 		Amount:      100000,
@@ -3044,10 +3044,10 @@ func (a *adjustRecalcFailQuerier) GetAccountBalance(ctx context.Context, account
 }
 
 func TestAdjustBalanceRecalcFailure(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, &adjustRecalcFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &adjustRecalcFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.AdjustBalance(AdjustBalanceParams{
 		Account:     "BCA",
@@ -3147,11 +3147,11 @@ func (t transferFirstBalanceFailQuerier) GetAccountBalance(ctx context.Context, 
 }
 
 func TestAddTransferGetBalanceError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "GoPay", Type: "ewallet", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, transferFirstBalanceFailQuerier{q})
+	svc := NewWithQuerier(dbase, transferFirstBalanceFailQuerier{q}, testLogger())
 
 	_, err := svc.AddTransfer(CreateTransferParams{
 		Amount:      100000,
@@ -3164,10 +3164,10 @@ func TestAddTransferGetBalanceError(t *testing.T) {
 }
 
 func TestAdjustBalanceGetNewBalanceError(t *testing.T) {
-	dbase := testdb.Open(t)
+	dbase := testdb.Open(t, testLogger())
 	q := gen.New(dbase)
 	_, _ = q.CreateAccount(context.Background(), gen.CreateAccountParams{Name: "BCA", Type: "checking", Currency: "IDR"})
-	svc := NewWithQuerier(dbase, &adjustFinalFailQuerier{Querier: q})
+	svc := NewWithQuerier(dbase, &adjustFinalFailQuerier{Querier: q}, testLogger())
 
 	_, err := svc.AdjustBalance(AdjustBalanceParams{
 		Account:     "BCA",
@@ -3468,9 +3468,35 @@ func TestResolveBaseFieldsMissingRateConfig(t *testing.T) {
 	}
 	defer func() { svcLoadRates = origLoad }()
 
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	_, _, err := svc.resolveBaseFields("USD", 100)
 	if err == nil {
 		t.Fatal("expected error for missing rate config in resolveBaseFields")
+	}
+}
+
+func TestIsBusinessError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{"NotFoundError", &NotFoundError{Entity: "test", Name: "x"}, true},
+		{"ValidationError", &ValidationError{Field: "x", Message: "msg"}, true},
+		{"RateNotFoundError", &RateNotFoundError{Currency: "USD", Base: "IDR"}, true},
+		{"ErrInvalidAmount", ErrInvalidAmount, true},
+		{"ErrDuplicateName", ErrDuplicateName, true},
+		{"ErrMissingField", ErrMissingField, true},
+		{"ErrRateConfigMissing", ErrRateConfigMissing, true},
+		{"ErrRateMustBePositive", ErrRateMustBePositive, true},
+		{"random error", fmt.Errorf("random db error"), false},
+		{"nil error", nil, false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isBusinessError(tc.err); got != tc.expected {
+				t.Errorf("isBusinessError(%v) = %v, want %v", tc.err, got, tc.expected)
+			}
+		})
 	}
 }

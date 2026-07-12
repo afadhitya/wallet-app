@@ -3,16 +3,22 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
 )
 
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
 func openTestDB(t *testing.T) *sql.DB {
 	t.Helper()
-	db, err := Open(":memory:")
+	db, err := Open(":memory:", testLogger())
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
 	}
@@ -29,7 +35,7 @@ func openDiskDB(t *testing.T) (*sql.DB, func()) {
 	path := f.Name()
 	_ = f.Close()
 
-	db, err := Open(path)
+	db, err := Open(path, testLogger())
 	if err != nil {
 		_ = os.Remove(path)
 		t.Fatalf("Open(file) error = %v", err)
@@ -42,7 +48,7 @@ func openDiskDB(t *testing.T) (*sql.DB, func()) {
 }
 
 func testMigrateFS(db *sql.DB, fsys fs.FS) error {
-	return migrateFS(db, fsys)
+	return migrateFS(db, fsys, testLogger())
 }
 
 func testPrepareSchemaVersion(db *sql.DB) (int, error) {
@@ -54,7 +60,7 @@ func testExecMigration(db *sql.DB, content []byte) error {
 }
 
 func TestOpenMemory(t *testing.T) {
-	db, err := Open(":memory:")
+	db, err := Open(":memory:", testLogger())
 	if err != nil {
 		t.Fatalf("Open(:memory:) error = %v", err)
 	}
@@ -85,7 +91,7 @@ func TestOpenFileDB(t *testing.T) {
 }
 
 func TestOpenInvalidPath(t *testing.T) {
-	db, err := Open("/\x00invalid/\x00test.db")
+	db, err := Open("/\x00invalid/\x00test.db", testLogger())
 	if err == nil {
 		_ = db.Close()
 		t.Fatal("expected error for invalid path")
@@ -112,7 +118,7 @@ func TestDSNForPathFile(t *testing.T) {
 func TestMigrateCreatesAllTables(t *testing.T) {
 	db := openTestDB(t)
 
-	err := Migrate(db)
+	err := Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("Migrate() error = %v", err)
 	}
@@ -139,7 +145,7 @@ func TestMigrateCreatesAllTables(t *testing.T) {
 func TestMigrateIsIdempotent(t *testing.T) {
 	db := openTestDB(t)
 
-	err := Migrate(db)
+	err := Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("first Migrate() error = %v", err)
 	}
@@ -150,7 +156,7 @@ func TestMigrateIsIdempotent(t *testing.T) {
 		t.Fatalf("failed to count categories: %v", err)
 	}
 
-	err = Migrate(db)
+	err = Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("second Migrate() error = %v", err)
 	}
@@ -176,7 +182,7 @@ func TestMigrateIsIdempotent(t *testing.T) {
 func TestCategoriesAreMarkedSystem(t *testing.T) {
 	db := openTestDB(t)
 
-	err := Migrate(db)
+	err := Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("Migrate() error = %v", err)
 	}
@@ -203,7 +209,7 @@ func TestCategoriesAreMarkedSystem(t *testing.T) {
 func TestForeignKeyEnforcement(t *testing.T) {
 	db := openTestDB(t)
 
-	err := Migrate(db)
+	err := Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("Migrate() error = %v", err)
 	}
@@ -217,7 +223,7 @@ func TestForeignKeyEnforcement(t *testing.T) {
 func TestTransferTransaction(t *testing.T) {
 	db := openTestDB(t)
 
-	err := Migrate(db)
+	err := Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("Migrate() error = %v", err)
 	}
@@ -263,7 +269,7 @@ func TestTransferTransaction(t *testing.T) {
 func TestTransactionTags(t *testing.T) {
 	db := openTestDB(t)
 
-	err := Migrate(db)
+	err := Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("Migrate() error = %v", err)
 	}
@@ -333,7 +339,7 @@ func TestTransactionTags(t *testing.T) {
 func TestBudgetCategoriesAndTags(t *testing.T) {
 	db := openTestDB(t)
 
-	err := Migrate(db)
+	err := Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("Migrate() error = %v", err)
 	}
@@ -418,7 +424,7 @@ func TestBudgetCategoriesAndTags(t *testing.T) {
 func TestTagUniqueness(t *testing.T) {
 	db := openTestDB(t)
 
-	err := Migrate(db)
+	err := Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("Migrate() error = %v", err)
 	}
@@ -437,7 +443,7 @@ func TestTagUniqueness(t *testing.T) {
 func TestExchangeRateUniqueness(t *testing.T) {
 	db := openTestDB(t)
 
-	err := Migrate(db)
+	err := Migrate(db, testLogger())
 	if err != nil {
 		t.Fatalf("Migrate() error = %v", err)
 	}

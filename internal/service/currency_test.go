@@ -44,7 +44,7 @@ func setupServiceWithRates(t *testing.T, base string, rates map[string]int64) *S
 		svcSaveRates = origSave
 	})
 
-	return New(testdb.Open(t))
+	return New(testdb.Open(t, testLogger()), testLogger())
 }
 
 func TestGetBaseCurrency(t *testing.T) {
@@ -323,7 +323,7 @@ func TestRateConfigMissingError(t *testing.T) {
 	}
 	defer func() { svcLoadRates = origLoad }()
 
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	_, err := svc.GetBaseCurrency()
 	if err == nil {
 		t.Fatal("expected error for missing rate config")
@@ -340,7 +340,7 @@ func TestRateConfigLoadError(t *testing.T) {
 	}
 	defer func() { svcLoadRates = origLoad }()
 
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	_, err := svc.GetBaseCurrency()
 	if err == nil {
 		t.Fatal("expected error for load failure")
@@ -365,7 +365,7 @@ func TestGetRateNonPositiveInConfig(t *testing.T) {
 		svcSaveRates = origSave
 	}()
 
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	_, err := svc.GetRate("USD")
 	if err == nil {
 		t.Fatal("expected error for non-positive configured rate")
@@ -390,7 +390,7 @@ func TestConvertNonPositiveRate(t *testing.T) {
 		svcSaveRates = origSave
 	}()
 
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	_, err := svc.Convert(100, "USD")
 	if err == nil {
 		t.Fatal("expected error for non-positive rate in convert")
@@ -412,7 +412,7 @@ func TestConvertMissingRateInConvert(t *testing.T) {
 		svcSaveRates = origSave
 	}()
 
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	_, err := svc.Convert(100, "KRW")
 	if err == nil {
 		t.Fatal("expected error for missing rate in convert")
@@ -426,7 +426,7 @@ func TestListRatesWithLoadError(t *testing.T) {
 	}
 	defer func() { svcLoadRates = origLoad }()
 
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	_, _, err := svc.ListRates()
 	if err == nil {
 		t.Fatal("expected error for load failure")

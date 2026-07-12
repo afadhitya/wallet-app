@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"database/sql"
+	"io"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -13,15 +15,16 @@ import (
 )
 
 func setupTestService() func() {
-	dbase, err := db.Open(":memory:")
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	dbase, err := db.Open(":memory:", logger)
 	if err != nil {
 		panic(err)
 	}
-	if err := db.Migrate(dbase); err != nil {
+	if err := db.Migrate(dbase, logger); err != nil {
 		_ = dbase.Close()
 		panic(err)
 	}
-	svc := service.New(dbase)
+	svc := service.New(dbase, logger)
 	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
 		return svc, dbase, nil
 	}

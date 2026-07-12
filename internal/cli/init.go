@@ -36,17 +36,19 @@ func runInit(cmd *cobra.Command) error {
 		return formatError(cmd, fmt.Errorf("create data directory: %w", err))
 	}
 
-	database, err := db.Open(dbPath)
+	logger := newLogger(cmd, dir)
+
+	database, err := db.Open(dbPath, logger)
 	if err != nil {
 		return formatError(cmd, fmt.Errorf("open database: %w", err))
 	}
 	defer func() { _ = database.Close() }()
 
-	if err := db.Migrate(database); err != nil {
+	if err := db.Migrate(database, logger); err != nil {
 		return formatError(cmd, fmt.Errorf("migrate database: %w", err))
 	}
 
-	svc := service.New(database)
+	svc := service.New(database, logger)
 
 	accounts, _ := svc.ListAccounts()
 	categories, _ := svc.ListAllCategories()

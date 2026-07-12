@@ -3,12 +3,18 @@ package testdb
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"testing"
 )
 
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
 func TestOpen(t *testing.T) {
-	database := Open(t)
+	database := Open(t, testLogger())
 
 	var count int
 	if err := database.QueryRow("SELECT COUNT(*) FROM categories").Scan(&count); err != nil {
@@ -24,7 +30,7 @@ func TestOpen(t *testing.T) {
 }
 
 func TestOpenFile(t *testing.T) {
-	database, cleanup := OpenFile(t)
+	database, cleanup := OpenFile(t, testLogger())
 	defer cleanup()
 
 	var count int
@@ -41,7 +47,7 @@ func TestOpenFile(t *testing.T) {
 }
 
 func TestOpenFileCleanupRemovesFile(t *testing.T) {
-	database, cleanup := OpenFile(t)
+	database, cleanup := OpenFile(t, testLogger())
 
 	var x int
 	if err := database.QueryRow("SELECT 1").Scan(&x); err != nil {
@@ -56,7 +62,7 @@ func TestOpenFileCleanupRemovesFile(t *testing.T) {
 }
 
 func TestOpenWithQuery(t *testing.T) {
-	database := Open(t)
+	database := Open(t, testLogger())
 
 	_, err := database.Exec("INSERT INTO accounts (name, type, currency) VALUES ('Test', 'checking', 'IDR')")
 	if err != nil {
@@ -75,14 +81,14 @@ func TestOpenWithQuery(t *testing.T) {
 func TestOpen_OpenDBError(t *testing.T) {
 	oldOpen := openDB
 	defer func() { openDB = oldOpen }()
-	openDB = func(path string) (*sql.DB, error) {
+	openDB = func(path string, logger *slog.Logger) (*sql.DB, error) {
 		return nil, fmt.Errorf("mock open failure")
 	}
 
 	fakeT := &failingT{}
 	func() {
 		defer func() { _ = recover() }()
-		Open(fakeT)
+		Open(fakeT, testLogger())
 	}()
 	if !fakeT.failed {
 		t.Error("expected test to fail")
@@ -92,14 +98,14 @@ func TestOpen_OpenDBError(t *testing.T) {
 func TestOpen_MigrateError(t *testing.T) {
 	oldMigrate := migrateDB
 	defer func() { migrateDB = oldMigrate }()
-	migrateDB = func(db *sql.DB) error {
+	migrateDB = func(db *sql.DB, logger *slog.Logger) error {
 		return fmt.Errorf("mock migrate failure")
 	}
 
 	fakeT := &failingT{}
 	func() {
 		defer func() { _ = recover() }()
-		Open(fakeT)
+		Open(fakeT, testLogger())
 	}()
 	if !fakeT.failed {
 		t.Error("expected test to fail")
@@ -116,7 +122,7 @@ func TestOpenFile_CreateTempError(t *testing.T) {
 	fakeT := &failingT{}
 	func() {
 		defer func() { _ = recover() }()
-		OpenFile(fakeT)
+		OpenFile(fakeT, testLogger())
 	}()
 	if !fakeT.failed {
 		t.Error("expected test to fail")
@@ -133,14 +139,14 @@ func TestOpenFile_OpenDBError(t *testing.T) {
 	createTemp = func(dir, pattern string) (*os.File, error) {
 		return os.CreateTemp("", "wallet-test-*.db")
 	}
-	openDB = func(path string) (*sql.DB, error) {
+	openDB = func(path string, logger *slog.Logger) (*sql.DB, error) {
 		return nil, fmt.Errorf("mock open file failure")
 	}
 
 	fakeT := &failingT{}
 	func() {
 		defer func() { _ = recover() }()
-		OpenFile(fakeT)
+		OpenFile(fakeT, testLogger())
 	}()
 	if !fakeT.failed {
 		t.Error("expected test to fail")
@@ -150,14 +156,14 @@ func TestOpenFile_OpenDBError(t *testing.T) {
 func TestOpenFile_MigrateError(t *testing.T) {
 	oldMigrate := migrateDB
 	defer func() { migrateDB = oldMigrate }()
-	migrateDB = func(db *sql.DB) error {
+	migrateDB = func(db *sql.DB, logger *slog.Logger) error {
 		return fmt.Errorf("mock migrate file failure")
 	}
 
 	fakeT := &failingT{}
 	func() {
 		defer func() { _ = recover() }()
-		OpenFile(fakeT)
+		OpenFile(fakeT, testLogger())
 	}()
 	if !fakeT.failed {
 		t.Error("expected test to fail")

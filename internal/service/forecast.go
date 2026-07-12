@@ -2,6 +2,8 @@ package service
 
 import (
 	"database/sql"
+	"errors"
+	"log/slog"
 	"sort"
 	"time"
 
@@ -62,7 +64,10 @@ type BillRow struct {
 var todayFunc = time.Now
 
 func (s *Service) ForecastBalance(months int, accountFilter string) (*ForecastBalanceResult, error) {
+	s.logger.Info("ForecastBalance called", slog.Int("months", months), slog.String("account_filter", accountFilter))
+
 	if months <= 0 {
+		s.logger.Warn("ForecastBalance validation failed", slog.Int("months", months), slog.String("error", "forecast horizon must be positive"))
 		return nil, &ValidationError{Field: "months", Message: "forecast horizon must be positive"}
 	}
 
@@ -71,6 +76,13 @@ func (s *Service) ForecastBalance(months int, accountFilter string) (*ForecastBa
 	if accountFilter != "" {
 		account, err := s.ResolveAccount(accountFilter)
 		if err != nil {
+			var nfErr *NotFoundError
+			var vErr *ValidationError
+			if errors.As(err, &nfErr) || errors.As(err, &vErr) {
+				s.logger.Warn("ForecastBalance account resolution failed", slog.String("error", err.Error()))
+			} else {
+				s.logger.Error("ForecastBalance failed", slog.String("error", err.Error()))
+			}
 			return nil, err
 		}
 		resolvedAccount = account
@@ -79,6 +91,7 @@ func (s *Service) ForecastBalance(months int, accountFilter string) (*ForecastBa
 
 	payments, err := s.q.ListActivePlannedPaymentsForAccount(s.ctx(), accountID)
 	if err != nil {
+		s.logger.Error("ForecastBalance failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -88,6 +101,7 @@ func (s *Service) ForecastBalance(months int, accountFilter string) (*ForecastBa
 	} else {
 		allAccounts, err := s.q.ListAccounts(s.ctx())
 		if err != nil {
+			s.logger.Error("ForecastBalance failed", slog.String("error", err.Error()))
 			return nil, err
 		}
 		for _, a := range allAccounts {
@@ -275,16 +289,26 @@ func (s *Service) ForecastBalance(months int, accountFilter string) (*ForecastBa
 		result.AccountName = resolvedAccount.Name
 	}
 
+	s.logger.Info("ForecastBalance completed",
+		slog.Int("months", months),
+		slog.Int("num_warnings", len(warnings)),
+		slog.Int("num_payments", len(plannedPaymentList)),
+		slog.Int("num_categories", len(categoryBreakdown)),
+	)
 	return result, nil
 }
 
 func (s *Service) ForecastBills(months int) (*ForecastBillsResult, error) {
+	s.logger.Info("ForecastBills called", slog.Int("months", months))
+
 	if months <= 0 {
+		s.logger.Warn("ForecastBills validation failed", slog.Int("months", months), slog.String("error", "forecast horizon must be positive"))
 		return nil, &ValidationError{Field: "months", Message: "forecast horizon must be positive"}
 	}
 
 	payments, err := s.q.ListActivePlannedPaymentsForAccount(s.ctx(), sql.NullInt64{})
 	if err != nil {
+		s.logger.Error("ForecastBills failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -348,6 +372,11 @@ func (s *Service) ForecastBills(months int) (*ForecastBillsResult, error) {
 		warnings = append(warnings, "No planned payments found. Forecasts are based on planned payments only.")
 	}
 
+	s.logger.Info("ForecastBills completed",
+		slog.Int("months", months),
+		slog.Int("num_bills", len(billRows)),
+		slog.Int64("total_amount", runningTotal),
+	)
 	return &ForecastBillsResult{
 		Months:      months,
 		Bills:       billRows,
