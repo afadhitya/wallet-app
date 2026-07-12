@@ -2,7 +2,9 @@ package service
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -89,28 +91,58 @@ var (
 )
 
 func (s *Service) GenerateReport(params ReportParams) (*ReportResult, error) {
+	s.logger.Info("GenerateReport called",
+		slog.String("month", params.Month),
+		slog.String("date_from", params.DateFrom),
+		slog.String("date_to", params.DateTo),
+		slog.String("account", params.AccountName),
+		slog.String("by", params.By),
+	)
+
 	baseCurrency, err := s.GetBaseCurrency()
 	if err != nil {
+		s.logger.Error("GenerateReport failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	filters, err := s.resolveReportFilters(params)
 	if err != nil {
+		var nfErr *NotFoundError
+		var vErr *ValidationError
+		if errors.As(err, &nfErr) || errors.As(err, &vErr) {
+			s.logger.Warn("GenerateReport filter resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("GenerateReport failed", slog.String("error", err.Error()))
+		}
 		return nil, err
 	}
 
+	var result *ReportResult
 	switch params.By {
 	case "":
-		return s.generateMonthlySummary(baseCurrency, filters)
+		result, err = s.generateMonthlySummary(baseCurrency, filters)
 	case "category":
-		return s.generateCategoryBreakdownResult(baseCurrency, filters)
+		result, err = s.generateCategoryBreakdownResult(baseCurrency, filters)
 	case "account":
-		return s.generateAccountBreakdownResult(baseCurrency, filters)
+		result, err = s.generateAccountBreakdownResult(baseCurrency, filters)
 	case "tag":
-		return s.generateTagBreakdownResult(baseCurrency, filters)
+		result, err = s.generateTagBreakdownResult(baseCurrency, filters)
 	default:
+		s.logger.Warn("GenerateReport invalid by parameter", slog.String("by", params.By))
 		return nil, ErrInvalidBy
 	}
+	if err != nil {
+		s.logger.Error("GenerateReport failed", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	s.logger.Info("GenerateReport completed",
+		slog.String("period", result.Period),
+		slog.Int64("income_total", result.IncomeTotal),
+		slog.Int64("expense_total", result.ExpenseTotal),
+		slog.Int64("transaction_count", result.TransactionCount),
+	)
+	return result, nil
 }
 
 func (s *Service) resolveReportFilters(params ReportParams) (ReportFilters, error) {
@@ -422,8 +454,22 @@ func (s *Service) generateTagBreakdownResult(baseCurrency string, filters Report
 }
 
 func (s *Service) GenerateExportRows(params ReportParams) ([]ReportExportRow, error) {
+	s.logger.Info("GenerateExportRows called",
+		slog.String("month", params.Month),
+		slog.String("date_from", params.DateFrom),
+		slog.String("date_to", params.DateTo),
+		slog.String("account", params.AccountName),
+	)
+
 	filters, err := s.resolveReportFilters(params)
 	if err != nil {
+		var nfErr *NotFoundError
+		var vErr *ValidationError
+		if errors.As(err, &nfErr) || errors.As(err, &vErr) {
+			s.logger.Warn("GenerateExportRows filter resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("GenerateExportRows failed", slog.String("error", err.Error()))
+		}
 		return nil, err
 	}
 
@@ -431,6 +477,7 @@ func (s *Service) GenerateExportRows(params ReportParams) ([]ReportExportRow, er
 
 	rows, err := s.q.ReportExportTransactions(s.ctx(), gen.ReportExportTransactionsParams(arg))
 	if err != nil {
+		s.logger.Error("GenerateExportRows failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -453,6 +500,7 @@ func (s *Service) GenerateExportRows(params ReportParams) ([]ReportExportRow, er
 
 		tags, err := s.q.ListTransactionTags(s.ctx(), r.ID)
 		if err != nil {
+			s.logger.Error("GenerateExportRows failed", slog.String("error", err.Error()))
 			return nil, err
 		}
 
@@ -474,6 +522,7 @@ func (s *Service) GenerateExportRows(params ReportParams) ([]ReportExportRow, er
 		})
 	}
 
+	s.logger.Info("GenerateExportRows completed", slog.Int("num_rows", len(exportRows)))
 	return exportRows, nil
 }
 
@@ -489,15 +538,32 @@ func joinTagNames(names []string) string {
 }
 
 func (s *Service) DefaultExportFilename(params ReportParams) (string, error) {
+	s.logger.Info("DefaultExportFilename called",
+		slog.String("month", params.Month),
+		slog.String("date_from", params.DateFrom),
+		slog.String("date_to", params.DateTo),
+	)
+
 	filters, err := s.resolveReportFilters(params)
 	if err != nil {
+		var nfErr *NotFoundError
+		var vErr *ValidationError
+		if errors.As(err, &nfErr) || errors.As(err, &vErr) {
+			s.logger.Warn("DefaultExportFilename filter resolution failed", slog.String("error", err.Error()))
+		} else {
+			s.logger.Error("DefaultExportFilename failed", slog.String("error", err.Error()))
+		}
 		return "", err
 	}
 
 	t, err := time.Parse("2006-01-02", filters.DateFrom)
 	if err != nil {
-		return fmt.Sprintf("wallet-report-%s.csv", filters.DateFrom), nil
+		filename := fmt.Sprintf("wallet-report-%s.csv", filters.DateFrom)
+		s.logger.Info("DefaultExportFilename completed", slog.String("filename", filename))
+		return filename, nil
 	}
 
-	return fmt.Sprintf("wallet-report-%s.csv", t.Format("2006-01")), nil
+	filename := fmt.Sprintf("wallet-report-%s.csv", t.Format("2006-01"))
+	s.logger.Info("DefaultExportFilename completed", slog.String("filename", filename))
+	return filename, nil
 }

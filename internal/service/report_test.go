@@ -7,7 +7,7 @@ import (
 )
 
 func TestGenerateReportBaseCurrencyOnly(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{"USD": 15800},
@@ -52,7 +52,7 @@ func TestGenerateReportBaseCurrencyOnly(t *testing.T) {
 }
 
 func TestGenerateReportMixedCurrency(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{"USD": 15800, "EUR": 17200},
@@ -91,7 +91,7 @@ func TestGenerateReportMixedCurrency(t *testing.T) {
 }
 
 func TestGenerateReportExcludesAdjustment(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -126,7 +126,7 @@ func TestGenerateReportExcludesAdjustment(t *testing.T) {
 }
 
 func TestGenerateReportExcludesTransfer(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -166,7 +166,7 @@ func TestGenerateReportExcludesTransfer(t *testing.T) {
 }
 
 func TestGenerateReportNoTransactions(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -187,7 +187,7 @@ func TestGenerateReportNoTransactions(t *testing.T) {
 }
 
 func TestGenerateReportNoFilterDefaultsToCurrentMonth(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -210,7 +210,7 @@ func TestGenerateReportNoFilterDefaultsToCurrentMonth(t *testing.T) {
 }
 
 func TestGenerateReportAccountFilter(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{"USD": 15800},
@@ -239,7 +239,7 @@ func TestGenerateReportAccountFilter(t *testing.T) {
 }
 
 func TestGenerateReportDateFilters(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -270,7 +270,7 @@ func TestGenerateReportDateFilters(t *testing.T) {
 }
 
 func TestGenerateReportByAccount(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates: map[string]int64{
@@ -335,7 +335,7 @@ func TestGenerateReportByAccount(t *testing.T) {
 }
 
 func TestGenerateReportByCategory(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -378,7 +378,7 @@ func TestGenerateReportByCategory(t *testing.T) {
 }
 
 func TestGenerateReportByTag(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -434,7 +434,7 @@ func TestGenerateReportByTag(t *testing.T) {
 }
 
 func TestGenerateReportByTagNoUntagged(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -462,7 +462,7 @@ func TestGenerateReportByTagNoUntagged(t *testing.T) {
 }
 
 func TestGenerateReportAccountFilterWithByCategory(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -495,7 +495,7 @@ func TestGenerateReportAccountFilterWithByCategory(t *testing.T) {
 }
 
 func TestGenerateReportDateRangeOverridesMonth(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -528,7 +528,7 @@ func TestGenerateReportDateRangeOverridesMonth(t *testing.T) {
 }
 
 func TestGenerateReportYYYYMM(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -553,7 +553,7 @@ func TestGenerateReportYYYYMM(t *testing.T) {
 }
 
 func TestGenerateReportInvalidMonth(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -567,7 +567,7 @@ func TestGenerateReportInvalidMonth(t *testing.T) {
 }
 
 func TestGenerateReportInvalidBy(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -581,7 +581,7 @@ func TestGenerateReportInvalidBy(t *testing.T) {
 }
 
 func TestGeneratePeriodLabel(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -612,7 +612,7 @@ func TestGeneratePeriodLabel(t *testing.T) {
 }
 
 func TestGenerateExportRows(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{"USD": 15800},
@@ -666,7 +666,7 @@ func TestGenerateExportRows(t *testing.T) {
 }
 
 func TestGenerateExportRowsMultipleTags(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -700,7 +700,7 @@ func TestGenerateExportRowsMultipleTags(t *testing.T) {
 }
 
 func TestDefaultExportFilename(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},
@@ -718,7 +718,7 @@ func TestDefaultExportFilename(t *testing.T) {
 }
 
 func TestGenerateReportDateRangeValidation(t *testing.T) {
-	svc := New(testdb.Open(t))
+	svc := New(testdb.Open(t, testLogger()), testLogger())
 	SetTestRateConfig(TestRateConfig{
 		BaseCurrency: "IDR",
 		Rates:        map[string]int64{},

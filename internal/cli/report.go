@@ -96,21 +96,6 @@ func runReportExport(cmd *cobra.Command, svc *service.Service, params service.Re
 		}
 	}
 
-	stdout, _ := resolveOut(cmd)
-
-	if isJSON(cmd) {
-		result := struct {
-			FilePath string                    `json:"file_path"`
-			Format   string                    `json:"format"`
-			Rows     []service.ReportExportRow `json:"rows"`
-		}{
-			FilePath: outputPath,
-			Format:   "csv",
-			Rows:     rows,
-		}
-		return printSuccessJSON(stdout, result, cmd)
-	}
-
 	file, err := os.Create(outputPath)
 	if err != nil {
 		return formatError(cmd, fmt.Errorf("failed to export: %w", err))
@@ -147,6 +132,21 @@ func runReportExport(cmd *cobra.Command, svc *service.Service, params service.Re
 	writer.Flush()
 	if err := writer.Error(); err != nil {
 		return formatError(cmd, fmt.Errorf("failed to export: %w", err))
+	}
+
+	stdout, _ := resolveOut(cmd)
+
+	if isJSON(cmd) {
+		result := struct {
+			FilePath string                    `json:"file_path"`
+			Format   string                    `json:"format"`
+			Rows     []service.ReportExportRow `json:"rows"`
+		}{
+			FilePath: outputPath,
+			Format:   "csv",
+			Rows:     rows,
+		}
+		return printSuccessJSON(stdout, result, cmd)
 	}
 
 	_, _ = fmt.Fprintf(stdout, "Exported to: %s\n", outputPath)

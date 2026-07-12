@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -232,6 +233,38 @@ var (
 	svcDBMigrate  = db.Migrate
 )
 
+func newLogger(cmd *cobra.Command, dir string) *slog.Logger {
+	verbosity, err := cmd.Flags().GetCount("verbose")
+	if err != nil {
+		verbosity = 0
+	}
+
+	level := slog.LevelWarn
+	switch verbosity {
+	case 1:
+		level = slog.LevelInfo
+	case 2:
+		level = slog.LevelDebug
+	default:
+		if verbosity > 2 {
+			level = slog.LevelDebug
+		}
+	}
+
+	logFile, _ := cmd.Flags().GetString("log-file")
+	if logFile == "" {
+		logFile = filepath.Join(dir, "wallet.log")
+	}
+
+	file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: level}))
+	}
+
+	jsonHandler := slog.NewJSONHandler(file, &slog.HandlerOptions{Level: level})
+	return slog.New(jsonHandler)
+}
+
 func getService(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
 	cfg, err := svcConfigLoad("")
 	if err != nil {
@@ -245,17 +278,19 @@ func getService(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
 		return nil, nil, fmt.Errorf("create data directory: %w", err)
 	}
 
-	database, err := svcDBOpen(dbPath)
+	logger := newLogger(cmd, dir)
+
+	database, err := svcDBOpen(dbPath, logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 
-	if err := svcDBMigrate(database); err != nil {
+	if err := svcDBMigrate(database, logger); err != nil {
 		_ = database.Close()
 		return nil, nil, fmt.Errorf("migrate database: %w", err)
 	}
 
-	return service.New(database), database, nil
+	return service.New(database, logger), database, nil
 }
 
 func expandHomePath(path string) string {

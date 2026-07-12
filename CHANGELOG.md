@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.3.0] - 2026-07-12
+
+### Added
+
+- **Self-update commands** — `wallet version` displays current version with optional `--check` flag to query the latest GitHub release. `wallet update` downloads, verifies SHA256 checksums, and atomically replaces the binary.
+- **Destructive operation confirmation** — AI agents must now confirm before running destructive commands (delete, archive, adjust) with a summary of affected resources.
+- **Removed planned_payment_id foreign key** — Simplified the transactions schema by dropping the `planned_payment_id` FK constraint and `is_planned` column. Planned payments now create regular transactions instead.
+- **BYDAY RRULE support** — Custom WEEKLY RRULEs with `BYDAY` (e.g. `FREQ=WEEKLY;BYDAY=TU,WE`) now advance to the next matching weekday instead of blindly adding 7 days.
+
+### Fixed
+
+- **Multi-currency forecast** — Fixed account balance and planned payment amount conversion to base currency in `ForecastBalance`. Payments with unconfigured exchange rates are skipped with a warning.
+- **CSV export JSON output** — Fixed `report export --json` printing output before the CSV file was written.
+
 ## [v1.2.0] - 2026-07-06
 
 ### Added
