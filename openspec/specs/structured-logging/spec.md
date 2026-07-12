@@ -20,15 +20,19 @@ The system SHALL support a `-v`/`--verbose` count flag on the root Cobra command
 - **THEN** DEBUG, INFO, WARN, and ERROR log messages are emitted
 
 ### Requirement: Log file output flag
-The system SHALL support a `--log-file` string flag on the root Cobra command. When set, logs SHALL be written to the specified file in JSON format in addition to stderr. When empty (default), logs SHALL only go to stderr.
+The system SHALL write all log output exclusively to a file in JSON format. When `--log-file` is not specified, logs SHALL be written to `<dataDir>/wallet.log`. When `--log-file` is specified, logs SHALL be written to the given path. Logs SHALL NOT be written to stderr in either case. If the log file cannot be opened, logging SHALL silently fall back to `io.Discard`.
 
 #### Scenario: No log file specified
 - **WHEN** the CLI is invoked without `--log-file`
-- **THEN** logs are written only to stderr in human-readable text format
+- **THEN** logs are written to `<dataDir>/wallet.log` in JSON format and nothing is written to stderr
 
 #### Scenario: Log file specified
 - **WHEN** the CLI is invoked with `--log-file /path/to/log.json`
-- **THEN** logs are written to stderr in text format AND to the specified file in JSON format
+- **THEN** logs are written to the specified file in JSON format and nothing is written to stderr
+
+#### Scenario: Log file cannot be opened
+- **WHEN** the CLI is invoked and the log file cannot be opened (e.g., permissions, read-only filesystem)
+- **THEN** logging silently falls back to `io.Discard` and no error is surfaced to the user
 
 ### Requirement: Logger injection into Service
 The `Service` struct SHALL hold a `*slog.Logger` field. The `New()` and `NewWithQuerier()` constructors SHALL accept a `*slog.Logger` parameter and store it.
@@ -72,4 +76,4 @@ All log messages SHALL use lowercase with no trailing punctuation. Structured at
 
 #### Scenario: Non-interference with JSON output
 - **WHEN** the `--json` flag is used for CLI output
-- **THEN** stdout JSON output format is unchanged; logging still goes to stderr and optional log file
+- **THEN** stdout JSON output format is unchanged; logging goes exclusively to the log file and never appears on stdout or stderr
