@@ -415,19 +415,19 @@ github.com/afadhitya/wallet-app/internal/cli/report.go:87.16,89.3
 github.com/afadhitya/wallet-app/internal/cli/report.go:94.17,96.4
 
 # runReportExport: os.Create error (OS/infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:115.16,117.3
+github.com/afadhitya/wallet-app/internal/cli/report.go:100.16,102.3
 
 # runReportExport: csv.Write header error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:122.45,124.3
+github.com/afadhitya/wallet-app/internal/cli/report.go:107.45,109.3
+
+# runReportExport: baseAmountStr formatting (data formatting)
+github.com/afadhitya/wallet-app/internal/cli/report.go:113.25,115.4
 
 # runReportExport: csv.Write row error (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:128.25,130.4
-
-# runReportExport: csv.Flush error check (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:142.46,144.4
+github.com/afadhitya/wallet-app/internal/cli/report.go:127.46,129.4
 
 # runReportExport: writer.Error check (infrastructure)
-github.com/afadhitya/wallet-app/internal/cli/report.go:148.39,150.3
+github.com/afadhitya/wallet-app/internal/cli/report.go:133.39,135.3
 
 # printMonthlySummary: transfer > 0 branch (covered by service test, tested behavior)
 github.com/afadhitya/wallet-app/internal/cli/report.go:193.30,195.3
