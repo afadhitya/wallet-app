@@ -233,7 +233,7 @@ var (
 	svcDBMigrate  = db.Migrate
 )
 
-func newLogger(cmd *cobra.Command) *slog.Logger {
+func newLogger(cmd *cobra.Command, dir string) *slog.Logger {
 	verbosity, err := cmd.Flags().GetCount("verbose")
 	if err != nil {
 		verbosity = 0
@@ -252,21 +252,17 @@ func newLogger(cmd *cobra.Command) *slog.Logger {
 	}
 
 	logFile, _ := cmd.Flags().GetString("log-file")
-
-	textHandler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})
-
 	if logFile == "" {
-		return slog.New(textHandler)
+		logFile = filepath.Join(dir, "wallet.log")
 	}
 
 	file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return slog.New(textHandler)
+		return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: level}))
 	}
 
 	jsonHandler := slog.NewJSONHandler(file, &slog.HandlerOptions{Level: level})
-	multiHandler := NewMultiHandler(textHandler, jsonHandler)
-	return slog.New(multiHandler)
+	return slog.New(jsonHandler)
 }
 
 func getService(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
@@ -282,7 +278,7 @@ func getService(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
 		return nil, nil, fmt.Errorf("create data directory: %w", err)
 	}
 
-	logger := newLogger(cmd)
+	logger := newLogger(cmd, dir)
 
 	database, err := svcDBOpen(dbPath, logger)
 	if err != nil {

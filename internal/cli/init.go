@@ -36,7 +36,7 @@ func runInit(cmd *cobra.Command) error {
 		return formatError(cmd, fmt.Errorf("create data directory: %w", err))
 	}
 
-	logger := newLogger(cmd)
+	logger := newLogger(cmd, dir)
 
 	database, err := db.Open(dbPath, logger)
 	if err != nil {

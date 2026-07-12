@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -110,179 +111,136 @@ type testError struct{ msg string }
 func (e *testError) Error() string { return e.msg }
 
 func TestNewLoggerDefaultWarn(t *testing.T) {
-	buf := new(bytes.Buffer)
-	oldStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
+	dir := t.TempDir()
 
 	cmd := &cobra.Command{}
-	logger := newLogger(cmd)
+	logger := newLogger(cmd, dir)
 	logger.Info("should not appear")
 	logger.Warn("should appear")
 
-	_ = w.Close()
-	os.Stderr = oldStderr
+	fileContents, err := os.ReadFile(filepath.Join(dir, "wallet.log"))
+	if err != nil {
+		t.Fatalf("read log file: %v", err)
+	}
 
-	outBuf := new(bytes.Buffer)
-	_, _ = outBuf.ReadFrom(r)
-
-	if bytes.Contains(outBuf.Bytes(), []byte("should not appear")) {
+	if bytes.Contains(fileContents, []byte("should not appear")) {
 		t.Error("INFO level message should not appear at default WARN level")
 	}
-	if !bytes.Contains(outBuf.Bytes(), []byte("should appear")) {
+	if !bytes.Contains(fileContents, []byte("should appear")) {
 		t.Error("WARN level message should appear at default WARN level")
 	}
-	_ = buf
 }
 
 func TestNewLoggerVerboseInfo(t *testing.T) {
-	r, w, _ := os.Pipe()
-	oldStderr := os.Stderr
-	os.Stderr = w
+	dir := t.TempDir()
 
 	cmd := &cobra.Command{}
 	cmd.Flags().CountP("verbose", "v", "")
 	_ = cmd.Flags().Set("verbose", "1")
-	logger := newLogger(cmd)
+	logger := newLogger(cmd, dir)
 	logger.Info("info message")
 	logger.Debug("debug message")
 
-	_ = w.Close()
-	os.Stderr = oldStderr
+	fileContents, err := os.ReadFile(filepath.Join(dir, "wallet.log"))
+	if err != nil {
+		t.Fatalf("read log file: %v", err)
+	}
 
-	outBuf := new(bytes.Buffer)
-	_, _ = outBuf.ReadFrom(r)
-
-	if !bytes.Contains(outBuf.Bytes(), []byte("info message")) {
+	if !bytes.Contains(fileContents, []byte("info message")) {
 		t.Error("INFO message should appear at INFO level")
 	}
-	if bytes.Contains(outBuf.Bytes(), []byte("debug message")) {
+	if bytes.Contains(fileContents, []byte("debug message")) {
 		t.Error("DEBUG message should not appear at INFO level")
 	}
 }
 
 func TestNewLoggerVerboseDebug(t *testing.T) {
-	r, w, _ := os.Pipe()
-	oldStderr := os.Stderr
-	os.Stderr = w
+	dir := t.TempDir()
 
 	cmd := &cobra.Command{}
 	cmd.Flags().CountP("verbose", "v", "")
 	_ = cmd.Flags().Set("verbose", "2")
-	logger := newLogger(cmd)
+	logger := newLogger(cmd, dir)
 	logger.Debug("debug message")
 
-	_ = w.Close()
-	os.Stderr = oldStderr
+	fileContents, err := os.ReadFile(filepath.Join(dir, "wallet.log"))
+	if err != nil {
+		t.Fatalf("read log file: %v", err)
+	}
 
-	outBuf := new(bytes.Buffer)
-	_, _ = outBuf.ReadFrom(r)
-
-	if !bytes.Contains(outBuf.Bytes(), []byte("debug message")) {
+	if !bytes.Contains(fileContents, []byte("debug message")) {
 		t.Error("DEBUG message should appear at DEBUG level")
 	}
 }
 
 func TestNewLoggerVerboseBeyondMax(t *testing.T) {
-	r, w, _ := os.Pipe()
-	oldStderr := os.Stderr
-	os.Stderr = w
+	dir := t.TempDir()
 
 	cmd := &cobra.Command{}
 	cmd.Flags().CountP("verbose", "v", "")
 	_ = cmd.Flags().Set("verbose", "5")
-	logger := newLogger(cmd)
+	logger := newLogger(cmd, dir)
 	logger.Debug("debug message")
 
-	_ = w.Close()
-	os.Stderr = oldStderr
+	fileContents, err := os.ReadFile(filepath.Join(dir, "wallet.log"))
+	if err != nil {
+		t.Fatalf("read log file: %v", err)
+	}
 
-	outBuf := new(bytes.Buffer)
-	_, _ = outBuf.ReadFrom(r)
-
-	if !bytes.Contains(outBuf.Bytes(), []byte("debug message")) {
+	if !bytes.Contains(fileContents, []byte("debug message")) {
 		t.Error("DEBUG message should appear when verbosity exceeds max")
 	}
 }
 
 func TestNewLoggerWithLogFile(t *testing.T) {
-	tmpFile, err := os.CreateTemp("", "wallet-test-log-*.json")
-	if err != nil {
-		t.Fatalf("create temp file: %v", err)
-	}
-	path := tmpFile.Name()
-	_ = tmpFile.Close()
-	t.Cleanup(func() { _ = os.Remove(path) })
-
-	r, w, _ := os.Pipe()
-	oldStderr := os.Stderr
-	os.Stderr = w
+	dir := t.TempDir()
+	customPath := filepath.Join(dir, "custom.log")
 
 	cmd := &cobra.Command{}
 	cmd.Flags().CountP("verbose", "v", "")
 	cmd.Flags().String("log-file", "", "")
-	_ = cmd.Flags().Set("log-file", path)
-	logger := newLogger(cmd)
+	_ = cmd.Flags().Set("log-file", customPath)
+	logger := newLogger(cmd, dir)
 	logger.Warn("test warning")
 
-	_ = w.Close()
-	os.Stderr = oldStderr
-
-	outBuf := new(bytes.Buffer)
-	_, _ = outBuf.ReadFrom(r)
-
-	if !bytes.Contains(outBuf.Bytes(), []byte("test warning")) {
-		t.Error("WARN message should appear in stderr text output")
-	}
-
-	fileContents, err := os.ReadFile(path)
+	fileContents, err := os.ReadFile(customPath)
 	if err != nil {
 		t.Fatalf("read log file: %v", err)
 	}
 	if !bytes.Contains(fileContents, []byte("test warning")) {
 		t.Errorf("expected log file to contain message, got: %s", string(fileContents))
 	}
+
+	defaultPath := filepath.Join(dir, "wallet.log")
+	if _, err := os.Stat(defaultPath); !os.IsNotExist(err) {
+		t.Error("expected default log file not to be created when --log-file is set")
+	}
 }
 
 func TestNewLoggerLogFileOpenError(t *testing.T) {
-	r, w, _ := os.Pipe()
-	oldStderr := os.Stderr
-	os.Stderr = w
+	dir := "/nonexistent"
 
 	cmd := &cobra.Command{}
 	cmd.Flags().CountP("verbose", "v", "")
 	cmd.Flags().String("log-file", "", "")
 	_ = cmd.Flags().Set("log-file", "/nonexistent/dir/log.json")
-	logger := newLogger(cmd)
+	logger := newLogger(cmd, dir)
 	logger.Warn("fallback")
-
-	_ = w.Close()
-	os.Stderr = oldStderr
-
-	outBuf := new(bytes.Buffer)
-	_, _ = outBuf.ReadFrom(r)
-
-	if !bytes.Contains(outBuf.Bytes(), []byte("fallback")) {
-		t.Error("message should appear in stderr when log file cannot be opened")
-	}
 }
 
 func TestNewLoggerVerboseFlagError(t *testing.T) {
-	r, w, _ := os.Pipe()
-	oldStderr := os.Stderr
-	os.Stderr = w
+	dir := t.TempDir()
 
 	cmd := &cobra.Command{}
-	logger := newLogger(cmd)
+	logger := newLogger(cmd, dir)
 	logger.Warn("should appear")
 
-	_ = w.Close()
-	os.Stderr = oldStderr
+	fileContents, err := os.ReadFile(filepath.Join(dir, "wallet.log"))
+	if err != nil {
+		t.Fatalf("read log file: %v", err)
+	}
 
-	outBuf := new(bytes.Buffer)
-	_, _ = outBuf.ReadFrom(r)
-
-	if !bytes.Contains(outBuf.Bytes(), []byte("should appear")) {
+	if !bytes.Contains(fileContents, []byte("should appear")) {
 		t.Error("logger should work without verbose flag registered")
 	}
 }
