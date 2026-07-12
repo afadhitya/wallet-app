@@ -66,23 +66,23 @@ DELETE FROM budget_categories WHERE budget_id = ?;
 -- name: RemoveAllBudgetTags :exec
 DELETE FROM budget_tags WHERE budget_id = ?;
 
--- name: SumCategoryExpenses :one
+-- name: SumBudgetExpenses :one
 SELECT COALESCE(SUM(t.amount), 0)
 FROM transactions t
-JOIN budget_categories bc ON bc.category_id = t.category_id
-WHERE bc.budget_id = sqlc.arg('budget_id')
-AND t.type = 'expense'
-AND t.is_archived = 0
-AND t.date >= sqlc.arg('period_start')
-AND t.date <= sqlc.arg('period_end');
-
--- name: SumTagExpenses :one
-SELECT COALESCE(SUM(t.amount), 0)
-FROM transactions t
-JOIN transaction_tags tt ON tt.transaction_id = t.id
-JOIN budget_tags bt ON bt.tag_id = tt.tag_id
-WHERE bt.budget_id = sqlc.arg('budget_id')
-AND t.type = 'expense'
-AND t.is_archived = 0
-AND t.date >= sqlc.arg('period_start')
-AND t.date <= sqlc.arg('period_end');
+WHERE t.type = 'expense'
+  AND t.is_archived = 0
+  AND t.date >= sqlc.arg('period_start')
+  AND t.date <= sqlc.arg('period_end')
+  AND (
+    EXISTS (
+      SELECT 1 FROM budget_categories bc
+      WHERE bc.budget_id = sqlc.arg('budget_id')
+        AND bc.category_id = t.category_id
+    )
+    OR EXISTS (
+      SELECT 1 FROM transaction_tags tt
+      JOIN budget_tags bt ON bt.tag_id = tt.tag_id
+      WHERE bt.budget_id = sqlc.arg('budget_id')
+        AND tt.transaction_id = t.id
+    )
+  );

@@ -535,29 +535,16 @@ func (s *Service) buildCheckResult(budget *gen.Budget) (*CheckBudgetResult, erro
 }
 
 func (s *Service) calculateSpending(budgetID int64, periodStart, periodEnd string) (int64, error) {
-	params := gen.SumCategoryExpensesParams{
+	params := gen.SumBudgetExpensesParams{
 		BudgetID:    budgetID,
 		PeriodStart: periodStart,
 		PeriodEnd:   periodEnd,
 	}
-	catTotal, err := s.q.SumCategoryExpenses(s.ctx(), params)
+	total, err := s.q.SumBudgetExpenses(s.ctx(), params)
 	if err != nil {
 		return 0, err
 	}
-	catAmount := toInt64(catTotal)
-
-	tagParams := gen.SumTagExpensesParams{
-		BudgetID:    budgetID,
-		PeriodStart: periodStart,
-		PeriodEnd:   periodEnd,
-	}
-	tagTotal, err := s.q.SumTagExpenses(s.ctx(), tagParams)
-	if err != nil {
-		return 0, err
-	}
-	tagAmount := toInt64(tagTotal)
-
-	return catAmount + tagAmount, nil
+	return toInt64(total), nil
 }
 
 func toInt64(v interface{}) int64 {
