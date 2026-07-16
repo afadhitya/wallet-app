@@ -29,10 +29,10 @@ github.com/afadhitya/wallet-app/internal/cli/tag.go:58.16,60.3
 github.com/afadhitya/wallet-app/internal/cli/tag.go:101.46,103.3
 
 # calculatePeriod weekly: daysToMonday < 0 (only triggers when today is Sunday)
-github.com/afadhitya/wallet-app/internal/service/budget.go:102.23,104.4
+github.com/afadhitya/wallet-app/internal/service/budget.go:104.23,106.4
 
 # ensureCurrentPeriod weekly: daysToMonday < 0 (only triggers when today is Sunday)
-github.com/afadhitya/wallet-app/internal/service/budget.go:398.23,400.4
+github.com/afadhitya/wallet-app/internal/service/budget.go:425.23,427.4
 
 # === Planned Payments Service: infrastructure DB error paths ===
 
@@ -506,8 +506,6 @@ github.com/afadhitya/wallet-app/internal/service/account.go:171.16,174.3
 github.com/afadhitya/wallet-app/internal/service/account.go:185.16,188.3
 github.com/afadhitya/wallet-app/internal/service/account.go:72.16,75.3
 github.com/afadhitya/wallet-app/internal/service/account.go:83.16,86.3
-github.com/afadhitya/wallet-app/internal/service/budget.go:102.23,104.4
-github.com/afadhitya/wallet-app/internal/service/budget.go:420.23,422.4
 github.com/afadhitya/wallet-app/internal/service/category.go:166.16,169.3
 github.com/afadhitya/wallet-app/internal/service/category.go:186.16,189.3
 github.com/afadhitya/wallet-app/internal/service/category.go:68.16,71.3

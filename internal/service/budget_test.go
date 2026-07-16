@@ -955,6 +955,87 @@ func TestEditBudgetTargets(t *testing.T) {
 	}
 }
 
+func TestEditBudgetToggleAllCategoriesOn(t *testing.T) {
+	svc := setupService(t)
+
+	result, err := svc.SetBudget(SetBudgetParams{
+		Name:       "Food",
+		Amount:     1000000,
+		Period:     "monthly",
+		Categories: []string{"Restaurant"},
+	})
+	if err != nil {
+		t.Fatalf("SetBudget: %v", err)
+	}
+
+	edited, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		AllCategories: boolPtr(true),
+	})
+	if err != nil {
+		t.Fatalf("EditBudget: %v", err)
+	}
+	if len(edited.Categories) != 0 {
+		t.Errorf("expected 0 categories, got %v", edited.Categories)
+	}
+	if edited.Budget.AllCategories != 1 {
+		t.Errorf("expected all_categories to be 1, got %v", edited.Budget.AllCategories)
+	}
+}
+
+func TestEditBudgetToggleAllCategoriesOff(t *testing.T) {
+	svc := setupService(t)
+
+	result, err := svc.SetBudget(SetBudgetParams{
+		Name:          "Food",
+		Amount:        1000000,
+		Period:        "monthly",
+		AllCategories: true,
+	})
+	if err != nil {
+		t.Fatalf("SetBudget: %v", err)
+	}
+
+	edited, err := svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		AllCategories: boolPtr(false),
+		AddCategories: []string{"Restaurant"},
+	})
+	if err != nil {
+		t.Fatalf("EditBudget: %v", err)
+	}
+	if len(edited.Categories) != 1 || edited.Categories[0].Name != "Restaurant" {
+		t.Errorf("expected 1 category Restaurant, got %v", edited.Categories)
+	}
+	if edited.Budget.AllCategories != 0 {
+		t.Errorf("expected all_categories to be 0, got %v", edited.Budget.AllCategories)
+	}
+}
+
+func TestEditBudgetAddCategoryWithoutTogglingAllCategories(t *testing.T) {
+	svc := setupService(t)
+
+	result, err := svc.SetBudget(SetBudgetParams{
+		Name:          "Food",
+		Amount:        1000000,
+		Period:        "monthly",
+		AllCategories: true,
+	})
+	if err != nil {
+		t.Fatalf("SetBudget: %v", err)
+	}
+
+	_, err = svc.EditBudget(result.Budget.ID, EditBudgetParams{
+		AddCategories: []string{"Restaurant"},
+	})
+	if err == nil {
+		t.Fatal("expected error for adding category without toggling all_categories")
+	}
+	var validationError *ValidationError
+	if !errors.As(err, &validationError) {
+		t.Fatalf("EditBudget: %v", err)
+	}
+
+}
+
 func TestEditBudgetNotFound(t *testing.T) {
 	svc := setupService(t)
 
@@ -1070,6 +1151,10 @@ func TestSetBudgetYearly(t *testing.T) {
 }
 
 func int64Ptr(v int64) *int64 {
+	return &v
+}
+
+func boolPtr(v bool) *bool {
 	return &v
 }
 
@@ -2186,6 +2271,14 @@ func (q *budgetEditRemoveCatFailQuerier) RemoveBudgetCategory(ctx context.Contex
 	return fmt.Errorf("mock remove category failure")
 }
 
+type budgetEditRemoveAllCatFailQuerier struct {
+	gen.Querier
+}
+
+func (q *budgetEditRemoveAllCatFailQuerier) RemoveAllBudgetCategories(ctx context.Context, budgetID int64) error {
+	return fmt.Errorf("mock remove all categories failure")
+}
+
 type budgetEditRemoveTagFailQuerier struct {
 	gen.Querier
 }
@@ -2209,6 +2302,27 @@ func TestEditBudgetRemoveCategoryError(t *testing.T) {
 
 	_, err := svc.EditBudget(1, EditBudgetParams{
 		RemoveCategories: []string{"Food & Dining"},
+	})
+	if err == nil {
+		t.Fatal("expected remove category error")
+	}
+}
+
+func TestEditBudgetRemoveAllCategoriesError(t *testing.T) {
+	dbase := testdb.Open(t, testLogger())
+	q := gen.New(dbase)
+	_, _ = q.CreateBudget(context.Background(), gen.CreateBudgetParams{
+		Name:        sql.NullString{String: "Test", Valid: true},
+		Amount:      1000000,
+		Currency:    "IDR",
+		Type:        "monthly",
+		PeriodStart: "2026-07-01",
+		PeriodEnd:   "2026-07-31",
+	})
+	svc := NewWithQuerier(dbase, &budgetEditRemoveAllCatFailQuerier{Querier: q}, testLogger())
+
+	_, err := svc.EditBudget(1, EditBudgetParams{
+		AllCategories: boolPtr(true),
 	})
 	if err == nil {
 		t.Fatal("expected remove category error")
