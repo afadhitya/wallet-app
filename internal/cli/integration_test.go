@@ -684,6 +684,26 @@ func TestCLIBudgetSetAllCategoriesConflict(t *testing.T) {
 	}
 }
 
+func TestCLIBudgetEditAllCategoriesConflict(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Food", "--period", "monthly")
+
+	_, stderr, _ := cli.run("budget", "edit", "1", "-A", "--add-category", "Restaurant")
+
+	if !strings.Contains(stderr, "none of the others can be") {
+		t.Errorf("expected 'none of the others can be' error, got: %s", stderr)
+	}
+}
+
+func TestCLIBudgetEditAddCategoryWithoutToggling(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-A", "--period", "monthly")
+	_, stderr, _ := cli.run("budget", "edit", "1", "--add-category", "Restaurant")
+	if !strings.Contains(stderr, "all_categories is enabled") {
+		t.Errorf("expected 'all_categories is enabled' error, got: %s", stderr)
+	}
+}
+
 func TestCLIBudgetList(t *testing.T) {
 	cli := newTestCLI(t)
 	_, _, _ = cli.run("budget", "set", "Monthly Food", "2000000", "-c", "Restaurant", "--period", "monthly")
@@ -785,6 +805,26 @@ func TestCLIBudgetEdit(t *testing.T) {
 	if !strings.Contains(stdout, "updated") {
 		t.Errorf("expected 'updated' in output: %s", stdout)
 	}
+}
+
+func TestCLIBudgetEditAllCategories(t *testing.T) {
+	cli := newTestCLI(t)
+	_, _, _ = cli.run("budget", "set", "Food", "1000000", "-c", "Restaurant", "--period", "monthly")
+
+	stdout, _, err := cli.run("--json", "budget", "edit", "1", "-A")
+	if err != nil {
+		t.Fatalf("budget edit: %v", err)
+	}
+
+	result := extractJSONData(t, stdout)
+	categories, ok := result["categories"].([]interface{})
+	if !ok || len(categories) != 0 {
+		t.Errorf("expected no categories in output: %v", result["categories"])
+	}
+	if result["all_categories"] != true {
+		t.Errorf("expected all_categories to be true: %v", result["all_categories"])
+	}
+
 }
 
 func TestCLIBudgetEditJSON(t *testing.T) {

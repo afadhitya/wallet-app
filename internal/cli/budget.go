@@ -93,13 +93,14 @@ func newBudgetEditCmd() *cobra.Command {
 	var amountStr, name string
 	var notifyPct int64
 	var addCategories, removeCategories, addTags, removeTags []string
+	var allCategories bool
 
 	cmd := &cobra.Command{
 		Use:   "edit <id>",
 		Short: "Edit a budget",
 		Args:  cobra.ExactArgs(1),
 		RunE: withService(func(cmd *cobra.Command, args []string, svc *service.Service, db *sql.DB) error {
-			return runBudgetEdit(cmd, args[0], svc, amountStr, name, notifyPct, addCategories, removeCategories, addTags, removeTags)
+			return runBudgetEdit(cmd, args[0], svc, amountStr, name, notifyPct, addCategories, removeCategories, addTags, removeTags, allCategories)
 		}),
 	}
 
@@ -110,6 +111,10 @@ func newBudgetEditCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&removeCategories, "remove-category", nil, "Category to remove (can be repeated)")
 	cmd.Flags().StringSliceVar(&addTags, "add-tag", nil, "Tag to add (can be repeated)")
 	cmd.Flags().StringSliceVar(&removeTags, "remove-tag", nil, "Tag to remove (can be repeated)")
+	cmd.Flags().BoolVarP(&allCategories, "all-categories", "A", false, "Set to true to include all categories")
+
+	cmd.MarkFlagsMutuallyExclusive("all-categories", "add-category")
+	cmd.MarkFlagsMutuallyExclusive("all-categories", "remove-category")
 
 	return cmd
 }
@@ -282,7 +287,7 @@ func runBudgetCheck(cmd *cobra.Command, svc *service.Service, budget string, all
 	return nil
 }
 
-func runBudgetEdit(cmd *cobra.Command, idStr string, svc *service.Service, amountStr, name string, notifyPct int64, addCategories, removeCategories, addTags, removeTags []string) error {
+func runBudgetEdit(cmd *cobra.Command, idStr string, svc *service.Service, amountStr, name string, notifyPct int64, addCategories, removeCategories, addTags, removeTags []string, allCategories bool) error {
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		return formatError(cmd, fmt.Errorf("invalid budget ID: %s", idStr))
@@ -307,6 +312,11 @@ func runBudgetEdit(cmd *cobra.Command, idStr string, svc *service.Service, amoun
 	if notifyPct != 0 || cmd.Flags().Changed("notify") {
 		pct := notifyPct
 		params.NotifyPct = &pct
+	}
+
+	if cmd.Flags().Changed("all-categories") {
+		v := allCategories
+		params.AllCategories = &v
 	}
 
 	result, err := svc.EditBudget(id, params)
