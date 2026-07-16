@@ -94,23 +94,21 @@ type Tag struct {
 }
 
 type Transaction struct {
-	ID               int64          `db:"id" json:"id"`
-	AccountID        int64          `db:"account_id" json:"account_id"`
-	CategoryID       sql.NullInt64  `db:"category_id" json:"category_id"`
-	Type             string         `db:"type" json:"type"`
-	Amount           int64          `db:"amount" json:"amount"`
-	Currency         string         `db:"currency" json:"currency"`
-	BaseAmount       sql.NullInt64  `db:"base_amount" json:"base_amount"`
-	BaseCurrency     sql.NullString `db:"base_currency" json:"base_currency"`
-	Description      sql.NullString `db:"description" json:"description"`
-	Notes            sql.NullString `db:"notes" json:"notes"`
-	TransferToID     sql.NullInt64  `db:"transfer_to_id" json:"transfer_to_id"`
-	Date             string         `db:"date" json:"date"`
-	IsPlanned        int64          `db:"is_planned" json:"is_planned"`
-	PlannedPaymentID sql.NullInt64  `db:"planned_payment_id" json:"planned_payment_id"`
-	CreatedAt        string         `db:"created_at" json:"created_at"`
-	UpdatedAt        string         `db:"updated_at" json:"updated_at"`
-	IsArchived       int64          `db:"is_archived" json:"is_archived"`
+	ID           int64          `db:"id" json:"id"`
+	AccountID    int64          `db:"account_id" json:"account_id"`
+	CategoryID   sql.NullInt64  `db:"category_id" json:"category_id"`
+	Type         string         `db:"type" json:"type"`
+	Amount       int64          `db:"amount" json:"amount"`
+	Currency     string         `db:"currency" json:"currency"`
+	BaseAmount   sql.NullInt64  `db:"base_amount" json:"base_amount"`
+	BaseCurrency sql.NullString `db:"base_currency" json:"base_currency"`
+	Description  sql.NullString `db:"description" json:"description"`
+	Notes        sql.NullString `db:"notes" json:"notes"`
+	TransferToID sql.NullInt64  `db:"transfer_to_id" json:"transfer_to_id"`
+	Date         string         `db:"date" json:"date"`
+	CreatedAt    string         `db:"created_at" json:"created_at"`
+	UpdatedAt    string         `db:"updated_at" json:"updated_at"`
+	IsArchived   int64          `db:"is_archived" json:"is_archived"`
 }
 
 type TransactionTag struct {

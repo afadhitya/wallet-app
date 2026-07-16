@@ -6,6 +6,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -15,6 +17,10 @@ import (
 	"github.com/afadhitya/wallet-app/internal/service"
 	"github.com/spf13/cobra"
 )
+
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 type testCLI struct {
 	t       *testing.T
@@ -947,10 +953,11 @@ func (q *budgetEditErrorQuerier) GetBudgetByID(ctx context.Context, id int64) (*
 }
 
 func TestCLIBudgetListError(t *testing.T) {
-	dbase, _ := db.Open(":memory:")
-	_ = db.Migrate(dbase)
+	logger := testLogger()
+	dbase, _ := db.Open(":memory:", logger)
+	_ = db.Migrate(dbase, logger)
 	t.Cleanup(func() { _ = dbase.Close() })
-	svc := service.NewWithQuerier(dbase, &budgetListErrorQuerier{Querier: gen.New(dbase)})
+	svc := service.NewWithQuerier(dbase, &budgetListErrorQuerier{Querier: gen.New(dbase)}, logger)
 	origOverride := getServiceOverride
 	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
 		return svc, dbase, nil
@@ -971,10 +978,11 @@ func TestCLIBudgetListError(t *testing.T) {
 }
 
 func TestCLIBudgetCheckError(t *testing.T) {
-	dbase, _ := db.Open(":memory:")
-	_ = db.Migrate(dbase)
+	logger := testLogger()
+	dbase, _ := db.Open(":memory:", logger)
+	_ = db.Migrate(dbase, logger)
 	t.Cleanup(func() { _ = dbase.Close() })
-	svc := service.NewWithQuerier(dbase, &budgetCheckErrorQuerier{Querier: gen.New(dbase)})
+	svc := service.NewWithQuerier(dbase, &budgetCheckErrorQuerier{Querier: gen.New(dbase)}, logger)
 	origOverride := getServiceOverride
 	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
 		return svc, dbase, nil
@@ -995,10 +1003,11 @@ func TestCLIBudgetCheckError(t *testing.T) {
 }
 
 func TestCLIBudgetEditError(t *testing.T) {
-	dbase, _ := db.Open(":memory:")
-	_ = db.Migrate(dbase)
+	logger := testLogger()
+	dbase, _ := db.Open(":memory:", logger)
+	_ = db.Migrate(dbase, logger)
 	t.Cleanup(func() { _ = dbase.Close() })
-	svc := service.NewWithQuerier(dbase, &budgetEditErrorQuerier{Querier: gen.New(dbase)})
+	svc := service.NewWithQuerier(dbase, &budgetEditErrorQuerier{Querier: gen.New(dbase)}, logger)
 	origOverride := getServiceOverride
 	getServiceOverride = func(cmd *cobra.Command) (*service.Service, *sql.DB, error) {
 		return svc, dbase, nil
@@ -1621,6 +1630,14 @@ func TestCLIReportExportCSVJSON(t *testing.T) {
 	}
 	if _, ok := result["rows"]; !ok {
 		t.Errorf("expected rows in JSON, got: %s", stdout)
+	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("expected CSV file to exist at %s: %v", outputPath, err)
+	}
+	if len(data) == 0 {
+		t.Error("expected non-empty CSV file")
 	}
 }
 

@@ -387,69 +387,64 @@ const sumAllCategoryExpenses = `-- name: SumAllCategoryExpenses :one
 SELECT COALESCE(SUM(t.amount), 0)
 FROM transactions t
 JOIN categories c ON c.id = t.category_id
-WHERE c.type = 'expense'
-AND t.type = 'expense'
-AND t.is_archived = 0
-AND t.date >= ?1
-AND t.date <= ?2
+WHERE t.type = 'expense'
+    AND t.is_archived = 0
+    AND t.date >= ?1
+    AND t.date <= ?2
+    AND (
+        c.type = 'expense'
+        OR EXISTS (
+            SELECT 1 FROM transaction_tags tt
+            JOIN budget_tags bt ON bt.tag_id = tt.tag_id
+            WHERE bt.budget_id = ?3
+            AND tt.transaction_id = t.id
+        )
+    )
 `
 
 type SumAllCategoryExpensesParams struct {
 	PeriodStart string `db:"period_start" json:"period_start"`
 	PeriodEnd   string `db:"period_end" json:"period_end"`
+	BudgetID    int64  `db:"budget_id" json:"budget_id"`
 }
 
 func (q *Queries) SumAllCategoryExpenses(ctx context.Context, arg SumAllCategoryExpensesParams) (interface{}, error) {
-	row := q.db.QueryRowContext(ctx, sumAllCategoryExpenses, arg.PeriodStart, arg.PeriodEnd)
+	row := q.db.QueryRowContext(ctx, sumAllCategoryExpenses, arg.PeriodStart, arg.PeriodEnd, arg.BudgetID)
 	var coalesce interface{}
 	err := row.Scan(&coalesce)
 	return coalesce, err
 }
 
-const sumCategoryExpenses = `-- name: SumCategoryExpenses :one
+const sumBudgetExpenses = `-- name: SumBudgetExpenses :one
 SELECT COALESCE(SUM(t.amount), 0)
 FROM transactions t
-JOIN budget_categories bc ON bc.category_id = t.category_id
-WHERE bc.budget_id = ?1
-AND t.type = 'expense'
-AND t.is_archived = 0
-AND t.date >= ?2
-AND t.date <= ?3
+WHERE t.type = 'expense'
+  AND t.is_archived = 0
+  AND t.date >= ?1
+  AND t.date <= ?2
+  AND (
+    EXISTS (
+      SELECT 1 FROM budget_categories bc
+      WHERE bc.budget_id = ?3
+        AND bc.category_id = t.category_id
+    )
+    OR EXISTS (
+      SELECT 1 FROM transaction_tags tt
+      JOIN budget_tags bt ON bt.tag_id = tt.tag_id
+      WHERE bt.budget_id = ?3
+        AND tt.transaction_id = t.id
+    )
+  )
 `
 
-type SumCategoryExpensesParams struct {
-	BudgetID    int64  `db:"budget_id" json:"budget_id"`
+type SumBudgetExpensesParams struct {
 	PeriodStart string `db:"period_start" json:"period_start"`
 	PeriodEnd   string `db:"period_end" json:"period_end"`
-}
-
-func (q *Queries) SumCategoryExpenses(ctx context.Context, arg SumCategoryExpensesParams) (interface{}, error) {
-	row := q.db.QueryRowContext(ctx, sumCategoryExpenses, arg.BudgetID, arg.PeriodStart, arg.PeriodEnd)
-	var coalesce interface{}
-	err := row.Scan(&coalesce)
-	return coalesce, err
-}
-
-const sumTagExpenses = `-- name: SumTagExpenses :one
-SELECT COALESCE(SUM(t.amount), 0)
-FROM transactions t
-JOIN transaction_tags tt ON tt.transaction_id = t.id
-JOIN budget_tags bt ON bt.tag_id = tt.tag_id
-WHERE bt.budget_id = ?1
-AND t.type = 'expense'
-AND t.is_archived = 0
-AND t.date >= ?2
-AND t.date <= ?3
-`
-
-type SumTagExpensesParams struct {
 	BudgetID    int64  `db:"budget_id" json:"budget_id"`
-	PeriodStart string `db:"period_start" json:"period_start"`
-	PeriodEnd   string `db:"period_end" json:"period_end"`
 }
 
-func (q *Queries) SumTagExpenses(ctx context.Context, arg SumTagExpensesParams) (interface{}, error) {
-	row := q.db.QueryRowContext(ctx, sumTagExpenses, arg.BudgetID, arg.PeriodStart, arg.PeriodEnd)
+func (q *Queries) SumBudgetExpenses(ctx context.Context, arg SumBudgetExpensesParams) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, sumBudgetExpenses, arg.PeriodStart, arg.PeriodEnd, arg.BudgetID)
 	var coalesce interface{}
 	err := row.Scan(&coalesce)
 	return coalesce, err

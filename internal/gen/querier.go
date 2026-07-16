@@ -22,7 +22,6 @@ type Querier interface {
 	CreateBudget(ctx context.Context, arg CreateBudgetParams) (*Budget, error)
 	CreateCategory(ctx context.Context, arg CreateCategoryParams) (*Category, error)
 	CreatePlannedPayment(ctx context.Context, arg CreatePlannedPaymentParams) (*PlannedPayment, error)
-	CreatePlannedTransaction(ctx context.Context, arg CreatePlannedTransactionParams) (*Transaction, error)
 	CreateTag(ctx context.Context, name string) (*Tag, error)
 	CreateTransaction(ctx context.Context, arg CreateTransactionParams) (*Transaction, error)
 	DeletePlannedPayment(ctx context.Context, id int64) error
@@ -80,8 +79,7 @@ type Querier interface {
 	ReportUntagged(ctx context.Context, arg ReportUntaggedParams) (*ReportUntaggedRow, error)
 	ResumePlannedPayment(ctx context.Context, id int64) error
 	SumAllCategoryExpenses(ctx context.Context, arg SumAllCategoryExpensesParams) (interface{}, error)
-	SumCategoryExpenses(ctx context.Context, arg SumCategoryExpensesParams) (interface{}, error)
-	SumTagExpenses(ctx context.Context, arg SumTagExpensesParams) (interface{}, error)
+	SumBudgetExpenses(ctx context.Context, arg SumBudgetExpensesParams) (interface{}, error)
 	SumTransactions(ctx context.Context, arg SumTransactionsParams) (interface{}, error)
 	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (*Account, error)
 	UpdateAccountBalance(ctx context.Context, arg UpdateAccountBalanceParams) error

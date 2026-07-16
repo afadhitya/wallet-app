@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -115,15 +116,20 @@ func calculatePeriod(periodType, from, to string) (string, string, error) {
 }
 
 func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
+	s.logger.Info("SetBudget called", slog.Int64("amount", params.Amount), slog.String("period", params.Period), slog.String("name", params.Name))
+
 	if params.Amount <= 0 {
+		s.logger.Warn("SetBudget invalid amount", slog.Int64("amount", params.Amount))
 		return nil, ErrInvalidAmount
 	}
 
 	if len(params.Categories) == 0 && len(params.Tags) == 0 && !params.AllCategories {
+		s.logger.Warn("SetBudget validation failed", slog.String("field", "targets"))
 		return nil, &ValidationError{Field: "targets", Message: "budget must have at least one category or tag target"}
 	}
 
 	if !validPeriods[params.Period] {
+		s.logger.Warn("SetBudget validation failed", slog.String("field", "period"), slog.String("period", params.Period))
 		return nil, &ValidationError{Field: "period", Message: "supported periods: monthly, weekly, yearly, one_time"}
 	}
 
@@ -131,11 +137,13 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 		params.NotifyPct = 80
 	}
 	if params.NotifyPct < 1 || params.NotifyPct > 100 {
+		s.logger.Warn("SetBudget validation failed", slog.String("field", "notify"), slog.Int64("notify_pct", params.NotifyPct))
 		return nil, &ValidationError{Field: "notify", Message: "notification threshold must be between 1 and 100"}
 	}
 
 	periodStart, periodEnd, err := calculatePeriod(params.Period, params.From, params.To)
 	if err != nil {
+		s.logger.Warn("SetBudget calculatePeriod failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -148,6 +156,7 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 	for _, catName := range params.Categories {
 		cat, err := s.ResolveCategory(catName)
 		if err != nil {
+			s.logger.Error("SetBudget failed", slog.String("error", fmt.Errorf("category '%s': %w", catName, err).Error()))
 			return nil, fmt.Errorf("category '%s': %w", catName, err)
 		}
 		resolvedCategories = append(resolvedCategories, cat)
@@ -157,6 +166,7 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 	for _, tagName := range params.Tags {
 		tag, err := s.ResolveTag(tagName)
 		if err != nil {
+			s.logger.Error("SetBudget failed", slog.String("error", fmt.Errorf("tag '%s': %w", tagName, err).Error()))
 			return nil, fmt.Errorf("tag '%s': %w", tagName, err)
 		}
 		resolvedTags = append(resolvedTags, tag)
@@ -168,6 +178,7 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 		PeriodEnd:   periodEnd,
 	})
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		s.logger.Error("SetBudget failed", slog.String("error", fmt.Errorf("check existing budget: %w", err).Error()))
 		return nil, fmt.Errorf("check existing budget: %w", err)
 	}
 	if err == nil && existing != nil {
@@ -187,6 +198,7 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 		AllCategories: boolToInt64(params.AllCategories),
 	})
 	if err != nil {
+		s.logger.Error("SetBudget failed", slog.String("error", fmt.Errorf("create budget: %w", err).Error()))
 		return nil, fmt.Errorf("create budget: %w", err)
 	}
 
@@ -195,6 +207,7 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 			BudgetID:   budget.ID,
 			CategoryID: cat.ID,
 		}); err != nil {
+			s.logger.Error("SetBudget failed", slog.String("error", fmt.Errorf("add budget category: %w", err).Error()))
 			return nil, fmt.Errorf("add budget category: %w", err)
 		}
 	}
@@ -204,10 +217,12 @@ func (s *Service) SetBudget(params SetBudgetParams) (*BudgetResult, error) {
 			BudgetID: budget.ID,
 			TagID:    tag.ID,
 		}); err != nil {
+			s.logger.Error("SetBudget failed", slog.String("error", fmt.Errorf("add budget tag: %w", err).Error()))
 			return nil, fmt.Errorf("add budget tag: %w", err)
 		}
 	}
 
+	s.logger.Info("SetBudget completed", slog.Int64("id", budget.ID))
 	return &BudgetResult{
 		Budget:     budget,
 		Categories: resolvedCategories,
@@ -278,6 +293,8 @@ func periodTypeForDB(periodType string) string {
 }
 
 func (s *Service) ListBudgets(params ListBudgetsParams) ([]*BudgetListItem, error) {
+	s.logger.Info("ListBudgets called", slog.Bool("all", params.All))
+
 	var budgets []*gen.Budget
 	var err error
 
@@ -287,6 +304,7 @@ func (s *Service) ListBudgets(params ListBudgetsParams) ([]*BudgetListItem, erro
 		budgets, err = s.q.ListActiveBudgets(s.ctx())
 	}
 	if err != nil {
+		s.logger.Error("ListBudgets failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("list budgets: %w", err)
 	}
 
@@ -294,6 +312,7 @@ func (s *Service) ListBudgets(params ListBudgetsParams) ([]*BudgetListItem, erro
 	for _, b := range budgets {
 		spent, err := s.calculateSpending(b)
 		if err != nil {
+			s.logger.Error("ListBudgets failed", slog.String("error", fmt.Errorf("calculate spending for budget %d: %w", b.ID, err).Error()))
 			return nil, fmt.Errorf("calculate spending for budget %d: %w", b.ID, err)
 		}
 		remaining := b.Amount - spent
@@ -309,16 +328,20 @@ func (s *Service) ListBudgets(params ListBudgetsParams) ([]*BudgetListItem, erro
 			Tags:       tags,
 		})
 	}
+	s.logger.Info("ListBudgets completed", slog.Int("count", len(items)))
 	return items, nil
 }
 
 func (s *Service) CheckBudgets(params CheckBudgetsParams) ([]*CheckBudgetResult, error) {
+	s.logger.Info("CheckBudgets called", slog.String("identifier", params.Identifier), slog.Bool("all", params.All))
+
 	if params.Identifier != "" {
 		return s.checkSingleBudget(params.Identifier)
 	}
 
 	budgets, err := s.q.ListActiveBudgets(s.ctx())
 	if err != nil {
+		s.logger.Error("CheckBudgets failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("list active budgets: %w", err)
 	}
 
@@ -326,14 +349,17 @@ func (s *Service) CheckBudgets(params CheckBudgetsParams) ([]*CheckBudgetResult,
 	for _, b := range budgets {
 		current, err := s.ensureCurrentPeriod(b)
 		if err != nil {
+			s.logger.Error("CheckBudgets failed", slog.String("error", fmt.Errorf("ensure current period for budget '%s': %w", budgetName(b), err).Error()))
 			return nil, fmt.Errorf("ensure current period for budget '%s': %w", budgetName(b), err)
 		}
 		result, err := s.buildCheckResult(current)
 		if err != nil {
+			s.logger.Error("CheckBudgets failed", slog.String("error", err.Error()))
 			return nil, fmt.Errorf("build check result: %w", err)
 		}
 		results = append(results, result)
 	}
+	s.logger.Info("CheckBudgets completed", slog.Int("count", len(results)))
 	return results, nil
 }
 
@@ -513,18 +539,10 @@ func (s *Service) buildCheckResult(budget *gen.Budget) (*CheckBudgetResult, erro
 }
 
 func (s *Service) calculateSpending(budget *gen.Budget) (int64, error) {
-	var catAmount int64
+	var total any
+	var err error
 	if budget.AllCategories == 1 {
-		total, err := s.q.SumAllCategoryExpenses(s.ctx(), gen.SumAllCategoryExpensesParams{
-			PeriodStart: budget.PeriodStart,
-			PeriodEnd:   budget.PeriodEnd,
-		})
-		if err != nil {
-			return 0, err
-		}
-		catAmount = toInt64(total)
-	} else {
-		total, err := s.q.SumCategoryExpenses(s.ctx(), gen.SumCategoryExpensesParams{
+		total, err = s.q.SumAllCategoryExpenses(s.ctx(), gen.SumAllCategoryExpensesParams{
 			BudgetID:    budget.ID,
 			PeriodStart: budget.PeriodStart,
 			PeriodEnd:   budget.PeriodEnd,
@@ -532,21 +550,17 @@ func (s *Service) calculateSpending(budget *gen.Budget) (int64, error) {
 		if err != nil {
 			return 0, err
 		}
-		catAmount = toInt64(total)
+	} else {
+		total, err = s.q.SumBudgetExpenses(s.ctx(), gen.SumBudgetExpensesParams{
+			BudgetID:    budget.ID,
+			PeriodStart: budget.PeriodStart,
+			PeriodEnd:   budget.PeriodEnd,
+		})
+		if err != nil {
+			return 0, err
+		}
 	}
-
-	tagParams := gen.SumTagExpensesParams{
-		BudgetID:    budget.ID,
-		PeriodStart: budget.PeriodStart,
-		PeriodEnd:   budget.PeriodEnd,
-	}
-	tagTotal, err := s.q.SumTagExpenses(s.ctx(), tagParams)
-	if err != nil {
-		return 0, err
-	}
-	tagAmount := toInt64(tagTotal)
-
-	return catAmount + tagAmount, nil
+	return toInt64(total), nil
 }
 
 func toInt64(v interface{}) int64 {
@@ -564,11 +578,15 @@ func boolToInt64(b bool) int64 {
 }
 
 func (s *Service) EditBudget(id int64, params EditBudgetParams) (*BudgetResult, error) {
+	s.logger.Info("EditBudget called", slog.Int64("id", id), slog.String("name", params.Name))
+
 	_, err := s.q.GetBudgetByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.Warn("EditBudget not found", slog.Int64("id", id))
 			return nil, &NotFoundError{Entity: "budget", Name: fmt.Sprintf("%d", id)}
 		}
+		s.logger.Error("EditBudget failed", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -580,6 +598,7 @@ func (s *Service) EditBudget(id int64, params EditBudgetParams) (*BudgetResult, 
 	var amountVal sql.NullInt64
 	if params.Amount != nil {
 		if *params.Amount <= 0 {
+			s.logger.Warn("EditBudget invalid amount", slog.Int64("amount", *params.Amount))
 			return nil, ErrInvalidAmount
 		}
 		amountVal = sql.NullInt64{Int64: *params.Amount, Valid: true}
@@ -588,6 +607,7 @@ func (s *Service) EditBudget(id int64, params EditBudgetParams) (*BudgetResult, 
 	var notifyVal sql.NullInt64
 	if params.NotifyPct != nil {
 		if *params.NotifyPct < 1 || *params.NotifyPct > 100 {
+			s.logger.Warn("EditBudget validation failed", slog.String("field", "notify"), slog.Int64("notify_pct", *params.NotifyPct))
 			return nil, &ValidationError{Field: "notify", Message: "notification threshold must be between 1 and 100"}
 		}
 		notifyVal = sql.NullInt64{Int64: *params.NotifyPct, Valid: true}
@@ -600,18 +620,21 @@ func (s *Service) EditBudget(id int64, params EditBudgetParams) (*BudgetResult, 
 		NotifyAtPct: notifyVal,
 	})
 	if err != nil {
+		s.logger.Error("EditBudget failed", slog.String("error", fmt.Errorf("update budget: %w", err).Error()))
 		return nil, fmt.Errorf("update budget: %w", err)
 	}
 
 	for _, catName := range params.AddCategories {
 		cat, err := s.ResolveCategory(catName)
 		if err != nil {
+			s.logger.Error("EditBudget failed", slog.String("error", fmt.Errorf("add category '%s': %w", catName, err).Error()))
 			return nil, fmt.Errorf("add category '%s': %w", catName, err)
 		}
 		if err := s.q.AddBudgetCategory(s.ctx(), gen.AddBudgetCategoryParams{
 			BudgetID:   id,
 			CategoryID: cat.ID,
 		}); err != nil {
+			s.logger.Error("EditBudget failed", slog.String("error", fmt.Errorf("add budget category: %w", err).Error()))
 			return nil, fmt.Errorf("add budget category: %w", err)
 		}
 	}
@@ -619,12 +642,14 @@ func (s *Service) EditBudget(id int64, params EditBudgetParams) (*BudgetResult, 
 	for _, catName := range params.RemoveCategories {
 		cat, err := s.ResolveCategory(catName)
 		if err != nil {
+			s.logger.Error("EditBudget failed", slog.String("error", fmt.Errorf("remove category '%s': %w", catName, err).Error()))
 			return nil, fmt.Errorf("remove category '%s': %w", catName, err)
 		}
 		if err := s.q.RemoveBudgetCategory(s.ctx(), gen.RemoveBudgetCategoryParams{
 			BudgetID:   id,
 			CategoryID: cat.ID,
 		}); err != nil {
+			s.logger.Error("EditBudget failed", slog.String("error", fmt.Errorf("remove budget category: %w", err).Error()))
 			return nil, fmt.Errorf("remove budget category: %w", err)
 		}
 	}
@@ -632,12 +657,14 @@ func (s *Service) EditBudget(id int64, params EditBudgetParams) (*BudgetResult, 
 	for _, tagName := range params.AddTags {
 		tag, err := s.ResolveTag(tagName)
 		if err != nil {
+			s.logger.Error("EditBudget failed", slog.String("error", fmt.Errorf("add tag '%s': %w", tagName, err).Error()))
 			return nil, fmt.Errorf("add tag '%s': %w", tagName, err)
 		}
 		if err := s.q.AddBudgetTag(s.ctx(), gen.AddBudgetTagParams{
 			BudgetID: id,
 			TagID:    tag.ID,
 		}); err != nil {
+			s.logger.Error("EditBudget failed", slog.String("error", fmt.Errorf("add budget tag: %w", err).Error()))
 			return nil, fmt.Errorf("add budget tag: %w", err)
 		}
 	}
@@ -645,12 +672,14 @@ func (s *Service) EditBudget(id int64, params EditBudgetParams) (*BudgetResult, 
 	for _, tagName := range params.RemoveTags {
 		tag, err := s.ResolveTag(tagName)
 		if err != nil {
+			s.logger.Error("EditBudget failed", slog.String("error", fmt.Errorf("remove tag '%s': %w", tagName, err).Error()))
 			return nil, fmt.Errorf("remove tag '%s': %w", tagName, err)
 		}
 		if err := s.q.RemoveBudgetTag(s.ctx(), gen.RemoveBudgetTagParams{
 			BudgetID: id,
 			TagID:    tag.ID,
 		}); err != nil {
+			s.logger.Error("EditBudget failed", slog.String("error", fmt.Errorf("remove budget tag: %w", err).Error()))
 			return nil, fmt.Errorf("remove budget tag: %w", err)
 		}
 	}
@@ -658,6 +687,7 @@ func (s *Service) EditBudget(id int64, params EditBudgetParams) (*BudgetResult, 
 	categories, _ := s.q.ListBudgetCategories(s.ctx(), updated.ID)
 	tags, _ := s.q.ListBudgetTags(s.ctx(), updated.ID)
 
+	s.logger.Info("EditBudget completed", slog.Int64("id", updated.ID))
 	return &BudgetResult{
 		Budget:     updated,
 		Categories: categories,
@@ -666,14 +696,25 @@ func (s *Service) EditBudget(id int64, params EditBudgetParams) (*BudgetResult, 
 }
 
 func (s *Service) RemoveBudget(id int64) error {
+	s.logger.Info("RemoveBudget called", slog.Int64("id", id))
+
 	_, err := s.q.GetBudgetByID(s.ctx(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			s.logger.Warn("RemoveBudget not found", slog.Int64("id", id))
 			return &NotFoundError{Entity: "budget", Name: fmt.Sprintf("%d", id)}
 		}
+		s.logger.Error("RemoveBudget failed", slog.String("error", err.Error()))
 		return err
 	}
-	return s.q.MarkBudgetInactive(s.ctx(), id)
+
+	err = s.q.MarkBudgetInactive(s.ctx(), id)
+	if err != nil {
+		s.logger.Error("RemoveBudget failed", slog.String("error", err.Error()))
+		return err
+	}
+	s.logger.Info("RemoveBudget completed", slog.Int64("id", id))
+	return nil
 }
 
 func budgetName(b *gen.Budget) string {

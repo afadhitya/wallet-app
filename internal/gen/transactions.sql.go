@@ -50,63 +50,9 @@ func (q *Queries) CountTransactions(ctx context.Context, arg CountTransactionsPa
 	return count, err
 }
 
-const createPlannedTransaction = `-- name: CreatePlannedTransaction :one
-INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, is_archived)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0) RETURNING id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived
-`
-
-type CreatePlannedTransactionParams struct {
-	AccountID        int64          `db:"account_id" json:"account_id"`
-	CategoryID       sql.NullInt64  `db:"category_id" json:"category_id"`
-	Type             string         `db:"type" json:"type"`
-	Amount           int64          `db:"amount" json:"amount"`
-	Currency         string         `db:"currency" json:"currency"`
-	Description      sql.NullString `db:"description" json:"description"`
-	Notes            sql.NullString `db:"notes" json:"notes"`
-	TransferToID     sql.NullInt64  `db:"transfer_to_id" json:"transfer_to_id"`
-	Date             string         `db:"date" json:"date"`
-	PlannedPaymentID sql.NullInt64  `db:"planned_payment_id" json:"planned_payment_id"`
-}
-
-func (q *Queries) CreatePlannedTransaction(ctx context.Context, arg CreatePlannedTransactionParams) (*Transaction, error) {
-	row := q.db.QueryRowContext(ctx, createPlannedTransaction,
-		arg.AccountID,
-		arg.CategoryID,
-		arg.Type,
-		arg.Amount,
-		arg.Currency,
-		arg.Description,
-		arg.Notes,
-		arg.TransferToID,
-		arg.Date,
-		arg.PlannedPaymentID,
-	)
-	var i Transaction
-	err := row.Scan(
-		&i.ID,
-		&i.AccountID,
-		&i.CategoryID,
-		&i.Type,
-		&i.Amount,
-		&i.Currency,
-		&i.BaseAmount,
-		&i.BaseCurrency,
-		&i.Description,
-		&i.Notes,
-		&i.TransferToID,
-		&i.Date,
-		&i.IsPlanned,
-		&i.PlannedPaymentID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.IsArchived,
-	)
-	return &i, err
-}
-
 const createTransaction = `-- name: CreateTransaction :one
 INSERT INTO transactions (account_id, category_id, type, amount, currency, description, notes, transfer_to_id, date, base_amount, base_currency, is_archived)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?10, ?11, 0) RETURNING id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?10, ?11, 0) RETURNING id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, created_at, updated_at, is_archived
 `
 
 type CreateTransactionParams struct {
@@ -151,8 +97,6 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		&i.Notes,
 		&i.TransferToID,
 		&i.Date,
-		&i.IsPlanned,
-		&i.PlannedPaymentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsArchived,
@@ -206,7 +150,7 @@ func (q *Queries) GetDefaultAccount(ctx context.Context) (*Account, error) {
 }
 
 const getTransactionByID = `-- name: GetTransactionByID :one
-SELECT id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived FROM transactions WHERE id = ?
+SELECT id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, created_at, updated_at, is_archived FROM transactions WHERE id = ?
 `
 
 func (q *Queries) GetTransactionByID(ctx context.Context, id int64) (*Transaction, error) {
@@ -225,8 +169,6 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id int64) (*Transactio
 		&i.Notes,
 		&i.TransferToID,
 		&i.Date,
-		&i.IsPlanned,
-		&i.PlannedPaymentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsArchived,
@@ -235,7 +177,7 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id int64) (*Transactio
 }
 
 const listTransactions = `-- name: ListTransactions :many
-SELECT id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived FROM transactions
+SELECT id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, created_at, updated_at, is_archived FROM transactions
 WHERE is_archived = 0
 AND (?1 IS NULL OR account_id = ?1)
 AND (?2 IS NULL OR category_id = ?2)
@@ -286,8 +228,6 @@ func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsPara
 			&i.Notes,
 			&i.TransferToID,
 			&i.Date,
-			&i.IsPlanned,
-			&i.PlannedPaymentID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.IsArchived,
@@ -306,7 +246,7 @@ func (q *Queries) ListTransactions(ctx context.Context, arg ListTransactionsPara
 }
 
 const listTransactionsByTag = `-- name: ListTransactionsByTag :many
-SELECT t.id, t.account_id, t.category_id, t.type, t.amount, t.currency, t.base_amount, t.base_currency, t.description, t.notes, t.transfer_to_id, t.date, t.is_planned, t.planned_payment_id, t.created_at, t.updated_at, t.is_archived FROM transactions t
+SELECT t.id, t.account_id, t.category_id, t.type, t.amount, t.currency, t.base_amount, t.base_currency, t.description, t.notes, t.transfer_to_id, t.date, t.created_at, t.updated_at, t.is_archived FROM transactions t
 JOIN transaction_tags tt ON tt.transaction_id = t.id
 JOIN tags ON tags.id = tt.tag_id
 WHERE t.is_archived = 0
@@ -362,8 +302,6 @@ func (q *Queries) ListTransactionsByTag(ctx context.Context, arg ListTransaction
 			&i.Notes,
 			&i.TransferToID,
 			&i.Date,
-			&i.IsPlanned,
-			&i.PlannedPaymentID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.IsArchived,
@@ -421,7 +359,7 @@ UPDATE transactions SET
     description = COALESCE(?5, description),
     notes = COALESCE(?6, notes),
     updated_at = datetime('now')
-WHERE id = ?7 RETURNING id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, is_planned, planned_payment_id, created_at, updated_at, is_archived
+WHERE id = ?7 RETURNING id, account_id, category_id, type, amount, currency, base_amount, base_currency, description, notes, transfer_to_id, date, created_at, updated_at, is_archived
 `
 
 type UpdateTransactionParams struct {
@@ -458,8 +396,6 @@ func (q *Queries) UpdateTransaction(ctx context.Context, arg UpdateTransactionPa
 		&i.Notes,
 		&i.TransferToID,
 		&i.Date,
-		&i.IsPlanned,
-		&i.PlannedPaymentID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsArchived,

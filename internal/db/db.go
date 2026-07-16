@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"sort"
 
 	_ "modernc.org/sqlite"
@@ -13,13 +14,15 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-func Open(path string) (*sql.DB, error) {
+func Open(path string, logger *slog.Logger) (*sql.DB, error) {
+	logger.Debug("opening database", slog.String("path", path))
 	dsn := dsnForPath(path)
 	db, _ := sql.Open("sqlite", dsn)
 	if _, err := db.Exec("PRAGMA foreign_keys = ON"); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("enable foreign keys: %w", err)
 	}
+	logger.Info("database opened", slog.String("journal_mode", "wal"))
 	return db, nil
 }
 
@@ -30,11 +33,11 @@ func dsnForPath(path string) string {
 	return "file:" + path + "?_journal_mode=WAL"
 }
 
-func Migrate(db *sql.DB) error {
-	return migrateFS(db, migrationsFS)
+func Migrate(db *sql.DB, logger *slog.Logger) error {
+	return migrateFS(db, migrationsFS, logger)
 }
 
-func migrateFS(db *sql.DB, fsys fs.FS) error {
+func migrateFS(db *sql.DB, fsys fs.FS, logger *slog.Logger) error {
 	currentVersion, err := prepareSchemaVersion(db)
 	if err != nil {
 		return err
@@ -55,6 +58,7 @@ func migrateFS(db *sql.DB, fsys fs.FS) error {
 			continue
 		}
 		if version <= currentVersion {
+			logger.Debug("migration skipped", slog.String("file", entry.Name()), slog.Int("version", version))
 			continue
 		}
 
@@ -68,6 +72,7 @@ func migrateFS(db *sql.DB, fsys fs.FS) error {
 		}
 
 		setSchemaVersion(db, version)
+		logger.Info("migration applied", slog.String("file", entry.Name()), slog.Int("version", version))
 	}
 
 	return nil
