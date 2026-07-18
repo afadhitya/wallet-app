@@ -39,18 +39,19 @@ func (q *Queries) AddBudgetTag(ctx context.Context, arg AddBudgetTagParams) erro
 }
 
 const createBudget = `-- name: CreateBudget :one
-INSERT INTO budgets (name, amount, currency, type, period_start, period_end, notify_at_pct)
-VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at
+INSERT INTO budgets (name, amount, currency, type, period_start, period_end, notify_at_pct, all_categories)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at, all_categories
 `
 
 type CreateBudgetParams struct {
-	Name        sql.NullString `db:"name" json:"name"`
-	Amount      int64          `db:"amount" json:"amount"`
-	Currency    string         `db:"currency" json:"currency"`
-	Type        string         `db:"type" json:"type"`
-	PeriodStart string         `db:"period_start" json:"period_start"`
-	PeriodEnd   string         `db:"period_end" json:"period_end"`
-	NotifyAtPct sql.NullInt64  `db:"notify_at_pct" json:"notify_at_pct"`
+	Name          sql.NullString `db:"name" json:"name"`
+	Amount        int64          `db:"amount" json:"amount"`
+	Currency      string         `db:"currency" json:"currency"`
+	Type          string         `db:"type" json:"type"`
+	PeriodStart   string         `db:"period_start" json:"period_start"`
+	PeriodEnd     string         `db:"period_end" json:"period_end"`
+	NotifyAtPct   sql.NullInt64  `db:"notify_at_pct" json:"notify_at_pct"`
+	AllCategories int64          `db:"all_categories" json:"all_categories"`
 }
 
 func (q *Queries) CreateBudget(ctx context.Context, arg CreateBudgetParams) (*Budget, error) {
@@ -62,6 +63,7 @@ func (q *Queries) CreateBudget(ctx context.Context, arg CreateBudgetParams) (*Bu
 		arg.PeriodStart,
 		arg.PeriodEnd,
 		arg.NotifyAtPct,
+		arg.AllCategories,
 	)
 	var i Budget
 	err := row.Scan(
@@ -76,12 +78,13 @@ func (q *Queries) CreateBudget(ctx context.Context, arg CreateBudgetParams) (*Bu
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AllCategories,
 	)
 	return &i, err
 }
 
 const getBudgetByID = `-- name: GetBudgetByID :one
-SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at FROM budgets WHERE id = ?
+SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at, all_categories FROM budgets WHERE id = ?
 `
 
 func (q *Queries) GetBudgetByID(ctx context.Context, id int64) (*Budget, error) {
@@ -99,12 +102,13 @@ func (q *Queries) GetBudgetByID(ctx context.Context, id int64) (*Budget, error) 
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AllCategories,
 	)
 	return &i, err
 }
 
 const getBudgetByNameAndPeriod = `-- name: GetBudgetByNameAndPeriod :one
-SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at FROM budgets
+SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at, all_categories FROM budgets
 WHERE (name = ?1 OR (name IS NULL AND ?1 IS NULL))
 AND period_start = ?2
 AND period_end = ?3
@@ -131,12 +135,13 @@ func (q *Queries) GetBudgetByNameAndPeriod(ctx context.Context, arg GetBudgetByN
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AllCategories,
 	)
 	return &i, err
 }
 
 const getMostRecentPriorBudget = `-- name: GetMostRecentPriorBudget :one
-SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at FROM budgets
+SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at, all_categories FROM budgets
 WHERE name = ?1
 AND period_end < ?2
 ORDER BY period_end DESC
@@ -163,12 +168,13 @@ func (q *Queries) GetMostRecentPriorBudget(ctx context.Context, arg GetMostRecen
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AllCategories,
 	)
 	return &i, err
 }
 
 const listActiveBudgets = `-- name: ListActiveBudgets :many
-SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at FROM budgets WHERE is_active = 1 ORDER BY created_at DESC
+SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at, all_categories FROM budgets WHERE is_active = 1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListActiveBudgets(ctx context.Context) ([]*Budget, error) {
@@ -192,6 +198,7 @@ func (q *Queries) ListActiveBudgets(ctx context.Context) ([]*Budget, error) {
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AllCategories,
 		); err != nil {
 			return nil, err
 		}
@@ -207,7 +214,7 @@ func (q *Queries) ListActiveBudgets(ctx context.Context) ([]*Budget, error) {
 }
 
 const listAllBudgets = `-- name: ListAllBudgets :many
-SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at FROM budgets ORDER BY created_at DESC
+SELECT id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at, all_categories FROM budgets ORDER BY created_at DESC
 `
 
 func (q *Queries) ListAllBudgets(ctx context.Context) ([]*Budget, error) {
@@ -231,6 +238,7 @@ func (q *Queries) ListAllBudgets(ctx context.Context) ([]*Budget, error) {
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AllCategories,
 		); err != nil {
 			return nil, err
 		}
@@ -375,6 +383,38 @@ func (q *Queries) RemoveBudgetTag(ctx context.Context, arg RemoveBudgetTagParams
 	return err
 }
 
+const sumAllCategoryExpenses = `-- name: SumAllCategoryExpenses :one
+SELECT COALESCE(SUM(t.amount), 0)
+FROM transactions t
+JOIN categories c ON c.id = t.category_id
+WHERE t.type = 'expense'
+    AND t.is_archived = 0
+    AND t.date >= ?1
+    AND t.date <= ?2
+    AND (
+        c.type = 'expense'
+        OR EXISTS (
+            SELECT 1 FROM transaction_tags tt
+            JOIN budget_tags bt ON bt.tag_id = tt.tag_id
+            WHERE bt.budget_id = ?3
+            AND tt.transaction_id = t.id
+        )
+    )
+`
+
+type SumAllCategoryExpensesParams struct {
+	PeriodStart string `db:"period_start" json:"period_start"`
+	PeriodEnd   string `db:"period_end" json:"period_end"`
+	BudgetID    int64  `db:"budget_id" json:"budget_id"`
+}
+
+func (q *Queries) SumAllCategoryExpenses(ctx context.Context, arg SumAllCategoryExpensesParams) (interface{}, error) {
+	row := q.db.QueryRowContext(ctx, sumAllCategoryExpenses, arg.PeriodStart, arg.PeriodEnd, arg.BudgetID)
+	var coalesce interface{}
+	err := row.Scan(&coalesce)
+	return coalesce, err
+}
+
 const sumBudgetExpenses = `-- name: SumBudgetExpenses :one
 SELECT COALESCE(SUM(t.amount), 0)
 FROM transactions t
@@ -418,18 +458,20 @@ UPDATE budgets SET
     period_start = COALESCE(?4, period_start),
     period_end = COALESCE(?5, period_end),
     type = COALESCE(?6, type),
+    all_categories = COALESCE(?7, all_categories),
     updated_at = datetime('now')
-WHERE id = ?7 RETURNING id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at
+WHERE id = ?8 RETURNING id, name, amount, currency, type, period_start, period_end, notify_at_pct, is_active, created_at, updated_at, all_categories
 `
 
 type UpdateBudgetParams struct {
-	Name        sql.NullString `db:"name" json:"name"`
-	Amount      sql.NullInt64  `db:"amount" json:"amount"`
-	NotifyAtPct sql.NullInt64  `db:"notify_at_pct" json:"notify_at_pct"`
-	PeriodStart sql.NullString `db:"period_start" json:"period_start"`
-	PeriodEnd   sql.NullString `db:"period_end" json:"period_end"`
-	Type        sql.NullString `db:"type" json:"type"`
-	ID          int64          `db:"id" json:"id"`
+	Name          sql.NullString `db:"name" json:"name"`
+	Amount        sql.NullInt64  `db:"amount" json:"amount"`
+	NotifyAtPct   sql.NullInt64  `db:"notify_at_pct" json:"notify_at_pct"`
+	PeriodStart   sql.NullString `db:"period_start" json:"period_start"`
+	PeriodEnd     sql.NullString `db:"period_end" json:"period_end"`
+	Type          sql.NullString `db:"type" json:"type"`
+	AllCategories sql.NullInt64  `db:"all_categories" json:"all_categories"`
+	ID            int64          `db:"id" json:"id"`
 }
 
 func (q *Queries) UpdateBudget(ctx context.Context, arg UpdateBudgetParams) (*Budget, error) {
@@ -440,6 +482,7 @@ func (q *Queries) UpdateBudget(ctx context.Context, arg UpdateBudgetParams) (*Bu
 		arg.PeriodStart,
 		arg.PeriodEnd,
 		arg.Type,
+		arg.AllCategories,
 		arg.ID,
 	)
 	var i Budget
@@ -455,6 +498,7 @@ func (q *Queries) UpdateBudget(ctx context.Context, arg UpdateBudgetParams) (*Bu
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AllCategories,
 	)
 	return &i, err
 }

@@ -21,17 +21,18 @@ type Account struct {
 }
 
 type Budget struct {
-	ID          int64          `db:"id" json:"id"`
-	Name        sql.NullString `db:"name" json:"name"`
-	Amount      int64          `db:"amount" json:"amount"`
-	Currency    string         `db:"currency" json:"currency"`
-	Type        string         `db:"type" json:"type"`
-	PeriodStart string         `db:"period_start" json:"period_start"`
-	PeriodEnd   string         `db:"period_end" json:"period_end"`
-	NotifyAtPct sql.NullInt64  `db:"notify_at_pct" json:"notify_at_pct"`
-	IsActive    int64          `db:"is_active" json:"is_active"`
-	CreatedAt   string         `db:"created_at" json:"created_at"`
-	UpdatedAt   string         `db:"updated_at" json:"updated_at"`
+	ID            int64          `db:"id" json:"id"`
+	Name          sql.NullString `db:"name" json:"name"`
+	Amount        int64          `db:"amount" json:"amount"`
+	Currency      string         `db:"currency" json:"currency"`
+	Type          string         `db:"type" json:"type"`
+	PeriodStart   string         `db:"period_start" json:"period_start"`
+	PeriodEnd     string         `db:"period_end" json:"period_end"`
+	NotifyAtPct   sql.NullInt64  `db:"notify_at_pct" json:"notify_at_pct"`
+	IsActive      int64          `db:"is_active" json:"is_active"`
+	CreatedAt     string         `db:"created_at" json:"created_at"`
+	UpdatedAt     string         `db:"updated_at" json:"updated_at"`
+	AllCategories int64          `db:"all_categories" json:"all_categories"`
 }
 
 type BudgetCategory struct {

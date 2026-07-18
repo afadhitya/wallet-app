@@ -1,0 +1,1 @@
+ALTER TABLE budgets ADD COLUMN all_categories INTEGER NOT NULL DEFAULT 0;

@@ -78,6 +78,7 @@ type Querier interface {
 	ReportTransfers(ctx context.Context, arg ReportTransfersParams) (interface{}, error)
 	ReportUntagged(ctx context.Context, arg ReportUntaggedParams) (*ReportUntaggedRow, error)
 	ResumePlannedPayment(ctx context.Context, id int64) error
+	SumAllCategoryExpenses(ctx context.Context, arg SumAllCategoryExpensesParams) (interface{}, error)
 	SumBudgetExpenses(ctx context.Context, arg SumBudgetExpensesParams) (interface{}, error)
 	SumTransactions(ctx context.Context, arg SumTransactionsParams) (interface{}, error)
 	UpdateAccount(ctx context.Context, arg UpdateAccountParams) (*Account, error)
