@@ -55,6 +55,22 @@ This skill instructs AI agents how to invoke the `wallet` CLI tool for personal 
 4. **Present friendly output**: parse the JSON, then format a human-readable reply. Never dump raw JSON.
 5. **Amounts are integers in smallest currency units**: `50000` = Rp 50,000 (IDR) or $500.00 (USD). Format with thousand separators and currency symbols for display.
 
+6. **Ask for missing required parameters.** If the user doesn't provide a mandatory parameter (category, account, etc.), ask them. Do not assume or guess any input values. You may suggest options (e.g., "Which category? Some options: Groceries, Food & Dining, Household"), but the final choice must come from the user.
+
+   **Bad** (silent assumption):
+   ```
+   User: "Add a bill for Spotify $10.99 monthly on the 10th"
+   Agent: wallet bill add "Spotify" 1099 -c Entertainment -a Checking --monthly --day 10 --json
+   ```
+
+   **Good** (ask with suggestions):
+   ```
+   User: "Add a bill for Spotify $10.99 monthly on the 10th"
+   Agent: "Which category? Options: Subscriptions, Entertainment, Utilities. And which account? Options: Checking, Savings."
+   User: "Subscriptions and Checking"
+   Agent: wallet bill add "Spotify" 1099 -c Subscriptions -a Checking --monthly --day 10 --json
+   ```
+
 ### JSON Envelope
 
 **Success** (stdout):
