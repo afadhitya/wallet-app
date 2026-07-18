@@ -126,7 +126,7 @@ The system SHALL provide commands to pause, resume, edit, and remove planned pay
 - **AND** excludes it from future default list and due results
 
 ### Requirement: Recurrence Calculation
-The system SHALL calculate next due dates deterministically for daily, weekly, monthly, yearly, custom, and one-time schedules.
+The system SHALL calculate next due dates deterministically for daily, weekly, monthly, yearly, custom, and one-time schedules. The initial `next_due_date` SHALL never be in the past relative to the start date; when the computed due date falls on or before the start date, the system SHALL advance it to the next occurrence.
 
 #### Scenario: Advance simple recurrence
 - **WHEN** a daily, weekly, monthly, or yearly planned payment is paid or skipped
@@ -135,6 +135,11 @@ The system SHALL calculate next due dates deterministically for daily, weekly, m
 #### Scenario: Clamp monthly recurrence to end of month
 - **WHEN** a monthly planned payment due on January 31 is advanced into February
 - **THEN** the system sets the next due date to the last valid day of February
+
+#### Scenario: Initial due date advances past the start date
+- **WHEN** a planned payment is created with a monthly recurrence and a due day that has already passed in the current start-date month
+- **THEN** the system sets `next_due_date` to the first occurrence after the start date
+- **AND** the `next_due_date` is in the future relative to the start date
 
 #### Scenario: Advance custom WEEKLY recurrence with BYDAY
 - **WHEN** a custom WEEKLY planned payment with `BYDAY=TU,WE` (e.g., `FREQ=WEEKLY;BYDAY=TU,WE`) is paid, skipped, or expanded in a forecast
