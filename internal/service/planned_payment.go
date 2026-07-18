@@ -683,6 +683,7 @@ func computeInitialDueDate(startDate string, recurrence string, dueDay int) stri
 	if dueDay <= 0 {
 		return t.Format("2006-01-02")
 	}
+	var result string
 	switch recurrence {
 	case "weekly":
 		weekday := time.Weekday(dueDay)
@@ -690,14 +691,26 @@ func computeInitialDueDate(startDate string, recurrence string, dueDay int) stri
 			return t.Format("2006-01-02")
 		}
 		diff := (int(weekday) - int(t.Weekday()) + 7) % 7
-		return t.AddDate(0, 0, diff).Format("2006-01-02")
+		result = t.AddDate(0, 0, diff).Format("2006-01-02")
 	case "monthly", "custom":
-		return setDayInMonth(t.Year(), int(t.Month()), dueDay)
+		result = setDayInMonth(t.Year(), int(t.Month()), dueDay)
 	case "yearly":
-		return setDayInMonth(t.Year(), int(t.Month()), dueDay)
+		result = setDayInMonth(t.Year(), int(t.Month()), dueDay)
 	default:
 		return t.Format("2006-01-02")
 	}
+	resultDate, err := time.Parse("2006-01-02", result)
+	if err != nil {
+		return result
+	}
+	if resultDate.Before(t) {
+		advanced, err := calcNextDue(resultDate, recurrence, sql.NullString{})
+		if err != nil {
+			return result
+		}
+		return advanced.Format("2006-01-02")
+	}
+	return result
 }
 
 func setDayInMonth(year, month, day int) string {
