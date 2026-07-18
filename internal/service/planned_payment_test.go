@@ -1105,6 +1105,26 @@ func TestCreatePlannedPayment_Yearly(t *testing.T) {
 	}
 }
 
+func TestCreatePlannedPayment_DueDayPastStartDate(t *testing.T) {
+	svc := setupServiceForPP(t)
+	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
+
+	pp, err := svc.CreatePlannedPayment(CreatePlannedPaymentParams{
+		Name: "Past Due Day", Amount: 100000, Account: "BCA",
+		Category: "Subscriptions", Recurrence: "monthly",
+		StartDate: "2026-07-20", DueDay: 15,
+	})
+	if err != nil {
+		t.Fatalf("CreatePlannedPayment: %v", err)
+	}
+	if !pp.NextDueDate.Valid {
+		t.Fatal("expected next_due_date to be set")
+	}
+	if pp.NextDueDate.String != "2026-08-15" {
+		t.Errorf("expected next_due_date to advance to 2026-08-15, got %s", pp.NextDueDate.String)
+	}
+}
+
 func TestCreatePlannedPayment_Daily(t *testing.T) {
 	svc := setupServiceForPP(t)
 	mustCreateAccount(t, svc, "BCA", "checking", "IDR")
