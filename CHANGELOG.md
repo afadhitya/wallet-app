@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.4.0] - 2026-07-18
+
+### Added
+
+- **`--all-categories` flag for `budget set` and `budget edit`** — New flag to create or edit a budget that applies to all categories. When enabled, spending is calculated across all categories regardless of category-level scope.
+- **Structured logging with `log/slog`** — Replaced ad-hoc logging with Go's structured `log/slog` package. Added `-v`/`--verbose` and `--log-file` flags for configurable log levels and JSON file output.
+
+### Fixed
+
+- **Past-due date advancement for planned payments** — Fixed `computeInitialDueDate` to advance the due date to the next valid period when it falls before the start date. Fixed `monthsBetween` day comparison for accurate month intervals.
+- **Budget spending deduplication** — Fixed budget spending calculation to avoid double-counting when a transaction matches both a category and a tag within the same budget.
+
 ## [v1.3.0] - 2026-07-12
 
 ### Added
