@@ -416,5 +416,9 @@ func expandOccurrences(seedDate time.Time, recurrence string, recurrenceRule sql
 func monthsBetween(start, date time.Time) int {
 	years := date.Year() - start.Year()
 	months := int(date.Month()) - int(start.Month())
-	return years*12 + months
+	result := years*12 + months
+	if date.Day() < start.Day() {
+		result--
+	}
+	return result
 }

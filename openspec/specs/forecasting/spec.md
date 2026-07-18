@@ -25,6 +25,7 @@ The system SHALL provide `wallet forecast` to project future balances from activ
 - **AND** each month includes projected income, projected expenses, net movement, and ending balance
 - **AND** recurring planned payments contribute each occurrence due in the requested horizon
 - **AND** monthly projected income and expenses aggregate planned payment amounts converted to the base currency
+- **AND** occurrences are assigned to the correct month index using a day-aware month boundary calculation
 
 #### Scenario: Skip planned payments with missing exchange rate
 - **WHEN** the user runs `wallet forecast` and a planned payment's account currency lacks a configured exchange rate

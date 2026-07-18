@@ -151,16 +151,22 @@ github.com/afadhitya/wallet-app/internal/service/planned_payment.go:513.35,515.4
 github.com/afadhitya/wallet-app/internal/service/planned_payment.go:521.16,523.3
 
 # computeInitialDueDate: time.Parse error (data integrity)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:540.16,542.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:680.16,682.3
 
 # computeInitialDueDate: weekly dueDay out of range (invalid user input)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:552.3,553.52
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:693.3,694.54
 
 # computeInitialDueDate: default (daily recurrence)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:558.10,559.32
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:699.10,700.32
+
+# computeInitialDueDate: resultDate time.Parse error (data integrity — result always a valid date string)
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:703.16,705.3
+
+# computeInitialDueDate: calcNextDue error when advancing past-due date (data integrity — recurrence already validated)
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:708.17,710.4
 
 # setDayInMonth: day > lastDay clamp (tested via EOM test)
-github.com/afadhitya/wallet-app/internal/service/planned_payment.go:565.19,567.3
+github.com/afadhitya/wallet-app/internal/service/planned_payment.go:718.19,720.3
 
 
 # === CLI bill.go: error/infrastructure paths ===
